@@ -12,21 +12,29 @@ import pymongo
 
 from tiled.adapters.array import ArrayAdapter
 from tiled.adapters.dataframe import DataFrameAdapter
+from tiled.adapters.mapping import MapAdapter
 from tiled.adapters.utils import IndexersMixin, tree_repr
 from tiled.iterviews import KeysView, ItemsView, ValuesView
+from tiled.queries import (
+    Contains,
+    Comparison,
+    Eq,
+    FullText,
+    Operator,
+    Regex,
+)
 from tiled.query_registration import QueryTranslationRegistry
 
 from tiled.structures.core import StructureFamily
-from tiled.structures.dataframe import deserialize_arrow, serialize_arrow
+from tiled.structures.dataframe import deserialize_arrow
 
 from tiled.server.pydantic_array import ArrayStructure
 from tiled.server.pydantic_dataframe import DataFrameStructure
 from tiled.utils import APACHE_ARROW_FILE_MIME_TYPE, UNCHANGED
 
 from .schemas import Document
-from .queries import RawMongo
 
-from sys import platform
+from sys import modules, platform
 
 
 def array_raise_if_inactive(method):
@@ -284,12 +292,6 @@ class MongoAdapter(collections.abc.Mapping, IndexersMixin):
             mimetype=mime_structure_association[structure_family],
         )
 
-        # After validating the document must be encoded to bytes again to make it compatible with MongoDB
-        if validated_document.structure_family == StructureFamily.dataframe:
-            validated_document.structure.micro.meta = bytes(
-                serialize_arrow(validated_document.structure.micro.meta, {})
-            )
-
         self.collection.insert_one(validated_document.dict())
         return key
 
@@ -405,12 +407,62 @@ class MongoAdapter(collections.abc.Mapping, IndexersMixin):
             else:
                 raise ValueError("Unsupported Structure Family value in the database")
 
+    def apply_mongo_query(self, query):
+        return self.new_variation(
+            queries=self.queries + [query],
+        )
 
-def raw_mongo(query, catalog):
-    # For now, only handle search on the 'run_start' collection.
-    return catalog.new_variation(
-        queries=catalog.queries + [json.loads(query.query)],
+
+def contains(query, catalog):
+    # In MongoDB, checking that an item is in an array looks
+    # just like equality.
+    # https://www.mongodb.com/docs/manual/tutorial/query-arrays/
+    return catalog.apply_mongo_query({f"metadata.{query.key}": query.value})
+
+
+def comparison(query, catalog):
+    OPERATORS = {
+        Operator.lt: "$lt",
+        Operator.le: "$lte",
+        Operator.gt: "$gt",
+        Operator.ge: "$gte",
+    }
+    return catalog.apply_mongo_query(
+        {f"metadata.{query.key}": {OPERATORS[query.operator]: query.value}}
     )
 
 
-MongoAdapter.register_query(RawMongo, raw_mongo)
+def eq(query, catalog):
+    return catalog.apply_mongo_query({f"metadata.{query.key}": query.value})
+
+
+def regex(query, catalog):
+    options = "" if query.case_sensitive else "i"
+    return catalog.apply_mongo_query(
+        {f"metadata.{query.key}": {"$regex": query.pattern, "$options": options}}
+    )
+
+
+def full_text_search(query, catalog):
+    # First if this catalog is backed by mongomock, which does not support $text queries.
+    # Avoid importing mongomock if it is not already imported.
+    if "mongomock" in modules:
+        import mongomock
+
+        if isinstance(catalog.database.client, mongomock.MongoClient):
+            # Do the query in memory.
+            # For huge MongoAdapters this will be slow, but if you are attempting
+            # full text search on a large mongomock-backed MongoAdapter,
+            # you have made your choices! :-)
+            return MapAdapter(dict(catalog)).search(query)
+
+    return catalog.apply_mongo_query(
+        {"$text": {"$search": query.text, "$caseSensitive": query.case_sensitive}},
+    )
+
+
+MongoAdapter.register_query(Contains, contains)
+MongoAdapter.register_query(Comparison, comparison)
+MongoAdapter.register_query(Eq, eq)
+MongoAdapter.register_query(FullText, full_text_search)
+MongoAdapter.register_query(Regex, regex)

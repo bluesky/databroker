@@ -38,7 +38,7 @@ class Document(pydantic.BaseModel):
         actual_structure = values.get("structure")
         # Given the structure_family, we know what the structure type should be.
         expected_structure_type = structure_association[values.get("structure_family")]
-        if values.get("expected_structure_type") == StructureFamily.node:
+        if expected_structure_type == StructureFamily.node:
             raise Exception(
                 f"{expected_structure_type} is not currently supported as a writable structure"
             )
