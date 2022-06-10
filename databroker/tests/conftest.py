@@ -43,6 +43,11 @@ def db(request):
     return param_map[request.param](request)
 
 
+@pytest.fixture
+def c(request):
+    return build_tiled_mongo_backed_broker(request).v2
+
+
 @pytest.fixture(params=params, scope='function')
 def db_empty(request):
     if ('array_data' in request.function.__name__ and
