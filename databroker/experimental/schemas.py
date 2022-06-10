@@ -21,7 +21,6 @@ structure_association = {
 }
 
 
-# class Document(pydantic.generics.GenericModel, Generic[StrucT]):
 class Document(pydantic.BaseModel):
     key: str
     structure_family: StructureFamily
@@ -34,7 +33,6 @@ class Document(pydantic.BaseModel):
 
     @pydantic.root_validator
     def validate_structure_matches_structure_family(cls, values):
-        # actual_structure_type = cls.__annotations__["structure"]  # this is what was filled in for StructureT
         actual_structure = values.get("structure")
         # Given the structure_family, we know what the structure type should be.
         expected_structure_type = structure_association[values.get("structure_family")]
@@ -52,8 +50,6 @@ class Document(pydantic.BaseModel):
     def check_data_source(cls, values):
         # Making them optional and setting default values might help to meet these conditions
         # with the current data types without getting any conflicts
-        # if values.get('data_blob') is None and values.get('data_url') is None:
-        #     raise ValueError("Not Valid: data_blob and data_url are both None. Use one of them")
         if values.get("data_blob") is not None and values.get("data_url") is not None:
             raise ValueError(
                 "Not Valid: data_blob and data_url contain values. Use just one"
