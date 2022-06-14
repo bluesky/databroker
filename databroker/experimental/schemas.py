@@ -5,8 +5,8 @@ import pydantic.generics
 
 from tiled.server.pydantic_array import ArrayStructure
 from tiled.server.pydantic_dataframe import DataFrameStructure
+from tiled.server.pydantic_xarray import DataArrayStructure, DatasetStructure
 from tiled.structures.core import StructureFamily
-from tiled.structures.xarray import DataArrayStructure, DatasetStructure
 
 
 # Map structure family to the associated
@@ -24,7 +24,7 @@ structure_association = {
 class Document(pydantic.BaseModel):
     key: str
     structure_family: StructureFamily
-    structure: Union[ArrayStructure, DataFrameStructure]
+    structure: Union[ArrayStructure, DataFrameStructure, DataArrayStructure]
     metadata: Dict
     specs: List[str]
     mimetype: str
@@ -77,3 +77,37 @@ class Document(pydantic.BaseModel):
         if m_type not in mime_type_list:
             raise ValueError(f"{m_type} is not a valid mime type")
         return v
+
+
+if __name__ == "__main__":
+    import dask.array
+    import numpy
+    import xarray
+
+    from dataclasses import asdict
+    from tiled.adapters.xarray import DataArrayAdapter
+
+    array = numpy.random.random((10, 10))
+    xarr_adapter = DataArrayAdapter.from_data_array(
+        xarray.DataArray(
+            xarray.Variable(
+                data=dask.array.from_array(array),
+                dims=["x", "y"],
+                attrs={"thing": "stuff"},
+            ),
+            coords={
+                "x": dask.array.arange(len(array)),
+                "y": 10 * dask.array.arange(len(array)),
+            },
+        )
+    )
+
+    xarr_macro = asdict(xarr_adapter.macrostructure())
+    # uid = "123456"
+    # structure_family = StructureFamily.xarray_data_array
+    structure = DataArrayStructure.from_json(
+        {"macro": xarr_macro, "micro": xarr_adapter.microstructure()}
+    )
+    # metadata = {"a": 1, "b": 2}
+    # specs = ["BlueskyNode"]
+    # mimetype = "application"
