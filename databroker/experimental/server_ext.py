@@ -218,7 +218,7 @@ class MongoAdapter(collections.abc.Mapping, IndexersMixin):
                 f"The given directory path {self.directory} is not a directory."
             )
         if not os.access(self.directory, os.W_OK):
-            raise ValueError("Directory {self.directory} is not writeable.")
+            raise ValueError(f"Directory {self.directory} is not writeable.")
         self.queries = queries or []
         self.sorting = sorting or [("metadata.scan_id", 1)]
         self.metadata = metadata or {}
@@ -230,7 +230,7 @@ class MongoAdapter(collections.abc.Mapping, IndexersMixin):
     def from_uri(cls, uri, directory, *, metadata=None):
         if not pymongo.uri_parser.parse_uri(uri)["database"]:
             raise ValueError(
-                f"Invalid URI: {uri!r} " f"Did you forget to include a database?"
+                f"Invalid URI: {uri!r} Did you forget to include a database?"
             )
         client = pymongo.MongoClient(uri)
         database = client.get_database()
