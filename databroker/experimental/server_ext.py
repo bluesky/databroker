@@ -19,6 +19,9 @@ from tiled.queries import (
     Comparison,
     Eq,
     FullText,
+    In,
+    NotEq,
+    NotIn,
     Operator,
     Regex,
 )
@@ -435,11 +438,27 @@ def eq(query, catalog):
     return catalog.apply_mongo_query({f"metadata.{query.key}": query.value})
 
 
+def noteq(query, catalog):
+    return catalog.apply_mongo_query({f"metadata.{query.key}": {"$ne": query.value}})
+
+
 def regex(query, catalog):
     options = "" if query.case_sensitive else "i"
     return catalog.apply_mongo_query(
         {f"metadata.{query.key}": {"$regex": query.pattern, "$options": options}}
     )
+
+
+def _in(query, catalog):
+    if not isinstance(query.value, list):
+        query.value = [query.value]
+    return catalog.apply_mongo_query({f"metadata.{query.key}": {"$in": query.value}})
+
+
+def notin(query, catalog):
+    if not isinstance(query.value, list):
+        query.value = [query.value]
+    return catalog.apply_mongo_query({f"metadata.{query.key}": {"$nin": query.value}})
 
 
 def full_text_search(query, catalog):
@@ -463,5 +482,8 @@ def full_text_search(query, catalog):
 MongoAdapter.register_query(Contains, contains)
 MongoAdapter.register_query(Comparison, comparison)
 MongoAdapter.register_query(Eq, eq)
-MongoAdapter.register_query(FullText, full_text_search)
+MongoAdapter.register_query(NotEq, noteq)
 MongoAdapter.register_query(Regex, regex)
+MongoAdapter.register_query(In, _in)
+MongoAdapter.register_query(NotIn, notin)
+MongoAdapter.register_query(FullText, full_text_search)

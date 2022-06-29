@@ -1,5 +1,15 @@
 from tiled.client import from_tree
-from tiled.queries import Contains, Comparison, Eq, FullText, Key, Regex
+from tiled.queries import (
+    Contains,
+    Comparison,
+    Eq,
+    FullText,
+    In,
+    Key,
+    NotEq,
+    NotIn,
+    Regex,
+)
 
 from ..experimental.server_ext import MongoAdapter
 
@@ -98,3 +108,18 @@ def test_queries(tmpdir):
     numpy.testing.assert_equal(
         test5.values()[0].read(), test5.values()[0].metadata["number"] * numpy.ones(10)
     )
+    test6 = client.search(NotEq("letter", "a"))
+    # The first result should not be "a"
+    assert test6.values()[0].metadata["letter"] != "a"
+
+    test7 = client.search(In("letter", ["a", "b"]))
+    numpy.testing.assert_equal(
+        test7.values()[0].read(), test7.values()[0].metadata["number"] * numpy.ones(10)
+    )
+    numpy.testing.assert_equal(
+        test7.values()[1].read(), test7.values()[1].metadata["number"] * numpy.ones(10)
+    )
+
+    test8 = client.search(NotIn("letter", ["a"]))
+    # The first result should not be "a"
+    assert test8.values()[0].metadata["letter"] != "a"
