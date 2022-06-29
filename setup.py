@@ -64,6 +64,7 @@ setup(
     url='https://github.com/NSLS-II/databroker',
     scripts=['scripts/fs_rename'],
     license='BSD (3-clause)',
+    install_requires=['tiled[minimal-client]'],
     extras_require=extras_require,
     python_requires='>={}'.format('.'.join(str(n) for n in min_version)),
     entry_points={
