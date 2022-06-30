@@ -6,6 +6,7 @@ from ..experimental.server_ext import MongoAdapter
 import numpy
 import pandas
 import string
+import xarray
 
 
 def test_write_array(tmpdir):
@@ -58,6 +59,73 @@ def test_write_dataframe(tmpdir):
     result_dataframe = results.values().first().read()
 
     pandas.testing.assert_frame_equal(result_dataframe, test_dataframe)
+
+
+def test_write_dataarray(tmpdir):
+
+    import dask.array
+
+    api_key = "secret"
+
+    tree = MongoAdapter.from_mongomock(tmpdir)
+
+    client = from_tree(
+        tree, api_key=api_key, authentication={"single_user_api_key": api_key}
+    )
+
+    array = numpy.random.random((10, 10))
+
+    test_xarray = xarray.DataArray(
+        xarray.Variable(
+            data=dask.array.from_array(array),
+            dims=["x", "y"],
+            attrs={"thing": "stuff"},
+        ),
+        coords={
+            "x": dask.array.arange(len(array)),
+            "y": 10 * dask.array.arange(len(array)),
+        },
+        attrs={"scan_id": 1, "method": "A"},
+    )
+
+    client.write_dataarray(test_xarray, specs=["BlueskyNode"])
+
+    results = client.search(Key("attrs.scan_id") == 1)
+    result_dataarray = results.values().first().read().values
+    numpy.testing.assert_equal(result_dataarray, array)
+
+
+def test_write_dataset(tmpdir):
+
+    import dask.array
+
+    api_key = "secret"
+
+    tree = MongoAdapter.from_mongomock(tmpdir)
+
+    client = from_tree(
+        tree, api_key=api_key, authentication={"single_user_api_key": api_key}
+    )
+
+    array = numpy.random.random((10, 10))
+    test_dataset = xarray.Dataset(
+        {
+            "image": xarray.DataArray(
+                xarray.Variable(
+                    data=dask.array.from_array(array),
+                    dims=["x", "y"],
+                    attrs={"thing": "stuff"},
+                ),
+                coords={
+                    "x": dask.array.arange(len(array)),
+                    "y": 10 * dask.array.arange(len(array)),
+                },
+            ),
+            "z": xarray.DataArray(data=dask.array.ones((len(array),))),
+        }
+    )
+
+    client.write_dataset(test_dataset, specs=["BlueskyNode"])
 
 
 def test_queries(tmpdir):

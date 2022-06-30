@@ -8,9 +8,11 @@ import h5py
 import numpy
 import pandas
 import pymongo
+import xarray
 
 from tiled.adapters.array import ArrayAdapter
 from tiled.adapters.dataframe import DataFrameAdapter
+from tiled.adapters.xarray import DataArrayAdapter, DatasetAdapter
 from tiled.adapters.mapping import MapAdapter
 from tiled.adapters.utils import IndexersMixin, tree_repr
 from tiled.iterviews import KeysView, ItemsView, ValuesView
@@ -29,6 +31,7 @@ from tiled.structures.dataframe import deserialize_arrow
 
 from tiled.server.pydantic_array import ArrayStructure
 from tiled.server.pydantic_dataframe import DataFrameStructure
+from tiled.server.pydantic_xarray import DataArrayStructure, DatasetStructure
 from tiled.utils import APACHE_ARROW_FILE_MIME_TYPE, UNCHANGED
 
 from .schemas import Document
@@ -56,14 +59,26 @@ def dataframe_raise_if_inactive(method):
     return inner
 
 
+def dataarray_raise_if_inactive(method):
+    def inner(self, *args, **kwargs):
+        if self.dataarray_adapter is None:
+            raise ValueError("Not active")
+        else:
+            return method(self, *args, **kwargs)
+
+    return inner
+
+
 class WritingArrayAdapter:
-    structure_family = "array"
+    # structure_family = "array"
+    structure_family = StructureFamily.array
 
     def __init__(self, collection, directory, doc):
         self.collection = collection
         self.directory = directory
         self.doc = Document(**doc)
         self.array_adapter = None
+
         if self.doc.data_url is not None:
             path = self.doc.data_url.path
             if platform == "win32" and path[0] == "/":
@@ -102,6 +117,7 @@ class WritingArrayAdapter:
         # characters of the key to avoid one giant directory.
         path = self.directory / self.doc.key[:2] / (self.doc.key + ".hdf5")
         path.parent.mkdir(parents=True, exist_ok=True)
+
         array = numpy.frombuffer(
             body, dtype=self.doc.structure.micro.to_numpy_dtype()
         ).reshape(self.doc.structure.macro.shape)
@@ -120,7 +136,8 @@ class WritingArrayAdapter:
 
 
 class WritingDataFrameAdapter:
-    structure_family = "dataframe"
+    # structure_family = "dataframe"
+    structure_family = StructureFamily.dataframe
 
     def __init__(self, collection, directory, doc):
         self.collection = collection
@@ -179,6 +196,144 @@ class WritingDataFrameAdapter:
         dataframe = deserialize_arrow(body)
 
         dataframe.to_parquet(path)
+        result = self.collection.update_one(
+            {"key": self.doc.key},
+            {
+                "$set": {
+                    "data_url": f"file://localhost/{str(path).replace(os.sep, '/')}"
+                }
+            },
+        )
+
+        if result.matched_count != result.modified_count:
+            raise ValueError("Error while writing to database")
+
+
+class WritingDataArrayAdapter:
+    structure_family = StructureFamily.xarray_data_array
+
+    def __init__(self, collection, directory, doc):
+        self.collection = collection
+        self.directory = directory
+        self.doc = Document(**doc)
+        self.dataarray_adapter = None
+
+        if self.doc.data_url is not None:
+            path = self.doc.data_url.path
+            if platform == "win32" and path[0] == "/":
+                path = path[1:]
+
+            self.dataarray_adapter = DataArrayAdapter.from_data_array(
+                xarray.open_dataarray(path)
+            )
+
+        elif self.doc.data_blob is not None:
+            self.dataarray_adapter = DataArrayAdapter.from_data_array(
+                xarray.open_dataarray(self.doc.data_blob)
+            )
+
+    @property
+    def structure(self):
+        return DataArrayStructure.from_json(self.doc.structure)
+
+    @property
+    def metadata(self):
+        return self.doc.metadata
+
+    @dataarray_raise_if_inactive
+    def read(self, *args, **kwargs):
+        return self.dataarray_adapter.read(*args, **kwargs)
+
+    @dataarray_raise_if_inactive
+    def read_partition(self, *args, **kwargs):
+        return self.dataarray_adapter.read_partition(*args, **kwargs)
+
+    def __getitem__(self, key):
+        return self.dataarray_adapter[key]
+
+    def microstructure(self):
+        return self.dataarray_adapter.microstructure()
+
+    def macrostructure(self):
+        return self.dataarray_adapter.macrostructure()
+
+    def put_data(self, body):
+        # Organize files into subdirectories with the first two
+        # characters of the key to avoid one giant directory.
+        path = self.directory / self.doc.key[:2] / (self.doc.key + ".hdf5")
+        path.parent.mkdir(parents=True, exist_ok=True)
+
+        dataarray = xarray.open_dataarray(body)
+
+        dataarray.to_netcdf(path)
+        result = self.collection.update_one(
+            {"key": self.doc.key},
+            {
+                "$set": {
+                    "data_url": f"file://localhost/{str(path).replace(os.sep, '/')}"
+                }
+            },
+        )
+
+        if result.matched_count != result.modified_count:
+            raise ValueError("Error while writing to database")
+
+
+class WritingDataSetAdapter:
+    structure_family = StructureFamily.xarray_dataset
+
+    def __init__(self, collection, directory, doc):
+        self.collection = collection
+        self.directory = directory
+        self.doc = Document(**doc)
+        self.dataset_adapter = None
+
+        if self.doc.data_url is not None:
+            path = self.doc.data_url.path
+            if platform == "win32" and path[0] == "/":
+                path = path[1:]
+
+            self.dataset_adapter = DatasetAdapter(xarray.open_dataset(path))
+
+        elif self.doc.data_blob is not None:
+            self.dataset_adapter = DatasetAdapter(
+                xarray.open_dataset(self.doc.data_blob)
+            )
+
+    @property
+    def structure(self):
+        return DatasetStructure.from_json(self.doc.structure)
+
+    @property
+    def metadata(self):
+        return self.doc.metadata
+
+    @dataarray_raise_if_inactive
+    def read(self, *args, **kwargs):
+        return self.dataset_adapter.read(*args, **kwargs)
+
+    @dataarray_raise_if_inactive
+    def read_partition(self, *args, **kwargs):
+        return self.dataset_adapter.read_partition(*args, **kwargs)
+
+    def __getitem__(self, key):
+        return self.dataset_adapter[key]
+
+    def microstructure(self):
+        return self.dataset_adapter.microstructure()
+
+    def macrostructure(self):
+        return self.dataset_adapter.macrostructure()
+
+    def put_data(self, body):
+        # Organize files into subdirectories with the first two
+        # characters of the key to avoid one giant directory.
+        path = self.directory / self.doc.key[:2] / (self.doc.key + ".hdf5")
+        path.parent.mkdir(parents=True, exist_ok=True)
+
+        dataset = xarray.open_dataset(body)
+
+        dataset.to_netcdf(path)
         result = self.collection.update_one(
             {"key": self.doc.key},
             {
@@ -278,6 +433,8 @@ class MongoAdapter(collections.abc.Mapping, IndexersMixin):
         mime_structure_association = {
             StructureFamily.array: "application/x-hdf5",
             StructureFamily.dataframe: APACHE_ARROW_FILE_MIME_TYPE,
+            StructureFamily.xarray_data_array: "application/x-netcdf",
+            StructureFamily.xarray_dataset: "application/x-netcdf",
         }
 
         key = str(uuid.uuid4())
@@ -318,6 +475,10 @@ class MongoAdapter(collections.abc.Mapping, IndexersMixin):
             return WritingArrayAdapter(self.collection, self.directory, doc)
         elif doc["structure_family"] == StructureFamily.dataframe:
             return WritingDataFrameAdapter(self.collection, self.directory, doc)
+        elif doc["structure_family"] == StructureFamily.xarray_data_array:
+            return WritingDataArrayAdapter(self.collection, self.directory, doc)
+        elif doc["structure_family"] == StructureFamily.xarray_dataset:
+            return WritingDataSetAdapter(self.collection, self.directory, doc)
         else:
             raise ValueError("Unsupported Structure Family value in the databse")
 
@@ -402,6 +563,16 @@ class MongoAdapter(collections.abc.Mapping, IndexersMixin):
                 yield (
                     doc["key"],
                     WritingDataFrameAdapter(self.database, self.directory, doc),
+                )
+            elif doc["structure_family"] == StructureFamily.xarray_data_array:
+                yield (
+                    doc["key"],
+                    WritingDataArrayAdapter(self.database, self.directory, doc),
+                )
+            elif doc["structure_family"] == StructureFamily.xarray_dataset:
+                yield (
+                    doc["key"],
+                    WritingDataSetAdapter(self.database, self.directory, doc),
                 )
             else:
                 raise ValueError("Unsupported Structure Family value in the database")
