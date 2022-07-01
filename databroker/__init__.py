@@ -72,7 +72,10 @@ def __getattr__(name):
             from .pims_readers import get_images
 
             return get_images
-        return getattr(utils, name)
+
+        from . import databroker
+        return getattr(databroker, name)
+
     raise AttributeError(name)
 
 
