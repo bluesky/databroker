@@ -135,7 +135,7 @@ def test_delete(tmpdir):
         tree, api_key=api_key, authentication={"single_user_api_key": api_key}
     )
 
-    ## This works
+    # This works
     dummy_array = numpy.ones((5, 5))
 
     data = {
@@ -154,7 +154,7 @@ def test_delete(tmpdir):
 
     client.delete(key)
 
-    ## Still not working
+    # Still not working
     # test_array = numpy.ones((5, 5))
 
     # key = client.write_array(test_array, {"scan_id": 1, "method": "A"}, ["BlueskyNode"])
