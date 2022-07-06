@@ -72,9 +72,8 @@ class WritingArrayAdapter:
             if platform == "win32" and path[0] == "/":
                 path = path[1:]
 
-            # with h5py.File(path, "w") as file:
-            file = h5py.File(path)
-            dataset = file["data"]
+            self.file = h5py.File(path)
+            dataset = self.file["data"]
             self.array_adapter = ArrayAdapter(dask.array.from_array(dataset))
         elif self.doc.data_blob is not None:
             self.array_adapter = ArrayAdapter(dask.array.from_array(self.doc.data_blob))
@@ -123,8 +122,12 @@ class WritingArrayAdapter:
             raise ValueError("Error while writing to database")
 
     def delete(self):
-        path = self.directory / self.doc.key[:2] / (self.doc.key + ".hdf5")
         if self.doc.data_url is not None:
+            path = self.doc.data_url.path
+            if platform == "win32" and path[0] == "/":
+                path = path[1:]
+
+            self.file.close()
             os.remove(path)
         result = self.collection.delete_one({"key": self.doc.key})
         assert result.deleted_count == 1
@@ -203,8 +206,11 @@ class WritingDataFrameAdapter:
             raise ValueError("Error while writing to database")
 
     def delete(self):
-        path = self.directory / self.doc.key[:2] / (self.doc.key + ".parquet")
         if self.doc.data_url is not None:
+            path = self.doc.data_url.path
+            if platform == "win32" and path[0] == "/":
+                path = path[1:]
+
             os.remove(path)
         result = self.collection.delete_one({"key": self.doc.key})
         assert result.deleted_count == 1

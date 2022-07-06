@@ -135,28 +135,28 @@ def test_delete(tmpdir):
         tree, api_key=api_key, authentication={"single_user_api_key": api_key}
     )
 
-    # This works
-    # dummy_array = numpy.ones((5, 5))
+    # For dataframes
+    dummy_array = numpy.ones((5, 5))
 
-    # data = {
-    #     "Column1": dummy_array[0],
-    #     "Column2": dummy_array[1],
-    #     "Column3": dummy_array[2],
-    #     "Column4": dummy_array[3],
-    #     "Column5": dummy_array[4],
-    # }
+    data = {
+        "Column1": dummy_array[0],
+        "Column2": dummy_array[1],
+        "Column3": dummy_array[2],
+        "Column4": dummy_array[3],
+        "Column5": dummy_array[4],
+    }
 
-    # test_dataframe = pandas.DataFrame(data)
+    test_dataframe = pandas.DataFrame(data)
 
-    # key = client.write_dataframe(
-    #     test_dataframe, {"scan_id": 1, "method": "A"}, ["BlueskyNode"]
-    # )
+    key = client.write_dataframe(
+        test_dataframe, {"scan_id": 1, "method": "A"}, ["BlueskyNode"]
+    )
 
-    # client.delete(key)
+    client.delete(key)  # del client[key] and client.delete(key) are functional
 
-    # Still not working
+    # For arrays
     test_array = numpy.ones((5, 5))
 
     key = client.write_array(test_array, {"scan_id": 1, "method": "A"}, ["BlueskyNode"])
 
-    client.delete(key)
+    del client[key]  # del client[key] and client.delete(key) are functional
