@@ -72,9 +72,10 @@ class WritingArrayAdapter:
             if platform == "win32" and path[0] == "/":
                 path = path[1:]
 
-            with h5py.File(path, "w") as file:
-                dataset = file["data"]
-                self.array_adapter = ArrayAdapter(dask.array.from_array(dataset))
+            # with h5py.File(path, "w") as file:
+            file = h5py.File(path)
+            dataset = file["data"]
+            self.array_adapter = ArrayAdapter(dask.array.from_array(dataset))
         elif self.doc.data_blob is not None:
             self.array_adapter = ArrayAdapter(dask.array.from_array(self.doc.data_blob))
 
