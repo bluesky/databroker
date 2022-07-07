@@ -152,11 +152,11 @@ def test_delete(tmpdir):
         test_dataframe, {"scan_id": 1, "method": "A"}, ["BlueskyNode"]
     )
 
-    client.delete(key)  # del client[key] and client.delete(key) are functional
+    del client[key]
 
     # For arrays
     test_array = numpy.ones((5, 5))
 
     key = client.write_array(test_array, {"scan_id": 1, "method": "A"}, ["BlueskyNode"])
 
-    del client[key]  # del client[key] and client.delete(key) are functional
+    del client[key]
