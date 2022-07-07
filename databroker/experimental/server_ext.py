@@ -72,8 +72,8 @@ class WritingArrayAdapter:
             if platform == "win32" and path[0] == "/":
                 path = path[1:]
 
-            file = h5py.File(path)
-            dataset = file["data"]
+            self.file = h5py.File(path)
+            dataset = self.file["data"]
             self.array_adapter = ArrayAdapter(dask.array.from_array(dataset))
         elif self.doc.data_blob is not None:
             self.array_adapter = ArrayAdapter(dask.array.from_array(self.doc.data_blob))
@@ -120,6 +120,17 @@ class WritingArrayAdapter:
         )
         if result.matched_count != result.modified_count:
             raise ValueError("Error while writing to database")
+
+    def delete(self):
+        if self.doc.data_url is not None:
+            path = self.doc.data_url.path
+            if platform == "win32" and path[0] == "/":
+                path = path[1:]
+
+            self.file.close()
+            Path(path).unlink()
+        result = self.collection.delete_one({"key": self.doc.key})
+        assert result.deleted_count == 1
 
 
 class WritingDataFrameAdapter:
@@ -193,6 +204,16 @@ class WritingDataFrameAdapter:
 
         if result.matched_count != result.modified_count:
             raise ValueError("Error while writing to database")
+
+    def delete(self):
+        if self.doc.data_url is not None:
+            path = self.doc.data_url.path
+            if platform == "win32" and path[0] == "/":
+                path = path[1:]
+
+            Path(path).unlink()
+        result = self.collection.delete_one({"key": self.doc.key})
+        assert result.deleted_count == 1
 
 
 class MongoAdapter(collections.abc.Mapping, IndexersMixin):

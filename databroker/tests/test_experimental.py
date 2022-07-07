@@ -123,3 +123,46 @@ def test_queries(tmpdir):
     test8 = client.search(NotIn("letter", ["a"]))
     # The first result should not be "a"
     assert test8.values()[0].metadata["letter"] != "a"
+
+
+def test_delete(tmpdir):
+
+    api_key = "secret"
+
+    tree = MongoAdapter.from_mongomock(tmpdir)
+
+    client = from_tree(
+        tree, api_key=api_key, authentication={"single_user_api_key": api_key}
+    )
+
+    # For dataframes
+    dummy_array = numpy.ones((5, 5))
+
+    data = {
+        "Column1": dummy_array[0],
+        "Column2": dummy_array[1],
+        "Column3": dummy_array[2],
+        "Column4": dummy_array[3],
+        "Column5": dummy_array[4],
+    }
+
+    test_dataframe = pandas.DataFrame(data)
+
+    arr_key = client.write_dataframe(
+        test_dataframe, {"scan_id": 1, "method": "A"}, ["BlueskyNode"]
+    )
+
+    del client[arr_key]
+
+    assert arr_key not in client
+
+    # For arrays
+    test_array = numpy.ones((5, 5))
+
+    df_key = client.write_array(
+        test_array, {"scan_id": 1, "method": "A"}, ["BlueskyNode"]
+    )
+
+    del client[df_key]
+
+    assert df_key not in client
