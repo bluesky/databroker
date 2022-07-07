@@ -148,15 +148,21 @@ def test_delete(tmpdir):
 
     test_dataframe = pandas.DataFrame(data)
 
-    key = client.write_dataframe(
+    arr_key = client.write_dataframe(
         test_dataframe, {"scan_id": 1, "method": "A"}, ["BlueskyNode"]
     )
 
-    del client[key]
+    del client[arr_key]
+
+    assert arr_key not in client
 
     # For arrays
     test_array = numpy.ones((5, 5))
 
-    key = client.write_array(test_array, {"scan_id": 1, "method": "A"}, ["BlueskyNode"])
+    df_key = client.write_array(
+        test_array, {"scan_id": 1, "method": "A"}, ["BlueskyNode"]
+    )
 
-    del client[key]
+    del client[df_key]
+
+    assert df_key not in client

@@ -128,7 +128,7 @@ class WritingArrayAdapter:
                 path = path[1:]
 
             self.file.close()
-            os.remove(path)
+            Path(path).unlink()
         result = self.collection.delete_one({"key": self.doc.key})
         assert result.deleted_count == 1
 
@@ -211,7 +211,7 @@ class WritingDataFrameAdapter:
             if platform == "win32" and path[0] == "/":
                 path = path[1:]
 
-            os.remove(path)
+            Path(path).unlink()
         result = self.collection.delete_one({"key": self.doc.key})
         assert result.deleted_count == 1
 
