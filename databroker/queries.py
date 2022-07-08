@@ -10,6 +10,9 @@ from tiled.queries import (
     Comparison,
     Eq,
     FullText,
+    In,
+    NotEq,
+    NotIn,
     Operator,
     QueryValueError,
     Regex,
@@ -379,6 +382,18 @@ def contains(query, catalog):
     return catalog.apply_mongo_query({query.key: query.value})
 
 
+def _in(query, catalog):
+    return catalog.apply_mongo_query({query.key: {"$in": query.value}})
+
+
+def not_in(query, catalog):
+    return catalog.apply_mongo_query({query.key: {"$nin": query.value}})
+
+
+def not_eq(query, catalog):
+    return catalog.apply_mongo_query({query.key: {"$ne": query.value}})
+
+
 def comparison(query, catalog):
     OPERATORS = {
         Operator.lt: "$lt",
@@ -405,5 +420,8 @@ BlueskyMapAdapter.register_query(Contains, contains)
 BlueskyMapAdapter.register_query(Comparison, comparison)
 BlueskyMapAdapter.register_query(Eq, eq)
 BlueskyMapAdapter.register_query(FullText, full_text_search)
+BlueskyMapAdapter.register_query(In, _in)
+BlueskyMapAdapter.register_query(NotEq, not_eq)
+BlueskyMapAdapter.register_query(NotIn, not_in)
 BlueskyMapAdapter.register_query(TimeRange, time_range)
 BlueskyMapAdapter.register_query(Regex, regex)

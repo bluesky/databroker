@@ -37,7 +37,7 @@ from tiled.structures.xarray import (
 from tiled.adapters.mapping import MapAdapter
 from tiled.iterviews import KeysView, ItemsView, ValuesView
 from tiled.query_registration import QueryTranslationRegistry
-from tiled.queries import Contains, Comparison, Eq, FullText, Regex
+from tiled.queries import Contains, Comparison, Eq, FullText, In, NotEq, NotIn, Regex
 from tiled.utils import (
     SpecialUsers,
 )
@@ -56,6 +56,9 @@ from .queries import (
     contains,
     comparison,
     eq,
+    _in,
+    not_eq,
+    not_in,
     partial_uid,
     scan_id,
     time_range,
@@ -1760,12 +1763,15 @@ def full_text_search(query, catalog):
 
 MongoAdapter.register_query(_PartialUID, partial_uid)
 MongoAdapter.register_query(_ScanID, scan_id)
-MongoAdapter.register_query(FullText, full_text_search)
-MongoAdapter.register_query(Contains, contains)
 MongoAdapter.register_query(Comparison, comparison)
+MongoAdapter.register_query(Contains, contains)
 MongoAdapter.register_query(Eq, eq)
-MongoAdapter.register_query(TimeRange, time_range)
+MongoAdapter.register_query(FullText, full_text_search)
+MongoAdapter.register_query(In, _in)
+MongoAdapter.register_query(NotEq, not_eq)
+MongoAdapter.register_query(NotIn, not_in)
 MongoAdapter.register_query(Regex, regex)
+MongoAdapter.register_query(TimeRange, time_range)
 
 
 class SimpleAccessPolicy:
