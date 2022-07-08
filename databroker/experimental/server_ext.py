@@ -5,6 +5,7 @@ import os
 import shutil
 import uuid
 from pathlib import Path
+from datetime import datetime
 
 import dask.dataframe
 import numpy
@@ -360,6 +361,7 @@ class MongoAdapter(collections.abc.Mapping, IndexersMixin):
         }
 
         key = str(uuid.uuid4())
+        created_date = datetime.today()
 
         validated_document = Document(
             key=key,
@@ -369,6 +371,7 @@ class MongoAdapter(collections.abc.Mapping, IndexersMixin):
             specs=specs,
             mimetype=mime_structure_association[structure_family],
             data_url=f"file://localhost/{self.directory}/{key[:2]}/{key}",
+            created_at=created_date,
         )
 
         _adapter_class_by_family[structure_family]

@@ -1,4 +1,5 @@
 from typing import Dict, List, Optional, Union
+from datetime import datetime
 
 import pydantic
 import pydantic.generics
@@ -27,6 +28,8 @@ class Document(pydantic.BaseModel):
     metadata: Dict
     specs: List[str]
     mimetype: str
+    created_at: datetime
+    updated_at: Optional[datetime]
     data_blob: Optional[bytes]
     data_url: Optional[pydantic.AnyUrl]
 
