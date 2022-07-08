@@ -3,7 +3,7 @@ import pickle
 from bluesky.plans import count
 import pytest
 
-from ..queries import Contains, FullText, Key, TimeRange, Regex
+from ..queries import Contains, FullText, In, Key, NotIn, TimeRange, Regex
 from ..tests.utils import get_uids
 
 
@@ -54,6 +54,39 @@ def test_eq(c, RE, hw):
     (should_not_match,) = get_uids(RE(count([hw.det]), foo="b"))
 
     results = c.search(Key("foo") == "a")
+    assert should_match in results
+    assert should_not_match not in results
+
+
+def test_not_eq(c, RE, hw):
+    RE.subscribe(c.v1.insert)
+
+    (should_match,) = get_uids(RE(count([hw.det]), foo="a"))
+    (should_not_match,) = get_uids(RE(count([hw.det]), foo="b"))
+
+    results = c.search(Key("foo") != "b")
+    assert should_match in results
+    assert should_not_match not in results
+
+
+def test_in(c, RE, hw):
+    RE.subscribe(c.v1.insert)
+
+    (should_match,) = get_uids(RE(count([hw.det]), foo="a"))
+    (should_not_match,) = get_uids(RE(count([hw.det]), foo="b"))
+
+    results = c.search(In("foo", ["a", "z"]))
+    assert should_match in results
+    assert should_not_match not in results
+
+
+def test_not_in(c, RE, hw):
+    RE.subscribe(c.v1.insert)
+
+    (should_match,) = get_uids(RE(count([hw.det]), foo="a"))
+    (should_not_match,) = get_uids(RE(count([hw.det]), foo="b"))
+
+    results = c.search(NotIn("foo", ["b", "z"]))
     assert should_match in results
     assert should_not_match not in results
 
