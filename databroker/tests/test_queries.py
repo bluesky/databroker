@@ -75,7 +75,7 @@ def test_in(c, RE, hw):
     (should_match,) = get_uids(RE(count([hw.det]), foo="a"))
     (should_not_match,) = get_uids(RE(count([hw.det]), foo="b"))
 
-    results = c.search(In("foo",["a", "z"]))
+    results = c.search(In("foo", ["a", "z"]))
     assert should_match in results
     assert should_not_match not in results
 
@@ -86,7 +86,7 @@ def test_not_in(c, RE, hw):
     (should_match,) = get_uids(RE(count([hw.det]), foo="a"))
     (should_not_match,) = get_uids(RE(count([hw.det]), foo="b"))
 
-    results = c.search(NotIn("foo",["b", "z"]))
+    results = c.search(NotIn("foo", ["b", "z"]))
     assert should_match in results
     assert should_not_match not in results
 
