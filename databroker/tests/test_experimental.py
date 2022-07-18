@@ -30,12 +30,18 @@ def test_write_array(tmpdir):
 
     test_array = numpy.ones((5, 5))
 
-    client.write_array(test_array, {"scan_id": 1, "method": "A"}, ["BlueskyNode"])
+    metadata = {"scan_id": 1, "method": "A"}
+    specs = ["SomeSpec"]
+    client.write_array(test_array, metadata, specs)
 
     results = client.search(Key("scan_id") == 1)
-    result_array = results.values().first().read()
+    result = results.values().first()
+    result_array = result.read()
 
     numpy.testing.assert_equal(result_array, test_array)
+    assert result.metadata == metadata
+    # TODO In the future this will be accessible via result.specs.
+    assert result.item["attributes"]["specs"] == specs
 
 
 def test_write_dataframe(tmpdir):
@@ -59,15 +65,19 @@ def test_write_dataframe(tmpdir):
     }
 
     test_dataframe = pandas.DataFrame(data)
+    metadata = {"scan_id": 1, "method": "A"}
+    specs = ["SomeSpec"]
 
-    client.write_dataframe(
-        test_dataframe, {"scan_id": 1, "method": "A"}, ["BlueskyNode"]
-    )
+    client.write_dataframe(test_dataframe, metadata, specs)
 
     results = client.search(Key("scan_id") == 1)
-    result_dataframe = results.values().first().read()
+    result = results.values().first()
+    result_dataframe = result.read()
 
     pandas.testing.assert_frame_equal(result_dataframe, test_dataframe)
+    assert result.metadata == metadata
+    # TODO In the future this will be accessible via result.specs.
+    assert result.item["attributes"]["specs"] == specs
 
 
 def test_queries(tmpdir):

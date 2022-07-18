@@ -86,6 +86,10 @@ class WritingArrayAdapter:
     def metadata(self):
         return self.doc.metadata
 
+    @property
+    def specs(self):
+        return self.doc.specs
+
     @array_raise_if_inactive
     def read(self, *args, **kwargs):
         return self.array_adapter.read(*args, **kwargs)
@@ -169,6 +173,10 @@ class WritingDataFrameAdapter:
     @property
     def metadata(self):
         return self.doc.metadata
+
+    @property
+    def specs(self):
+        return self.doc.specs
 
     @dataframe_raise_if_inactive
     def read(self, *args, **kwargs):
