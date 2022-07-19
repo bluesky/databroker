@@ -98,6 +98,47 @@ def ScanID(*scan_ids, duplicates="latest"):
     return _ScanID(scan_ids=scan_ids, duplicates=duplicates)
 
 
+@register(name="scan_id_range")
+@dataclass`
+class _ScanIDRange:
+    """
+    Find scans in the range.
+    """
+
+    start_id: int
+    end_id: int
+    duplicates: Duplicates
+
+    def __init__(self, *, start_id, end_id, duplicates):
+        self.start_id = start_id
+        self.end_id = end_id
+        self.duplicates = Duplicates(duplicates)
+
+    def encode(self):
+        return {
+            "start_id": self.start_id,
+            "end_if": self.end_id,
+            "duplicates": self.duplicates.value,
+        }
+
+    @classmethod
+    def decode(cls, *, start_id, end_id, duplicates):
+        return cls(
+            start_id=int(start_id),
+            end_id=int(end_id),
+            duplicates=Duplicates(duplicates),
+        )
+
+
+def ScanIDRange(start_id, end_id, duplicates="latest"):
+    # Wrap _ScanIDRange to provide a nice usage for *one or more scan_ids*:
+    # >>> ScanIDRange(5, 100)
+    # Placing a varargs parameter (*scan_ids) in the dataclass constructor
+    # would cause trouble on the server side and generally feels "wrong"
+    # so we have this wrapper function instead.
+    return _ScanIDRange(start_id=start_id, end_id=end_id, duplicates=duplicates)
+
+
 @register(name="partial_uid")
 @dataclass
 class _PartialUID:
