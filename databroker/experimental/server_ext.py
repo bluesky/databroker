@@ -28,7 +28,7 @@ from tiled.queries import (
 from tiled.query_registration import QueryTranslationRegistry
 
 from tiled.structures.core import StructureFamily
-from tiled.structures.dataframe import deserialize_arrow
+from tiled.serialization.dataframe import deserialize_arrow
 
 from tiled.server.pydantic_array import ArrayStructure
 from tiled.server.pydantic_dataframe import DataFrameStructure

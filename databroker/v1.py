@@ -555,13 +555,13 @@ class Broker:
             dataset.load()
             dict_of_arrays = {}
             for var_name in dataset:
-                column = dataset[var_name].data
+                column = dataset[var_name][:].data
                 if column.ndim > 1:
                     column = list(column)  # data must be 1-dimensional
                 dict_of_arrays[var_name] = column
             df = pandas.DataFrame(dict_of_arrays)
             # if converting to datetime64 (in utc or 'local' tz)
-            times = dataset["time"].data
+            times = dataset["time"][:].data
             if convert_times or localize_times:
                 times = pandas.to_datetime(times, unit="s")
             # make sure this is a series
@@ -1044,7 +1044,7 @@ class Header:
         """
         if not fill:
             raise ValueError("Only fill=True is now supported by the data(...) method.")
-        for item in self._run[stream_name]["data"][field].data:
+        for item in self._run[stream_name]["data"][field][:].data:
             yield item
 
     def stream(self, *args, **kwargs):
