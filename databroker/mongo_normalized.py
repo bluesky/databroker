@@ -52,6 +52,7 @@ from .queries import (
     BlueskyMapAdapter,
     _PartialUID,
     _ScanID,
+    _ScanIDRange,
     TimeRange,
     contains,
     comparison,
@@ -61,6 +62,7 @@ from .queries import (
     not_in,
     partial_uid,
     scan_id,
+    scan_id_range,
     time_range,
     regex,
 )
@@ -1763,6 +1765,7 @@ def full_text_search(query, catalog):
 
 MongoAdapter.register_query(_PartialUID, partial_uid)
 MongoAdapter.register_query(_ScanID, scan_id)
+MongoAdapter.register_query(_ScanIDRange, scan_id_range)
 MongoAdapter.register_query(Comparison, comparison)
 MongoAdapter.register_query(Contains, contains)
 MongoAdapter.register_query(Eq, eq)

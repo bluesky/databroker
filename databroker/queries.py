@@ -117,7 +117,7 @@ class _ScanIDRange:
     def encode(self):
         return {
             "start_id": self.start_id,
-            "end_if": self.end_id,
+            "end_id": self.end_id,
             "duplicates": self.duplicates.value,
         }
 
