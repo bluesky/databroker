@@ -99,7 +99,7 @@ def ScanID(*scan_ids, duplicates="latest"):
 
 
 @register(name="scan_id_range")
-@dataclass`
+@dataclass
 class _ScanIDRange:
     """
     Find scans in the range.
