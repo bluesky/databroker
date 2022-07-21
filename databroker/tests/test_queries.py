@@ -3,7 +3,7 @@ import pickle
 from bluesky.plans import count
 import pytest
 
-from ..queries import Contains, FullText, In, Key, NotIn, TimeRange, Regex
+from ..queries import Contains, FullText, In, Key, NotIn, TimeRange, Regex, ScanID, ScanIDRange
 from ..tests.utils import get_uids
 
 
@@ -72,12 +72,13 @@ def test_not_eq(c, RE, hw):
 def test_scan_id(c, RE, hw):
     RE.subscribe(c.v1.insert)
 
-    (should_match,) = get_uids(RE(count([hw.det]), foo="a"))
-    (should_not_match,) = get_uids(RE(count([hw.det]), foo="b"))
+    (should_match,) = get_uids(RE(count([hw.det])))
+    (should_not_match,) = get_uids(RE(count([hw.det])))
 
-    results = c.search(Key("foo") != "b")
-    assert should_match in results
-    assert should_not_match not in results
+    scan_id = c[should_match].start['scan_id']
+    results = c.search(ScanID(scan_id))
+
+    assert scan_id == results[0].start['scan_id']
 
 
 def test_in(c, RE, hw):
