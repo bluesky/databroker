@@ -98,6 +98,38 @@ def ScanID(*scan_ids, duplicates="latest"):
     return _ScanID(scan_ids=scan_ids, duplicates=duplicates)
 
 
+@register(name="scan_id_range")
+@dataclass
+class ScanIDRange:
+    """
+    Find scans in the range.
+    """
+
+    start_id: int
+    end_id: int
+    duplicates: Duplicates
+
+    def __init__(self, start_id, end_id, duplicates="latest"):
+        self.start_id = start_id
+        self.end_id = end_id
+        self.duplicates = Duplicates(duplicates)
+
+    def encode(self):
+        return {
+            "start_id": self.start_id,
+            "end_id": self.end_id,
+            "duplicates": self.duplicates.value,
+        }
+
+    @classmethod
+    def decode(cls, *, start_id, end_id, duplicates="latest"):
+        return cls(
+            start_id=int(start_id),
+            end_id=int(end_id),
+            duplicates=Duplicates(duplicates),
+        )
+
+
 @register(name="partial_uid")
 @dataclass
 class _PartialUID:
@@ -341,6 +373,41 @@ def scan_id(query, catalog):
     return results
 
 
+def scan_id_range(query, catalog):
+    mongo_results = catalog.apply_mongo_query({"scan_id": {"$gte": query.start_id, "$lt": query.end_id}})
+    # Handle duplicates.
+    if query.duplicates == "latest":
+        # Convert to a BlueskyMapAdapter to do some filtering in Python
+        # that we cannot expressing in a collection.find(...) query.
+        # We might want to rethink this later and make it possible to do
+        # aggregations in Mongo from queries.
+        results_by_scan_id = {}
+        for key, value in mongo_results.items():
+            results_by_scan_id[value.metadata["start"]["scan_id"]] = (key, value)
+        results = BlueskyMapAdapter(
+            dict(results_by_scan_id.values()), must_revalidate=False
+        )
+    elif query.duplicates == "error":
+        scan_ids = list(
+            value.metadata["start"]["scan_id"] for value in mongo_results.values()
+        )
+        counter = collections.Counter(scan_ids)
+        duplicated = []
+        for k, v in counter.items():
+            if v > 1:
+                duplicated.append(k)
+        if duplicated:
+            raise QueryValueError(
+                f"There are multiples of the following scan_ids: {duplicated}"
+            )
+        results = mongo_results
+    elif query.duplicates == "all":
+        results = mongo_results
+    else:
+        raise QueryValueError("duplicates should be one of {'latest', 'error', 'all'}")
+    return results
+
+
 def partial_uid(query, catalog):
     results = {}
     for partial_uid in query.partial_uids:
@@ -415,6 +482,7 @@ def regex(query, catalog):
 
 BlueskyMapAdapter.register_query(_PartialUID, partial_uid)
 BlueskyMapAdapter.register_query(_ScanID, scan_id)
+BlueskyMapAdapter.register_query(ScanIDRange, scan_id)
 BlueskyMapAdapter.register_query(FullText, full_text_search)
 BlueskyMapAdapter.register_query(Contains, contains)
 BlueskyMapAdapter.register_query(Comparison, comparison)
