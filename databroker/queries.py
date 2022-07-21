@@ -374,7 +374,7 @@ def scan_id(query, catalog):
 
 
 def scan_id_range(query, catalog):
-    mongo_results = catalog.apply_mongo_query({"scan_id": {"$gte": query.start_id, "$lte": query.end_id}})
+    mongo_results = catalog.apply_mongo_query({"scan_id": {"$gte": query.start_id, "$lt": query.end_id}})
     # Handle duplicates.
     if query.duplicates == "latest":
         # Convert to a BlueskyMapAdapter to do some filtering in Python
