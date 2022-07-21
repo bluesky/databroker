@@ -100,7 +100,7 @@ def ScanID(*scan_ids, duplicates="latest"):
 
 @register(name="scan_id_range")
 @dataclass
-class _ScanIDRange:
+class ScanIDRange:
     """
     Find scans in the range.
     """
@@ -109,7 +109,7 @@ class _ScanIDRange:
     end_id: int
     duplicates: Duplicates
 
-    def __init__(self, *, start_id, end_id, duplicates):
+    def __init__(self, start_id, end_id, duplicates):
         self.start_id = start_id
         self.end_id = end_id
         self.duplicates = Duplicates(duplicates)
@@ -128,15 +128,6 @@ class _ScanIDRange:
             end_id=int(end_id),
             duplicates=Duplicates(duplicates),
         )
-
-
-def ScanIDRange(start_id, end_id, duplicates="latest"):
-    # Wrap _ScanIDRange to provide a nice usage for *one or more scan_ids*:
-    # >>> ScanIDRange(5, 100)
-    # Placing a varargs parameter (*scan_ids) in the dataclass constructor
-    # would cause trouble on the server side and generally feels "wrong"
-    # so we have this wrapper function instead.
-    return _ScanIDRange(start_id=start_id, end_id=end_id, duplicates=duplicates)
 
 
 @register(name="partial_uid")
@@ -383,7 +374,7 @@ def scan_id(query, catalog):
 
 
 def scan_id_range(query, catalog):
-    mongo_results = catalog.apply_mongo_query({"scan_id": {"$gt": query.start_id, "$lt": query.end_id}})
+    mongo_results = catalog.apply_mongo_query({"scan_id": {"$gte": query.start_id, "$lte": query.end_id}})
     # Handle duplicates.
     if query.duplicates == "latest":
         # Convert to a BlueskyMapAdapter to do some filtering in Python
