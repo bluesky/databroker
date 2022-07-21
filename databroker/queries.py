@@ -482,6 +482,7 @@ def regex(query, catalog):
 
 BlueskyMapAdapter.register_query(_PartialUID, partial_uid)
 BlueskyMapAdapter.register_query(_ScanID, scan_id)
+BlueskyMapAdapter.register_query(ScanIDRange, scan_id)
 BlueskyMapAdapter.register_query(FullText, full_text_search)
 BlueskyMapAdapter.register_query(Contains, contains)
 BlueskyMapAdapter.register_query(Comparison, comparison)
