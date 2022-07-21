@@ -81,6 +81,23 @@ def test_scan_id(c, RE, hw):
     assert scan_id == results[0].start['scan_id']
 
 
+def test_scan_id_range(c, RE, hw):
+    RE.subscribe(c.v1.insert)
+
+    (scan1,) = get_uids(RE(count([hw.det])))
+    scan_id1 = c[scan1].start['scan_id']
+    (scan2,) = get_uids(RE(count([hw.det])))
+    scan_id2 = c[scan2].start['scan_id']
+    (scan3,) = get_uids(RE(count([hw.det])))
+    scan_id3 = c[scan3].start['scan_id']
+    (scan4,) = get_uids(RE(count([hw.det])))
+    scan_id4 = c[scan4].start['scan_id']
+
+    results = c.search(ScanIDRange(scan1, scan3))
+    scan_id_results = [result.start['scan_id'] for result in results]
+    assert scan_id_results == [scan_id1, scan_id2, scan_id3]
+    assert scan_id4 not in scan_id_results
+
 def test_in(c, RE, hw):
     RE.subscribe(c.v1.insert)
 

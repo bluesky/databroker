@@ -122,7 +122,7 @@ class ScanIDRange:
         }
 
     @classmethod
-    def decode(cls, *, start_id, end_id, duplicates):
+    def decode(cls, *, start_id, end_id, duplicates="latest"):
         return cls(
             start_id=int(start_id),
             end_id=int(end_id),
