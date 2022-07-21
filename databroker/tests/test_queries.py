@@ -90,13 +90,11 @@ def test_scan_id_range(c, RE, hw):
     scan_id2 = c[scan2].start['scan_id']
     (scan3,) = get_uids(RE(count([hw.det])))
     scan_id3 = c[scan3].start['scan_id']
-    (scan4,) = get_uids(RE(count([hw.det])))
-    scan_id4 = c[scan4].start['scan_id']
 
     results = c.search(ScanIDRange(scan_id1, scan_id3))
     scan_id_results = [run.start['scan_id'] for uid, run in results.items()]
     assert scan_id_results == [scan_id1, scan_id2]
-    assert scan_id4 not in scan_id_results
+    assert scan_id3 not in scan_id_results
 
 
 def test_in(c, RE, hw):
