@@ -69,6 +69,17 @@ def test_not_eq(c, RE, hw):
     assert should_not_match not in results
 
 
+def test_scan_id(c, RE, hw):
+    RE.subscribe(c.v1.insert)
+
+    (should_match,) = get_uids(RE(count([hw.det]), foo="a"))
+    (should_not_match,) = get_uids(RE(count([hw.det]), foo="b"))
+
+    results = c.search(Key("foo") != "b")
+    assert should_match in results
+    assert should_not_match not in results
+
+
 def test_in(c, RE, hw):
     RE.subscribe(c.v1.insert)
 

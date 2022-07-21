@@ -1,20 +1,34 @@
+alembic
 area-detector-handlers
 bluesky
+boltons
+cachetools
+cachey
 codecov
 coverage
+doct
+fastapi
 flake8
 glueviz
+jmespath
 matplotlib
 mongomock
+mongoquery
 msgpack >=1.0.0
 numpy >=1.16.0  # for astropy (via glueviz)
 ophyd
+orjson
+pims
 pyqt5 !=5.14.1
 pytest >=4.4,!=5.4.0
 pytest-rerunfailures
+python-jose
 sphinx
 suitcase-jsonl >=0.1.0b2
 suitcase-mongo >=0.1.0
 suitcase-msgpack >=0.2.2
+sqlalchemy
+tzlocal
 ujson
 vcrpy
+watchgod
