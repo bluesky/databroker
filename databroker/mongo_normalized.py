@@ -14,6 +14,7 @@ from bson.objectid import ObjectId, InvalidId
 import cachetools
 import entrypoints
 import event_model
+import dask.array
 from dask.array.core import cached_cumsum, normalize_chunks
 import numpy
 import pymongo
@@ -513,10 +514,8 @@ class ArrayFromDocuments:
         return self._dataset_adapter.read_block(self._field, block, slice=slice)
 
     def read(self, slice=None):
-        da = self._dataset_adapter.read(fields=[self._field])[self._field]
-        if slice:
-            da = da[slice]
-        return da
+        array_adapter = self._dataset_adapter.read(fields=[self._field])[self._field]
+        return array_adapter.read(slice)
 
     def macrostructure(self):
         return self._dataset_adapter.array_structures[self._field].macro
@@ -672,7 +671,11 @@ class DatasetFromDocuments:
             else:
                 array = raw_array
             specs = ["xarray_coord"] if key == "time" else ["xarray_data_var"]
-            mapping[key] = ArrayAdapter.from_array(
+            if isinstance(array, dask.array.Array):
+                constructor = ArrayAdapter
+            else:
+                constructor = ArrayAdapter.from_array
+            mapping[key] = constructor(
                 array,
                 metadata=self.array_metadata[key],
                 dims=structure.macro.dims,
