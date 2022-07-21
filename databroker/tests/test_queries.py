@@ -95,7 +95,7 @@ def test_scan_id_range(c, RE, hw):
 
     results = c.search(ScanIDRange(scan_id1, scan_id3))
     scan_id_results = [run.start['scan_id'] for uid, run in results.items()]
-    assert scan_id_results == [scan_id1, scan_id2, scan_id3]
+    assert scan_id_results == [scan_id1, scan_id2]
     assert scan_id4 not in scan_id_results
 
 
