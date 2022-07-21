@@ -98,6 +98,7 @@ def test_scan_id_range(c, RE, hw):
     assert scan_id_results == [scan_id1, scan_id2, scan_id3]
     assert scan_id4 not in scan_id_results
 
+
 def test_in(c, RE, hw):
     RE.subscribe(c.v1.insert)
 
