@@ -109,7 +109,7 @@ class ScanIDRange:
     end_id: int
     duplicates: Duplicates
 
-    def __init__(self, start_id, end_id, duplicates):
+    def __init__(self, start_id, end_id, duplicates="latest"):
         self.start_id = start_id
         self.end_id = end_id
         self.duplicates = Duplicates(duplicates)
