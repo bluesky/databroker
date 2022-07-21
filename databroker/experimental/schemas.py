@@ -6,7 +6,6 @@ import pydantic.generics
 from tiled.server.pydantic_array import ArrayStructure
 from tiled.server.pydantic_dataframe import DataFrameStructure
 from tiled.structures.core import StructureFamily
-from tiled.structures.xarray import DataArrayStructure, DatasetStructure
 
 
 # Map structure family to the associated
@@ -14,9 +13,7 @@ from tiled.structures.xarray import DataArrayStructure, DatasetStructure
 structure_association = {
     StructureFamily.array: ArrayStructure,
     StructureFamily.dataframe: DataFrameStructure,
-    StructureFamily.xarray_data_array: DataArrayStructure,
-    StructureFamily.xarray_dataset: DatasetStructure,
-    # StructureFamily.mode?????
+    # StructureFamily.node
     # ...
 }
 

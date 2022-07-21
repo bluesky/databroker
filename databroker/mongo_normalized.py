@@ -21,6 +21,7 @@ import pymongo.errors
 import toolz.itertoolz
 import xarray
 
+from tiled.adapters.array import ArrayAdapter
 from tiled.adapters.xarray import DatasetAdapter
 from tiled.structures.array import (
     ArrayStructure,
@@ -28,11 +29,6 @@ from tiled.structures.array import (
     BuiltinDtype,
     Kind,
     StructDtype,
-)
-from tiled.structures.xarray import (
-    DataArrayStructure,
-    DataArrayMacroStructure,
-    DatasetMacroStructure,
 )
 from tiled.adapters.mapping import MapAdapter
 from tiled.iterviews import KeysView, ItemsView, ValuesView
@@ -106,17 +102,11 @@ def structure_from_descriptor(descriptor, sub_dict, max_seq_num, unicode_columns
         ),
         micro=FLOAT_DTYPE,
     )
-    time_data_array = DataArrayStructure(
-        macro=DataArrayMacroStructure(
-            variable=time_variable, coords={}, coord_names=[], name="time"
-        ),
-        micro=None,
-    )
     if unicode_columns is None:
         unicode_columns = {}
     dim_counter = itertools.count()
-    data_vars = {}
-    metadata = {"data_vars": {}, "coords": {"time": {"attrs": {}}}}
+    structures = {"time": time_variable}
+    metadata = {"time": {"attrs": {}}}
 
     for key, field_metadata in descriptor["data_keys"].items():
         # if the EventDescriptor doesn't provide names for the
@@ -204,28 +194,50 @@ def structure_from_descriptor(descriptor, sub_dict, max_seq_num, unicode_columns
                 f"dtype={numpy_dtype}"
             ) from err
 
-        variable = ArrayStructure(
+        structures[key] = ArrayStructure(
             macro=ArrayMacroStructure(shape=shape, chunks=chunks, dims=dims),
             micro=dtype,
         )
-        data_array = DataArrayStructure(
-            macro=DataArrayMacroStructure(
-                variable, coords={}, coord_names=["time"], name=key
-            ),
-            micro=None,
-        )
-        data_vars[key] = data_array
-        metadata["data_vars"][key] = {"attrs": attrs}
+        metadata[key] = {"attrs": attrs}
 
-    return (
-        DatasetMacroStructure(data_vars=data_vars, coords={"time": time_data_array}),
-        metadata,
-    )
+    return structures, metadata
+
+
+class DatasetMapAdapter(MapAdapter):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+    def as_dataset(self):
+        # We do not stash the original dataset as state.
+        # We (re)construct one here, ensure that any filtering that was done
+        # is respected.
+        data_vars = {}
+        coords = {}
+        for key, array_adapter in self.items():
+            if "xarray_data_var" in array_adapter.specs:
+                data_vars[key] = (
+                    array_adapter.macrostructure().dims,
+                    array_adapter.read(),
+                )
+            elif "xarray_coord" in array_adapter.specs:
+                coords[key] = (
+                    array_adapter.macrostructure().dims,
+                    array_adapter.read(),
+                )
+            else:
+                assert False, "Expected a spec"
+        return xarray.Dataset(
+            data_vars=data_vars, coords=coords, attrs=self.metadata["attrs"]
+        )
+
+    def inlined_contents_enabled(self, depth):
+        # Tell the server to in-line the description of each array
+        # (i.e. data_vars and coords) to avoid latency of a second
+        # request.
+        return True
 
 
 class BlueskyRun(MapAdapter, BlueskyRunMixin):
-    specs = ["BlueskyRun"]
-
     def __init__(
         self,
         *args,
@@ -234,9 +246,14 @@ class BlueskyRun(MapAdapter, BlueskyRunMixin):
         root_map,
         datum_collection,
         resource_collection,
+        specs=None,
         **kwargs,
     ):
-        super().__init__(*args, **kwargs)
+        if specs is None:
+            specs = []
+        specs = list(specs)
+        specs.append("BlueskyRun")
+        super().__init__(*args, specs=specs, **kwargs)
         self.transforms = transforms or {}
         self.root_map = root_map
         self._datum_collection = datum_collection
@@ -410,10 +427,14 @@ class BlueskyRun(MapAdapter, BlueskyRunMixin):
 
 
 class BlueskyEventStream(MapAdapter, BlueskyEventStreamMixin):
-    specs = ["BlueskyEventStream"]
-
-    def __init__(self, *args, event_collection, cutoff_seq_num, run, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(
+        self, *args, event_collection, cutoff_seq_num, run, specs=None, **kwargs
+    ):
+        if specs is None:
+            specs = []
+        specs = list(specs)
+        specs.append("BlueskyEventStream")
+        super().__init__(*args, specs=specs, **kwargs)
         self._event_collection = event_collection
         self._cutoff_seq_num = cutoff_seq_num
         self._run = run
@@ -474,60 +495,19 @@ class BlueskyEventStream(MapAdapter, BlueskyEventStreamMixin):
 
 
 class ArrayFromDocuments:
-
-    structure_family = "array"
-    metadata = {}
-
-    def __init__(self, data_array_adapter):
-        self._data_array_adapter = data_array_adapter
-
-    def read(self, slice):
-        return self._data_array_adapter.read(slice)
-
-    def read_block(self, block, slice=None):
-        return self._data_array_adapter.read_block(block, slice=slice)
-
-    def macrostructure(self):
-        return self._data_array_adapter.macrostructure().variable.macro
-
-    def microstructure(self):
-        return self._data_array_adapter.macrostructure().variable.micro
-
-
-class TimeArrayFromDocuments:
-
-    structure_family = "array"
-    metadata = {}
-
-    def __init__(self, data_array_adapter):
-        self._data_array_adapter = data_array_adapter
-
-    def read(self, slice):
-        return self._data_array_adapter.read(slice)
-
-    def read_block(self, block, slice=None):
-        return self._data_array_adapter.read_block(
-            None, block, coord="time", slice=slice
-        )
-
-    def macrostructure(self):
-        return self._data_array_adapter.macrostructure().coords["time"].macro
-
-    def microstructure(self):
-        return self._data_array_adapter.macrostructure().coords["time"].micro
-
-
-class DataArrayFromDocuments:
     """
     Represents one column
     """
 
-    structure_family = "xarray_data_array"
+    structure_family = "array"
 
-    def __init__(self, dataset_adapter, field):
+    def __init__(self, dataset_adapter, field, specs=None):
         self._dataset_adapter = dataset_adapter
         self._field = field
-        self.metadata = dataset_adapter.metadata["data_vars"].get(field, {})
+        self.metadata = dataset_adapter.array_metadata[field]
+        if specs is None:
+            specs = []
+        self.specs = specs
 
     def read_block(self, block, slice=None):
         return self._dataset_adapter.read_block(self._field, block, slice=slice)
@@ -538,19 +518,11 @@ class DataArrayFromDocuments:
             da = da[slice]
         return da
 
-    def __getitem__(self, key):
-        if key == "variable":
-            return ArrayFromDocuments(self)
-        elif key == "coords":
-            return MapAdapter({"time": TimeArrayFromDocuments(self)})
-        else:
-            raise KeyError(key)
-
     def macrostructure(self):
-        return self._dataset_adapter.macrostructure().data_vars[self._field].macro
+        return self._dataset_adapter.array_structures[self._field].macro
 
     def microstructure(self):
-        return self._dataset_adapter.macrostructure().data_vars[self._field].micro
+        return self._dataset_adapter.array_structures[self._field].micro
 
 
 class DatasetFromDocuments:
@@ -558,7 +530,8 @@ class DatasetFromDocuments:
     An xarray.Dataset from a sub-dict of an Event stream
     """
 
-    structure_family = "xarray_dataset"
+    structure_family = "node"
+    specs = ["xarray_dataset"]
 
     def __init__(
         self,
@@ -570,7 +543,6 @@ class DatasetFromDocuments:
         event_collection,
         root_map,
         sub_dict,
-        metadata=None,
     ):
         self._run = run
         self._stream_name = stream_name
@@ -585,8 +557,6 @@ class DatasetFromDocuments:
         #     "stream_name": "...",
         #     "descriptors": [...],
         #     "attrs": {...},
-        #     "data_vars": {...},
-        #     "coords": {"time": {}},
         # }
         # We intentionally do not put the descriptors in attrs (ruins UI)
         # but we put the stream_name there.
@@ -617,21 +587,35 @@ class DatasetFromDocuments:
             # trouble if our guess were too small, and we'll waste space
             # if our guess is too large.
             if unicode_keys:
-                unicode_columns.update(self._get_columns(unicode_keys, slices=None))
+                unicode_columns.update(self.get_columns(unicode_keys, slices=None))
 
-        self._macrostructure, metadata = structure_from_descriptor(
+        self.array_structures, self.array_metadata = structure_from_descriptor(
             descriptor, self._sub_dict, self._cutoff_seq_num, unicode_columns
         )
-        self.metadata.update(metadata)  # adds "data_vars" and "coords"
-        self._data_vars = MapAdapter(
-            {
-                field: DataArrayFromDocuments(self, field)
-                for field in self._macrostructure.data_vars
-            }
+        self._contents = MapAdapter(
+            OneShotCachedMap(
+                {
+                    field: functools.partial(
+                        ArrayFromDocuments,
+                        self,
+                        field,
+                        specs=["xarray_coord"]
+                        if field == "time"
+                        else ["xarray_data_var"],
+                    )
+                    for field in self.array_structures
+                }
+            )
         )
-        self._coords = MapAdapter(
-            {"time": MapAdapter({"variable": TimeArrayFromDocuments(self)})}
-        )
+
+    def keys(self):
+        return self._contents.keys()
+
+    def values(self):
+        return self._contents.values()
+
+    def items(self):
+        return self._contents.items()
 
     def __repr__(self):
         return f"<{type(self).__name__}>"
@@ -647,29 +631,33 @@ class DatasetFromDocuments:
         if self._run.metadata["stop"] is not None:
             return datetime.utcnow() + timedelta(hours=1)
 
-    def macrostructure(self):
-        return self._macrostructure
-
-    def microstructure(self):
-        return None
+    def inlined_contents_enabled(self, depth):
+        # Tell the server to in-line the description of each array
+        # (i.e. data_vars and coords) to avoid latency of a second
+        # request.
+        return True
 
     def read(self, fields=None):
-        # num_blocks = (range(len(n)) for n in chunks)
-        # for block in itertools.product(*num_blocks):
-        structure = self.macrostructure()
-        data_arrays = {}
+        # The client may be requesting multiple fields.
+        # Make batched requests to MongoDB to avoid making
+        # one request per field.
         if fields is None:
-            keys = list(structure.data_vars)
+            keys_to_fetch = list(self.array_structures)
         else:
-            keys = fields
-        columns = self._get_columns(keys, slices=None)
-        # Build the time coordinate.
-        time_coord = self._get_time_coord(slice_params=None)
-        for key, data_array in structure.data_vars.items():
+            keys_to_fetch = list(fields)
+        columns = {}
+        # Since "time" come from a different place in a Event schema,
+        # it is handled specially.
+        if "time" in keys_to_fetch:
+            keys_to_fetch.remove("time")
+            columns["time"] = self._get_time_coord(slice_params=None)
+        if keys_to_fetch:
+            columns.update(self.get_columns(keys_to_fetch, slices=None))
+        mapping = {}
+        for key, structure in self.array_structures.items():
             if (fields is not None) and (key not in fields):
                 continue
-            variable = structure.data_vars[key].macro.variable
-            dtype = variable.micro.to_numpy_dtype()
+            dtype = structure.micro.to_numpy_dtype()
             raw_array = columns[key]
             if raw_array.dtype != dtype:
                 logger.warning(
@@ -683,28 +671,22 @@ class DatasetFromDocuments:
                 array = raw_array.astype(dtype)
             else:
                 array = raw_array
-            data_array = xarray.DataArray(
+            specs = ["xarray_coord"] if key == "time" else ["xarray_data_var"]
+            mapping[key] = ArrayAdapter.from_array(
                 array,
-                attrs=self.metadata["data_vars"][key]["attrs"],
-                dims=variable.macro.dims,
-                coords={"time": time_coord},
+                metadata=self.array_metadata[key],
+                dims=structure.macro.dims,
+                specs=specs,
             )
-            data_arrays[key] = data_array
-        return xarray.Dataset(data_arrays, coords={"time": time_coord})
+        return DatasetMapAdapter(mapping, metadata=self.metadata, specs=self.specs)
 
     def __getitem__(self, key):
-        if key == "data_vars":
-            return self._data_vars
-        elif key == "coords":
-            return self._coords
-        else:
-            raise KeyError(key)
+        return self._contents[key]
 
-    def read_block(self, variable, block, coord=None, slice=None):
-        structure = self.macrostructure()
-        if coord == "time":
-            data_structure = structure.coords["time"].macro.variable
-            chunks = data_structure.macro.chunks
+    def read_block(self, variable, block, slice=None):
+        structure = self.array_structures[variable]
+        if variable == "time":
+            chunks = structure.macro.chunks
             cumdims = [cached_cumsum(bds, initial_zero=True) for bds in chunks]
             slices_for_chunks = [
                 [builtins.slice(s, s + dim) for s, dim in zip(starts, shapes)]
@@ -712,20 +694,15 @@ class DatasetFromDocuments:
             ]
             (slice_,) = [s[index] for s, index in zip(slices_for_chunks, block)]
             return self._get_time_coord(slice_params=(slice_.start, slice_.stop))
-        elif coord is not None:
-            # We only have a "time" coordinate. Any other coordinate is invalid.
-            raise KeyError(coord)
-        dtype = structure.data_vars[variable].macro.variable.micro.to_numpy_dtype()
-        data_structure = structure.data_vars[variable].macro.variable
-        dtype = data_structure.micro.to_numpy_dtype()
-        chunks = data_structure.macro.chunks
+        dtype = structure.micro.to_numpy_dtype()
+        chunks = structure.macro.chunks
         cumdims = [cached_cumsum(bds, initial_zero=True) for bds in chunks]
         slices_for_chunks = [
             [builtins.slice(s, s + dim) for s, dim in zip(starts, shapes)]
             for starts, shapes in zip(cumdims, chunks)
         ]
         slices = [s[index] for s, index in zip(slices_for_chunks, block)]
-        raw_array = self._get_columns([variable], slices=slices)[variable]
+        raw_array = self.get_columns([variable], slices=slices)[variable]
         if raw_array.dtype != dtype:
             logger.warning(
                 f"{variable!r} actually has dtype {raw_array.dtype.str!r} "
@@ -808,7 +785,7 @@ class DatasetFromDocuments:
 
         return numpy.array(column)
 
-    def _get_columns(self, keys, slices):
+    def get_columns(self, keys, slices):
         if slices is None:
             min_seq_num = 1
             max_seq_num = self._cutoff_seq_num
