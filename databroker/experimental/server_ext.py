@@ -5,7 +5,7 @@ import os
 import shutil
 import uuid
 from pathlib import Path
-from datetime import datetime
+from datetime import datetime, timezone
 
 import dask.dataframe
 import numpy
@@ -42,7 +42,7 @@ from tiled.server.pydantic_array import ArrayStructure
 from tiled.server.pydantic_dataframe import DataFrameStructure
 from tiled.utils import APACHE_ARROW_FILE_MIME_TYPE, UNCHANGED, OneShotCachedMap
 
-from .schemas import Document
+from .schemas import Document, DocumentRevision
 
 from sys import modules, platform
 
@@ -52,6 +52,7 @@ class WritingArrayAdapter:
 
     def __init__(self, collection, doc):
         self.collection = collection
+        self.revisions = revisions
         self.doc = doc
         assert self.doc.data_blob is None  # not implemented
         self.array = zarr.open_array(str(safe_path(self.doc.data_url.path)), "r+")
@@ -124,6 +125,54 @@ class WritingArrayAdapter:
             body, dtype=self.doc.structure.micro.to_numpy_dtype()
         ).reshape(shape)
         self.array[slice_] = array
+
+    def put_metadata(self, metadata, specs):
+
+        revisions_doc = (
+            self.revisions.find({"key": self.doc.key}).sort({"revision": -1}).limit(1)
+        )
+        if revisions_doc is not None:
+            revision = int(revisions_doc["revision"]) + 1
+        else:
+            revision = 1
+
+        validated_revision = DocumentRevision(
+            key=self.doc.key,
+            structure_family=self.doc.structure_family,
+            structure=self.doc.structure,
+            metadata=self.doc.metadata,
+            specs=self.doc.specs,
+            mimetype=self.doc.mimetype,
+            created_at=self.doc.created_at,
+            data_url=self.doc.data_url,
+            updated_at=self.doc.updated_at,
+            revision=revision,
+        )
+
+        self.revisions.insert_one(validated_revision.dict())
+
+        updated_at = datetime.now(tz=timezone.utc)
+        self.doc.updated_at = updated_at
+
+        if len(metadata) > 0:
+            self.doc.metadata = metadata
+
+        if len(specs) > 0:
+            self.doc.specs = specs
+
+        result = self.collection.update_one(
+            {"key": self.doc.key},
+            {
+                "$set": {
+                    "metadata": self.doc.metadata,
+                    "specs": self.doc.specs,
+                    "updated_at": self.doc.updated_at,
+                }
+            },
+        )
+
+        if result.matched_count != result.modified_count:
+            raise ValueError("Error while writing to database")
 
     def delete(self):
         shutil.rmtree(safe_path(self.doc.data_url.path))
@@ -265,6 +314,16 @@ class WritingCOOAdapter:
             / f"block-{'.'.join(map(str, block))}.parquet"
         )
 
+    def put_metadata(self, metadata, specs):
+
+        result = self.collection.update_one(
+            {"key": self.doc.key},
+            {"$set": {"metadata": metadata, "specs": specs}},
+        )
+
+        if result.matched_count != result.modified_count:
+            raise ValueError("Error while writing to database")
+
     def delete(self):
         shutil.rmtree(safe_path(self.doc.data_url.path))
         result = self.collection.delete_one({"key": self.doc.key})
@@ -289,6 +348,7 @@ class MongoAdapter(collections.abc.Mapping, IndexersMixin):
     ):
         self.database = database
         self.collection = database["nodes"]
+        self.revision_coll = database["revisions"]
         self.directory = Path(directory).resolve()
         if not self.directory.exists():
             raise ValueError(f"Directory {self.directory} does not exist.")
@@ -361,7 +421,7 @@ class MongoAdapter(collections.abc.Mapping, IndexersMixin):
         }
 
         key = str(uuid.uuid4())
-        created_date = datetime.today()
+        created_date = datetime.now(tz=timezone.utc)
 
         validated_document = Document(
             key=key,
@@ -372,6 +432,7 @@ class MongoAdapter(collections.abc.Mapping, IndexersMixin):
             mimetype=mime_structure_association[structure_family],
             data_url=f"file://localhost/{self.directory}/{key[:2]}/{key}",
             created_at=created_date,
+            updated_at=created_date,
         )
 
         _adapter_class_by_family[structure_family]

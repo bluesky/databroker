@@ -157,7 +157,7 @@ def test_delete(tmpdir):
     test_dataframe = pandas.DataFrame(data)
 
     x = client.write_dataframe(
-        test_dataframe, metadata={"scan_id": 1, "method": "A"}, specs=["BlueskyNode"]
+        test_dataframe, metadata={"scan_id": 1, "method": "A"}, specs=["SomeSpec"]
     )
 
     del client[x.item["id"]]
@@ -168,7 +168,7 @@ def test_delete(tmpdir):
     test_array = numpy.ones((5, 5))
 
     y = client.write_array(
-        test_array, metadata={"scan_id": 1, "method": "A"}, specs=["BlueskyNode"]
+        test_array, metadata={"scan_id": 1, "method": "A"}, specs=["SomeSpec"]
     )
 
     del client[y.item["id"]]
@@ -283,3 +283,22 @@ def test_write_sparse_chunked(tmpdir):
     # numpy.testing.assert_equal(result_array, sparse.COO(coords=[0, 1, ]))
     assert result.metadata == metadata
     assert result.specs == specs
+
+
+def test_update_metadata(tmpdir):
+
+    tree = MongoAdapter.from_mongomock(tmpdir)
+
+    client = from_tree(
+        tree, api_key=API_KEY, authentication={"single_user_api_key": API_KEY}
+    )
+
+    test_array = numpy.ones((5, 5))
+
+    x = client.write_array(
+        test_array, {"scan_id": 1, "method": "A"}, ["SomeSpec"]
+    )
+
+    new_metadata = {"scan_id": 2, "method": "B"}
+    x.update_metadata(new_metadata)
+
