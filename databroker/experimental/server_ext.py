@@ -50,7 +50,7 @@ from sys import modules, platform
 class WritingArrayAdapter:
     structure_family = "array"
 
-    def __init__(self, collection, doc):
+    def __init__(self, collection, revisions, doc):
         self.collection = collection
         self.revisions = revisions
         self.doc = doc
@@ -183,8 +183,9 @@ class WritingArrayAdapter:
 class WritingDataFrameAdapter:
     structure_family = "dataframe"
 
-    def __init__(self, collection, doc):
+    def __init__(self, collection, revisions, doc):
         self.collection = collection
+        self.revisions = revisions
         self.doc = doc
         assert self.doc.data_blob is None  # not implemented
 
@@ -238,7 +239,7 @@ class WritingDataFrameAdapter:
 class WritingCOOAdapter:
     structure_family = "sparse"
 
-    def __init__(self, collection, doc):
+    def __init__(self, collection, revisions, doc):
         def load(filepath):
             import pandas
 
@@ -248,6 +249,7 @@ class WritingCOOAdapter:
             return coords, data
 
         self.collection = collection
+        self.revisions = revisions
         self.doc = doc
         assert self.doc.data_blob is None  # not implemented
         num_blocks = (range(len(n)) for n in self.doc.structure.chunks)
@@ -438,7 +440,7 @@ class MongoAdapter(collections.abc.Mapping, IndexersMixin):
         _adapter_class_by_family[structure_family]
         self.collection.insert_one(validated_document.dict())
         _adapter_class_by_family[structure_family].new(
-            self.collection, validated_document
+            self.collection, self.revision_coll, validated_document
         )
         return key
 
@@ -463,7 +465,7 @@ class MongoAdapter(collections.abc.Mapping, IndexersMixin):
             raise KeyError(key)
 
         class_ = _adapter_class_by_family[StructureFamily(doc["structure_family"])]
-        return class_(self.collection, Document(**doc))
+        return class_(self.collection, self.revision_coll, Document(**doc))
 
     def __iter__(self):
         # TODO Apply pagination, as we do in Databroker.
@@ -538,7 +540,7 @@ class MongoAdapter(collections.abc.Mapping, IndexersMixin):
             limit=limit,
         ):
             class_ = _adapter_class_by_family[StructureFamily(doc["structure_family"])]
-            yield doc["key"], class_(self.collection, Document(**doc))
+            yield doc["key"], class_(self.collection, self.revision_coll, Document(**doc))
 
     def apply_mongo_query(self, query):
         return self.new_variation(
