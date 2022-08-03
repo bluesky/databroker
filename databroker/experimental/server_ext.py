@@ -1,5 +1,6 @@
 import collections.abc
 import os
+import shutil
 import uuid
 from pathlib import Path
 
@@ -120,7 +121,7 @@ class WritingArrayAdapter:
         self.array[slice_] = array
 
     def delete(self):
-        safe_path(self.doc.data_uri.path).unlink()
+        shutil.rmtree(safe_path(self.doc.data_url.path))
         result = self.collection.delete_one({"key": self.doc.key})
         assert result.deleted_count == 1
 
@@ -132,7 +133,10 @@ class WritingDataFrameAdapter:
         self.collection = collection
         self.doc = doc
         assert self.doc.data_blob is None  # not implemented
-        self.dataframe_adapter = DataFrameAdapter.from_dask_dataframe(
+
+    @property
+    def dataframe_adapter(self):
+        return DataFrameAdapter.from_dask_dataframe(
             dask.dataframe.read_parquet(safe_path(self.doc.data_url.path))
         )
 
@@ -174,7 +178,7 @@ class WritingDataFrameAdapter:
         )
 
     def delete(self):
-        safe_path(self.doc.data_url.path).unlink()
+        shutil.rmtree(safe_path(self.doc.data_url.path))
         result = self.collection.delete_one({"key": self.doc.key})
         assert result.deleted_count == 1
 
