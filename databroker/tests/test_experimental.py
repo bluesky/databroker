@@ -1,3 +1,10 @@
+import string
+
+import dask.array
+import dask.dataframe
+import numpy
+import pandas
+import sparse
 from tiled.client import from_tree
 from tiled.queries import (
     Contains,
@@ -10,25 +17,23 @@ from tiled.queries import (
     NotIn,
     Regex,
 )
+from tiled.structures.sparse import COOStructure
 
 from ..experimental.server_ext import MongoAdapter
 
-import numpy
-import pandas
-import string
+
+API_KEY = "secret"
 
 
 def test_write_array(tmpdir):
 
-    api_key = "secret"
-
     tree = MongoAdapter.from_mongomock(tmpdir)
 
     client = from_tree(
-        tree, api_key=api_key, authentication={"single_user_api_key": api_key}
+        tree, api_key=API_KEY, authentication={"single_user_api_key": API_KEY}
     )
 
-    test_array = numpy.ones((5, 5))
+    test_array = numpy.ones((5, 7))
 
     metadata = {"scan_id": 1, "method": "A"}
     specs = ["SomeSpec"]
@@ -46,15 +51,13 @@ def test_write_array(tmpdir):
 
 def test_write_dataframe(tmpdir):
 
-    api_key = "secret"
-
     tree = MongoAdapter.from_mongomock(tmpdir)
 
     client = from_tree(
-        tree, api_key=api_key, authentication={"single_user_api_key": api_key}
+        tree, api_key=API_KEY, authentication={"single_user_api_key": API_KEY}
     )
 
-    dummy_array = numpy.ones((5, 5))
+    dummy_array = numpy.ones((5, 7))
 
     data = {
         "Column1": dummy_array[0],
@@ -82,12 +85,10 @@ def test_write_dataframe(tmpdir):
 
 def test_queries(tmpdir):
 
-    api_key = "secret"
-
     tree = MongoAdapter.from_mongomock(tmpdir)
 
     client = from_tree(
-        tree, api_key=api_key, authentication={"single_user_api_key": api_key}
+        tree, api_key=API_KEY, authentication={"single_user_api_key": API_KEY}
     )
 
     keys = list(string.ascii_lowercase)
@@ -137,12 +138,9 @@ def test_queries(tmpdir):
 
 def test_delete(tmpdir):
 
-    api_key = "secret"
-
     tree = MongoAdapter.from_mongomock(tmpdir)
-
     client = from_tree(
-        tree, api_key=api_key, authentication={"single_user_api_key": api_key}
+        tree, api_key=API_KEY, authentication={"single_user_api_key": API_KEY}
     )
 
     # For dataframes
@@ -176,3 +174,112 @@ def test_delete(tmpdir):
     del client[y.item["id"]]
 
     assert y.item["id"] not in client
+
+
+def test_write_array_chunked(tmpdir):
+
+    tree = MongoAdapter.from_mongomock(tmpdir)
+    client = from_tree(
+        tree, api_key=API_KEY, authentication={"single_user_api_key": API_KEY}
+    )
+
+    a = dask.array.arange(24).reshape((4, 6)).rechunk((2, 3))
+
+    metadata = {"scan_id": 1, "method": "A"}
+    specs = ["SomeSpec"]
+    client.write_array(a, metadata=metadata, specs=specs)
+
+    results = client.search(Key("scan_id") == 1)
+    result = results.values().first()
+    result_array = result.read()
+
+    numpy.testing.assert_equal(result_array, a.compute())
+    assert result.metadata == metadata
+    assert result.specs == specs
+
+
+def test_write_dataframe_partitioned(tmpdir):
+
+    tree = MongoAdapter.from_mongomock(tmpdir)
+    client = from_tree(
+        tree, api_key=API_KEY, authentication={"single_user_api_key": API_KEY}
+    )
+
+    data = {f"Column{i}": (1 + i) * numpy.ones(10) for i in range(5)}
+    df = pandas.DataFrame(data)
+    ddf = dask.dataframe.from_pandas(df, npartitions=3)
+    metadata = {"scan_id": 1, "method": "A"}
+    specs = ["SomeSpec"]
+
+    client.write_dataframe(ddf, metadata=metadata, specs=specs)
+
+    results = client.search(Key("scan_id") == 1)
+    result = results.values().first()
+    result_dataframe = result.read()
+
+    pandas.testing.assert_frame_equal(result_dataframe, df)
+    assert result.metadata == metadata
+    # TODO In the future this will be accessible via result.specs.
+    assert result.item["attributes"]["specs"] == specs
+
+
+def test_write_sparse_full(tmpdir):
+
+    tree = MongoAdapter.from_mongomock(tmpdir)
+    client = from_tree(
+        tree, api_key=API_KEY, authentication={"single_user_api_key": API_KEY}
+    )
+
+    coo = sparse.COO(coords=[[0, 1], [2, 3]], data=[3.8, 4.0], shape=(4, 4))
+
+    metadata = {"scan_id": 1, "method": "A"}
+    specs = ["SomeSpec"]
+    client.write_sparse(
+        coords=coo.coords,
+        data=coo.data,
+        shape=coo.shape,
+        metadata=metadata,
+        specs=specs,
+    )
+
+    results = client.search(Key("scan_id") == 1)
+    result = results.values().first()
+    result_array = result.read()
+
+    numpy.testing.assert_equal(result_array.todense(), coo.todense())
+    assert result.metadata == metadata
+    assert result.specs == specs
+
+
+def test_write_sparse_chunked(tmpdir):
+
+    tree = MongoAdapter.from_mongomock(tmpdir)
+    client = from_tree(
+        tree, api_key=API_KEY, authentication={"single_user_api_key": API_KEY}
+    )
+
+    metadata = {"scan_id": 1, "method": "A"}
+    specs = ["SomeSpec"]
+    N = 5
+    x = client.new(
+        "sparse",
+        COOStructure(shape=(2 * N,), chunks=((N, N),)),
+        metadata=metadata,
+        specs=specs,
+    )
+    x.write_block(coords=[[2, 4]], data=[3.1, 2.8], block=(0,))
+    x.write_block(coords=[[0, 1]], data=[6.7, 1.2], block=(1,))
+
+    results = client.search(Key("scan_id") == 1)
+    result = results.values().first()
+    result_array = result.read()
+    assert numpy.array_equal(
+        result_array.todense(),
+        sparse.COO(
+            coords=[[2, 4, N + 0, N + 1]], data=[3.1, 2.8, 6.7, 1.2], shape=(10,)
+        ).todense(),
+    )
+
+    # numpy.testing.assert_equal(result_array, sparse.COO(coords=[0, 1, ]))
+    assert result.metadata == metadata
+    assert result.specs == specs

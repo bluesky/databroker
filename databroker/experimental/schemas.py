@@ -5,6 +5,7 @@ import pydantic.generics
 
 from tiled.server.pydantic_array import ArrayStructure
 from tiled.server.pydantic_dataframe import DataFrameStructure
+from tiled.server.pydantic_sparse import SparseStructure
 from tiled.structures.core import StructureFamily
 
 
@@ -13,6 +14,7 @@ from tiled.structures.core import StructureFamily
 structure_association = {
     StructureFamily.array: ArrayStructure,
     StructureFamily.dataframe: DataFrameStructure,
+    StructureFamily.sparse: SparseStructure,
     # StructureFamily.node
     # ...
 }
@@ -21,7 +23,7 @@ structure_association = {
 class Document(pydantic.BaseModel):
     key: str
     structure_family: StructureFamily
-    structure: Union[ArrayStructure, DataFrameStructure]
+    structure: Union[ArrayStructure, DataFrameStructure, SparseStructure]
     metadata: Dict
     specs: List[str]
     mimetype: str
