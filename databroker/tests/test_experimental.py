@@ -32,7 +32,7 @@ def test_write_array(tmpdir):
 
     metadata = {"scan_id": 1, "method": "A"}
     specs = ["SomeSpec"]
-    client.write_array(test_array, metadata, specs)
+    client.write_array(test_array, metadata=metadata, specs=specs)
 
     results = client.search(Key("scan_id") == 1)
     result = results.values().first()
@@ -68,7 +68,7 @@ def test_write_dataframe(tmpdir):
     metadata = {"scan_id": 1, "method": "A"}
     specs = ["SomeSpec"]
 
-    client.write_dataframe(test_dataframe, metadata, specs)
+    client.write_dataframe(test_dataframe, metadata=metadata, specs=specs)
 
     results = client.search(Key("scan_id") == 1)
     result = results.values().first()
@@ -96,7 +96,7 @@ def test_queries(tmpdir):
         metadata = {"letter": letter, "number": number}
         array = number * numpy.ones(10)
 
-        client.write_array(array, metadata)
+        client.write_array(array, metadata=metadata)
 
     test1 = client.search(Eq("letter", "a"))
     numpy.testing.assert_equal(
@@ -159,7 +159,7 @@ def test_delete(tmpdir):
     test_dataframe = pandas.DataFrame(data)
 
     arr_key = client.write_dataframe(
-        test_dataframe, {"scan_id": 1, "method": "A"}, ["BlueskyNode"]
+        test_dataframe, metadata={"scan_id": 1, "method": "A"}, specs=["BlueskyNode"]
     )
 
     del client[arr_key]
@@ -170,7 +170,7 @@ def test_delete(tmpdir):
     test_array = numpy.ones((5, 5))
 
     df_key = client.write_array(
-        test_array, {"scan_id": 1, "method": "A"}, ["BlueskyNode"]
+        test_array, metadata={"scan_id": 1, "method": "A"}, specs=["BlueskyNode"]
     )
 
     del client[df_key]
