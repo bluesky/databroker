@@ -3,13 +3,13 @@ import os
 import uuid
 from pathlib import Path
 
-import dask.array
-import h5py
+import dask.dataframe
 import numpy
-import pandas
 import pymongo
+import zarr
+import zarr.storage
 
-from tiled.adapters.array import ArrayAdapter
+from tiled.adapters.array import ArrayAdapter, slice_and_shape_from_block_and_chunks
 from tiled.adapters.dataframe import DataFrameAdapter
 from tiled.adapters.mapping import MapAdapter
 from tiled.adapters.utils import IndexersMixin, tree_repr
@@ -62,21 +62,22 @@ def dataframe_raise_if_inactive(method):
 class WritingArrayAdapter:
     structure_family = "array"
 
-    def __init__(self, collection, directory, doc):
+    def __init__(self, collection, doc):
         self.collection = collection
-        self.directory = directory
-        self.doc = Document(**doc)
-        self.array_adapter = None
-        if self.doc.data_url is not None:
-            path = self.doc.data_url.path
-            if platform == "win32" and path[0] == "/":
-                path = path[1:]
+        self.doc = doc
+        assert self.doc.data_blob is None  # not implemented
+        self.array = zarr.open_array(str(safe_path(self.doc.data_url.path)), "r+")
+        self.array_adapter = ArrayAdapter(self.array)
 
-            self.file = h5py.File(path)
-            dataset = self.file["data"]
-            self.array_adapter = ArrayAdapter(dask.array.from_array(dataset))
-        elif self.doc.data_blob is not None:
-            self.array_adapter = ArrayAdapter(dask.array.from_array(self.doc.data_blob))
+    @classmethod
+    def new(cls, collection, doc):
+        # Zarr requires evently-sized chunks within each dimension.
+        # Use the first chunk along each dimension.
+        chunks = tuple(dim[0] for dim in doc.structure.macro.chunks)
+        shape = tuple(dim[0] * len(dim) for dim in doc.structure.macro.chunks)
+        storage = zarr.storage.DirectoryStore(str(safe_path(doc.data_url.path)))
+        zarr.storage.init_array(storage, shape=shape, chunks=chunks)
+        return cls(collection, doc)
 
     @property
     def structure(self):
@@ -104,35 +105,22 @@ class WritingArrayAdapter:
     def macrostructure(self):
         return self.array_adapter.macrostructure()
 
-    def put_data(self, body):
+    def put_data(self, body, block=None):
         # Organize files into subdirectories with the first two
         # characters of the key to avoid one giant directory.
-        path = self.directory / self.doc.key[:2] / (self.doc.key + ".hdf5")
-        path.parent.mkdir(parents=True, exist_ok=True)
+        if block:
+            slice_, _ = slice_and_shape_from_block_and_chunks(
+                block, self.array_adapter.macrostructure().chunks
+            )
+        else:
+            slice_ = numpy.s_[:]
         array = numpy.frombuffer(
             body, dtype=self.doc.structure.micro.to_numpy_dtype()
         ).reshape(self.doc.structure.macro.shape)
-        with h5py.File(path, "w") as file:
-            file.create_dataset("data", data=array)
-        result = self.collection.update_one(
-            {"key": self.doc.key},
-            {
-                "$set": {
-                    "data_url": f"file://localhost/{str(path).replace(os.sep, '/')}"
-                }
-            },
-        )
-        if result.matched_count != result.modified_count:
-            raise ValueError("Error while writing to database")
+        self.array[slice_] = array
 
     def delete(self):
-        if self.doc.data_url is not None:
-            path = self.doc.data_url.path
-            if platform == "win32" and path[0] == "/":
-                path = path[1:]
-
-            self.file.close()
-            Path(path).unlink()
+        safe_path(self.doc.data_uri.path).unlink()
         result = self.collection.delete_one({"key": self.doc.key})
         assert result.deleted_count == 1
 
@@ -140,31 +128,18 @@ class WritingArrayAdapter:
 class WritingDataFrameAdapter:
     structure_family = "dataframe"
 
-    def __init__(self, collection, directory, doc):
+    def __init__(self, collection, doc):
         self.collection = collection
-        self.directory = directory
-        self.doc = Document(**doc)
-        self.dataframe_adapter = None
+        self.doc = doc
+        assert self.doc.data_blob is None  # not implemented
+        self.dataframe_adapter = DataFrameAdapter.from_dask_dataframe(
+            dask.dataframe.read_parquet(safe_path(self.doc.data_url.path))
+        )
 
-        if self.doc.data_url is not None:
-            path = self.doc.data_url.path
-            if platform == "win32" and path[0] == "/":
-                path = path[1:]
-
-            self.dataframe_adapter = DataFrameAdapter(
-                dask.dataframe.from_pandas(
-                    pandas.read_parquet(path),
-                    npartitions=self.doc.structure.macro.npartitions,
-                )
-            )
-
-        elif self.doc.data_blob is not None:
-            self.dataframe_adapter = DataFrameAdapter(
-                dask.dataframe.from_pandas(
-                    self.doc.data_blob,
-                    npartitions=self.doc.structure.macro.npartitions,
-                )
-            )
+    @classmethod
+    def new(cls, collection, doc):
+        safe_path(doc.data_url.path).mkdir(parents=True)
+        return cls(collection, doc)
 
     @property
     def structure(self):
@@ -192,34 +167,14 @@ class WritingDataFrameAdapter:
     def macrostructure(self):
         return self.dataframe_adapter.macrostructure()
 
-    def put_data(self, body):
-        # Organize files into subdirectories with the first two
-        # characters of the key to avoid one giant directory.
-        path = self.directory / self.doc.key[:2] / (self.doc.key + ".parquet")
-        path.parent.mkdir(parents=True, exist_ok=True)
-
+    def put_data(self, body, partition=0):
         dataframe = deserialize_arrow(body)
-
-        dataframe.to_parquet(path)
-        result = self.collection.update_one(
-            {"key": self.doc.key},
-            {
-                "$set": {
-                    "data_url": f"file://localhost/{str(path).replace(os.sep, '/')}"
-                }
-            },
+        dataframe.to_parquet(
+            safe_path(self.doc.data_url.path) / f"partition-{partition}.parquet"
         )
 
-        if result.matched_count != result.modified_count:
-            raise ValueError("Error while writing to database")
-
     def delete(self):
-        if self.doc.data_url is not None:
-            path = self.doc.data_url.path
-            if platform == "win32" and path[0] == "/":
-                path = path[1:]
-
-            Path(path).unlink()
+        safe_path(self.doc.data_url.path).unlink()
         result = self.collection.delete_one({"key": self.doc.key})
         assert result.deleted_count == 1
 
@@ -308,7 +263,7 @@ class MongoAdapter(collections.abc.Mapping, IndexersMixin):
     def post_metadata(self, metadata, structure_family, structure, specs):
 
         mime_structure_association = {
-            StructureFamily.array: "application/x-hdf5",
+            StructureFamily.array: "application/x-zarr",
             StructureFamily.dataframe: APACHE_ARROW_FILE_MIME_TYPE,
         }
 
@@ -321,9 +276,14 @@ class MongoAdapter(collections.abc.Mapping, IndexersMixin):
             metadata=metadata,
             specs=specs,
             mimetype=mime_structure_association[structure_family],
+            data_url=f"file://localhost/{self.directory}/{key[:2]}/{key}",
         )
 
         self.collection.insert_one(validated_document.dict())
+        if structure_family == StructureFamily.array:
+            WritingArrayAdapter.new(self.collection, validated_document)
+        elif structure_family == StructureFamily.dataframe:
+            WritingDataFrameAdapter.new(self.collection, validated_document)
         return key
 
     def authenticated_as(self, identity):
@@ -347,11 +307,11 @@ class MongoAdapter(collections.abc.Mapping, IndexersMixin):
             raise KeyError(key)
 
         if doc["structure_family"] == StructureFamily.array:
-            return WritingArrayAdapter(self.collection, self.directory, doc)
+            return WritingArrayAdapter(self.collection, Document(**doc))
         elif doc["structure_family"] == StructureFamily.dataframe:
-            return WritingDataFrameAdapter(self.collection, self.directory, doc)
+            return WritingDataFrameAdapter(self.collection, Document(**doc))
         else:
-            raise ValueError("Unsupported Structure Family value in the databse")
+            raise ValueError("Unsupported Structure Family value in the database")
 
     def __iter__(self):
         # TODO Apply pagination, as we do in Databroker.
@@ -428,12 +388,12 @@ class MongoAdapter(collections.abc.Mapping, IndexersMixin):
             if doc["structure_family"] == StructureFamily.array:
                 yield (
                     doc["key"],
-                    WritingArrayAdapter(self.database, self.directory, doc),
+                    WritingArrayAdapter(self.collection, Document(**doc)),
                 )
             elif doc["structure_family"] == StructureFamily.dataframe:
                 yield (
                     doc["key"],
-                    WritingDataFrameAdapter(self.database, self.directory, doc),
+                    WritingDataFrameAdapter(self.collection, Document(**doc)),
                 )
             else:
                 raise ValueError("Unsupported Structure Family value in the database")
@@ -516,3 +476,9 @@ MongoAdapter.register_query(Regex, regex)
 MongoAdapter.register_query(In, _in)
 MongoAdapter.register_query(NotIn, notin)
 MongoAdapter.register_query(FullText, full_text_search)
+
+
+def safe_path(path):
+    if platform == "win32" and path[0] == "/":
+        path = path[1:]
+    return Path(path)
