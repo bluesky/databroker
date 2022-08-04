@@ -4,6 +4,7 @@ import itertools
 import os
 import shutil
 import uuid
+import time
 from pathlib import Path
 from datetime import datetime, timezone
 
@@ -50,10 +51,11 @@ from sys import modules, platform
 class WritingArrayAdapter:
     structure_family = "array"
 
-    def __init__(self, collection, revisions, doc):
+    def __init__(self, collection, revisions, key):
         self.collection = collection
         self.revisions = revisions
-        self.doc = doc
+        self.key = key
+        self.deadline = 0
         assert self.doc.data_blob is None  # not implemented
         self.array = zarr.open_array(str(safe_path(self.doc.data_url.path)), "r+")
 
@@ -71,6 +73,17 @@ class WritingArrayAdapter:
             dtype=doc.structure.micro.to_numpy_dtype(),
         )
         return cls(collection, doc)
+
+    @property
+    def doc(self):
+        now = time.monotonic()
+        if now > self.deadline:
+            self._doc = Document(
+                **self.collection.find_one({"key": self.key})
+            )  # run query
+            self.deadline = now + 0.1  # In seconds
+
+        return self._doc
 
     @property
     def structure(self):
@@ -128,8 +141,8 @@ class WritingArrayAdapter:
 
     def put_metadata(self, metadata, specs):
 
-        revisions_doc = (
-            self.revisions.find({"key": self.doc.key}).sort({"revision": -1}).limit(1)
+        revisions_doc = self.revisions.find_one(
+            {"key": self.doc.key}, sort=[("revision", -1)]
         )
         if revisions_doc is not None:
             revision = int(revisions_doc["revision"]) + 1
@@ -149,24 +162,23 @@ class WritingArrayAdapter:
             revision=revision,
         )
 
-        self.revisions.insert_one(validated_revision.dict())
+        result = self.revisions.insert_one(validated_revision.dict())
 
         updated_at = datetime.now(tz=timezone.utc)
-        self.doc.updated_at = updated_at
 
-        if len(metadata) > 0:
-            self.doc.metadata = metadata
+        if len(metadata) == 0:
+            metadata = self.doc.metadata  # Metadata was not requested to be updated
 
-        if len(specs) > 0:
-            self.doc.specs = specs
+        if len(specs) == 0:
+            specs = self.doc.specs  # Specs was not requested to be updated
 
         result = self.collection.update_one(
-            {"key": self.doc.key},
+            {"key": self.key},
             {
                 "$set": {
-                    "metadata": self.doc.metadata,
-                    "specs": self.doc.specs,
-                    "updated_at": self.doc.updated_at,
+                    "metadata": metadata,
+                    "specs": specs,
+                    "updated_at": updated_at,
                 }
             },
         )
@@ -183,10 +195,11 @@ class WritingArrayAdapter:
 class WritingDataFrameAdapter:
     structure_family = "dataframe"
 
-    def __init__(self, collection, revisions, doc):
+    def __init__(self, collection, revisions, key):
         self.collection = collection
         self.revisions = revisions
-        self.doc = doc
+        self.key = key
+        self.deadline = 0
         assert self.doc.data_blob is None  # not implemented
 
     @property
@@ -199,6 +212,17 @@ class WritingDataFrameAdapter:
     def new(cls, collection, doc):
         safe_path(doc.data_url.path).mkdir(parents=True)
         return cls(collection, doc)
+
+    @property
+    def doc(self):
+        now = time.monotonic()
+        if now > self.deadline:
+            self._doc = Document(
+                **self.collection.find_one({"key": self.key})
+            )  # run query
+            self.deadline = now + 0.1  # In seconds
+
+        return self._doc
 
     @property
     def structure(self):
@@ -239,7 +263,7 @@ class WritingDataFrameAdapter:
 class WritingCOOAdapter:
     structure_family = "sparse"
 
-    def __init__(self, collection, revisions, doc):
+    def __init__(self, collection, revisions, key):
         def load(filepath):
             import pandas
 
@@ -250,7 +274,8 @@ class WritingCOOAdapter:
 
         self.collection = collection
         self.revisions = revisions
-        self.doc = doc
+        self.key = key
+        self.deadline = 0
         assert self.doc.data_blob is None  # not implemented
         num_blocks = (range(len(n)) for n in self.doc.structure.chunks)
         directory = safe_path(self.doc.data_url.path)
@@ -260,6 +285,17 @@ class WritingCOOAdapter:
             if filepath.is_file():
                 mapping[block] = lambda filepath=filepath: load(filepath)
         self.blocks = OneShotCachedMap(mapping)
+
+    @property
+    def doc(self):
+        now = time.monotonic()
+        if now > self.deadline:
+            self._doc = Document(
+                **self.collection.find_one({"key": self.key})
+            )  # run query
+            self.deadline = now + 0.1  # In seconds
+
+        return self._doc
 
     @classmethod
     def new(cls, collection, doc):
@@ -318,9 +354,46 @@ class WritingCOOAdapter:
 
     def put_metadata(self, metadata, specs):
 
+        revisions_doc = self.revisions.find_one(
+            {"key": self.doc.key}, sort=[("revision", -1)]
+        )
+        if revisions_doc is not None:
+            revision = int(revisions_doc["revision"]) + 1
+        else:
+            revision = 1
+
+        validated_revision = DocumentRevision(
+            key=self.doc.key,
+            structure_family=self.doc.structure_family,
+            structure=self.doc.structure,
+            metadata=self.doc.metadata,
+            specs=self.doc.specs,
+            mimetype=self.doc.mimetype,
+            created_at=self.doc.created_at,
+            data_url=self.doc.data_url,
+            updated_at=self.doc.updated_at,
+            revision=revision,
+        )
+
+        result = self.revisions.insert_one(validated_revision.dict())
+
+        updated_at = datetime.now(tz=timezone.utc)
+
+        if len(metadata) == 0:
+            metadata = self.doc.metadata  # Metadata was not requested to be updated
+
+        if len(specs) == 0:
+            specs = self.doc.specs  # Specs was not requested to be updated
+
         result = self.collection.update_one(
-            {"key": self.doc.key},
-            {"$set": {"metadata": metadata, "specs": specs}},
+            {"key": self.key},
+            {
+                "$set": {
+                    "metadata": metadata,
+                    "specs": specs,
+                    "updated_at": updated_at,
+                }
+            },
         )
 
         if result.matched_count != result.modified_count:
@@ -369,6 +442,11 @@ class MongoAdapter(collections.abc.Mapping, IndexersMixin):
 
     @classmethod
     def from_uri(cls, uri, directory, *, metadata=None):
+        """
+        When calling this method, call create_index() from its instance to define the
+        unique indexes in the revision collection
+
+        """
         if not pymongo.uri_parser.parse_uri(uri)["database"]:
             raise ValueError(
                 f"Invalid URI: {uri!r} Did you forget to include a database?"
@@ -385,7 +463,10 @@ class MongoAdapter(collections.abc.Mapping, IndexersMixin):
         mongo_client = mongomock.MongoClient()
         database = mongo_client[db_name]
 
-        return cls(database=database, directory=directory, metadata=metadata)
+        mongo_adapter = cls(database=database, directory=directory, metadata=metadata)
+        mongo_adapter.create_indexes()
+
+        return mongo_adapter
 
     def new_variation(
         self,
@@ -444,6 +525,11 @@ class MongoAdapter(collections.abc.Mapping, IndexersMixin):
         )
         return key
 
+    def create_indexes(self):
+        self.revision_coll.create_index(
+            [("key", pymongo.ASCENDING), ("revision", pymongo.DESCENDING)], unique=True
+        )
+
     def authenticated_as(self, identity):
         if self.principal is not None:
             raise RuntimeError(f"Already authenticated as {self.principal}")
@@ -465,7 +551,7 @@ class MongoAdapter(collections.abc.Mapping, IndexersMixin):
             raise KeyError(key)
 
         class_ = _adapter_class_by_family[StructureFamily(doc["structure_family"])]
-        return class_(self.collection, self.revision_coll, Document(**doc))
+        return class_(self.collection, self.revision_coll, key)
 
     def __iter__(self):
         # TODO Apply pagination, as we do in Databroker.
@@ -540,7 +626,7 @@ class MongoAdapter(collections.abc.Mapping, IndexersMixin):
             limit=limit,
         ):
             class_ = _adapter_class_by_family[StructureFamily(doc["structure_family"])]
-            yield doc["key"], class_(self.collection, self.revision_coll, Document(**doc))
+            yield doc["key"], class_(self.collection, self.revision_coll, doc["key"])
 
     def apply_mongo_query(self, query):
         return self.new_variation(

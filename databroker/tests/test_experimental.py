@@ -293,12 +293,44 @@ def test_update_metadata(tmpdir):
         tree, api_key=API_KEY, authentication={"single_user_api_key": API_KEY}
     )
 
+    # Update metadata in array client
     test_array = numpy.ones((5, 5))
 
     x = client.write_array(
         test_array, {"scan_id": 1, "method": "A"}, ["SomeSpec"]
     )
 
-    new_metadata = {"scan_id": 2, "method": "B"}
-    x.update_metadata(new_metadata)
+    new_arr_metadata = {"scan_id": 2, "method": "B"}
+    new_spec = ["AnotherSpec"]
+    x.update_metadata(new_arr_metadata, new_spec)
+
+    results = client.search(Key("scan_id") == 2)
+    result = results.values().first()
+
+    assert result.metadata == new_arr_metadata
+    assert result.item["attributes"]["specs"] == new_spec
+
+    # Update metadata in dataframe client
+    data = {
+        "Column1": test_array[0],
+        "Column2": test_array[1],
+        "Column3": test_array[2],
+        "Column4": test_array[3],
+        "Column5": test_array[4],
+    }
+
+    test_dataframe = pandas.DataFrame(data)
+
+    y = client.write_dataframe(
+        test_dataframe, {"scan_id": 3, "method": "C"}, ["SomeSpec"]
+    )
+
+    new_df_metadata = {"scan_id": 4, "method": "D"}
+    y.update_metadata(new_df_metadata, new_spec)
+
+    results = client.search(Key("scan_id") == 4)
+    result = results.values().first()
+
+    assert result.metadata == new_df_metadata
+    assert result.item["attributes"]["specs"] == new_spec
 
