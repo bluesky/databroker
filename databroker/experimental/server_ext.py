@@ -1,15 +1,19 @@
+import builtins
 import collections.abc
+import itertools
 import os
+import shutil
 import uuid
 from pathlib import Path
 
-import dask.array
-import h5py
+import dask.dataframe
 import numpy
-import pandas
 import pymongo
+import sparse
+import zarr
+import zarr.storage
 
-from tiled.adapters.array import ArrayAdapter
+from tiled.adapters.array import slice_and_shape_from_block_and_chunks
 from tiled.adapters.dataframe import DataFrameAdapter
 from tiled.adapters.mapping import MapAdapter
 from tiled.adapters.utils import IndexersMixin, tree_repr
@@ -28,55 +32,43 @@ from tiled.queries import (
 from tiled.query_registration import QueryTranslationRegistry
 
 from tiled.structures.core import StructureFamily
+from tiled.structures.array import ArrayMacroStructure, BuiltinDtype
+from tiled.structures.dataframe import DataFrameMacroStructure, DataFrameMicroStructure
+from tiled.structures.sparse import COOStructure
 from tiled.serialization.dataframe import deserialize_arrow
 
 from tiled.server.pydantic_array import ArrayStructure
 from tiled.server.pydantic_dataframe import DataFrameStructure
-from tiled.utils import APACHE_ARROW_FILE_MIME_TYPE, UNCHANGED
+from tiled.utils import APACHE_ARROW_FILE_MIME_TYPE, UNCHANGED, OneShotCachedMap
 
 from .schemas import Document
 
 from sys import modules, platform
 
 
-def array_raise_if_inactive(method):
-    def inner(self, *args, **kwargs):
-        if self.array_adapter is None:
-            raise ValueError("Not active")
-        else:
-            return method(self, *args, **kwargs)
-
-    return inner
-
-
-def dataframe_raise_if_inactive(method):
-    def inner(self, *args, **kwargs):
-        if self.dataframe_adapter is None:
-            raise ValueError("Not active")
-        else:
-            return method(self, *args, **kwargs)
-
-    return inner
-
-
 class WritingArrayAdapter:
     structure_family = "array"
 
-    def __init__(self, collection, directory, doc):
+    def __init__(self, collection, doc):
         self.collection = collection
-        self.directory = directory
-        self.doc = Document(**doc)
-        self.array_adapter = None
-        if self.doc.data_url is not None:
-            path = self.doc.data_url.path
-            if platform == "win32" and path[0] == "/":
-                path = path[1:]
+        self.doc = doc
+        assert self.doc.data_blob is None  # not implemented
+        self.array = zarr.open_array(str(safe_path(self.doc.data_url.path)), "r+")
 
-            self.file = h5py.File(path)
-            dataset = self.file["data"]
-            self.array_adapter = ArrayAdapter(dask.array.from_array(dataset))
-        elif self.doc.data_blob is not None:
-            self.array_adapter = ArrayAdapter(dask.array.from_array(self.doc.data_blob))
+    @classmethod
+    def new(cls, collection, doc):
+        # Zarr requires evently-sized chunks within each dimension.
+        # Use the first chunk along each dimension.
+        chunks = tuple(dim[0] for dim in doc.structure.macro.chunks)
+        shape = tuple(dim[0] * len(dim) for dim in doc.structure.macro.chunks)
+        storage = zarr.storage.DirectoryStore(str(safe_path(doc.data_url.path)))
+        zarr.storage.init_array(
+            storage,
+            shape=shape,
+            chunks=chunks,
+            dtype=doc.structure.micro.to_numpy_dtype(),
+        )
+        return cls(collection, doc)
 
     @property
     def structure(self):
@@ -90,49 +82,50 @@ class WritingArrayAdapter:
     def specs(self):
         return self.doc.specs
 
-    @array_raise_if_inactive
-    def read(self, *args, **kwargs):
-        return self.array_adapter.read(*args, **kwargs)
+    def read(self, slice=None):
+        # Trim overflow because Zarr always has equal-sized chunks.
+        arr = self.array[
+            tuple(builtins.slice(0, dim) for dim in self.doc.structure.macro.shape)
+        ]
+        if slice is not None:
+            arr = arr[slice]
+        return arr
 
-    @array_raise_if_inactive
-    def read_block(self, *args, **kwargs):
-        return self.array_adapter.read_block(*args, **kwargs)
+    def read_block(self, block, slice=None):
+        # Trim overflow because Zarr always has equal-sized chunks.
+        slice_, _ = slice_and_shape_from_block_and_chunks(
+            block, self.doc.structure.macro.chunks
+        )
+        # Slice the block out of the whole array.
+        arr = self.array[slice_]
+        # And then maybe slice *within* the block.
+        if slice is not None:
+            arr = arr[slice]
+        return arr
 
     def microstructure(self):
-        return self.array_adapter.microstructure()
+        return BuiltinDtype(**self.doc.structure.micro.dict())
 
     def macrostructure(self):
-        return self.array_adapter.macrostructure()
+        return ArrayMacroStructure(**self.doc.structure.macro.dict())
 
-    def put_data(self, body):
+    def put_data(self, body, block=None):
         # Organize files into subdirectories with the first two
         # characters of the key to avoid one giant directory.
-        path = self.directory / self.doc.key[:2] / (self.doc.key + ".hdf5")
-        path.parent.mkdir(parents=True, exist_ok=True)
+        if block:
+            slice_, shape = slice_and_shape_from_block_and_chunks(
+                block, self.doc.structure.macro.chunks
+            )
+        else:
+            slice_ = numpy.s_[:]
+            shape = self.doc.structure.macro.shape
         array = numpy.frombuffer(
             body, dtype=self.doc.structure.micro.to_numpy_dtype()
-        ).reshape(self.doc.structure.macro.shape)
-        with h5py.File(path, "w") as file:
-            file.create_dataset("data", data=array)
-        result = self.collection.update_one(
-            {"key": self.doc.key},
-            {
-                "$set": {
-                    "data_url": f"file://localhost/{str(path).replace(os.sep, '/')}"
-                }
-            },
-        )
-        if result.matched_count != result.modified_count:
-            raise ValueError("Error while writing to database")
+        ).reshape(shape)
+        self.array[slice_] = array
 
     def delete(self):
-        if self.doc.data_url is not None:
-            path = self.doc.data_url.path
-            if platform == "win32" and path[0] == "/":
-                path = path[1:]
-
-            self.file.close()
-            Path(path).unlink()
+        shutil.rmtree(safe_path(self.doc.data_url.path))
         result = self.collection.delete_one({"key": self.doc.key})
         assert result.deleted_count == 1
 
@@ -140,31 +133,21 @@ class WritingArrayAdapter:
 class WritingDataFrameAdapter:
     structure_family = "dataframe"
 
-    def __init__(self, collection, directory, doc):
+    def __init__(self, collection, doc):
         self.collection = collection
-        self.directory = directory
-        self.doc = Document(**doc)
-        self.dataframe_adapter = None
+        self.doc = doc
+        assert self.doc.data_blob is None  # not implemented
 
-        if self.doc.data_url is not None:
-            path = self.doc.data_url.path
-            if platform == "win32" and path[0] == "/":
-                path = path[1:]
+    @property
+    def dataframe_adapter(self):
+        return DataFrameAdapter.from_dask_dataframe(
+            dask.dataframe.read_parquet(safe_path(self.doc.data_url.path))
+        )
 
-            self.dataframe_adapter = DataFrameAdapter(
-                dask.dataframe.from_pandas(
-                    pandas.read_parquet(path),
-                    npartitions=self.doc.structure.macro.npartitions,
-                )
-            )
-
-        elif self.doc.data_blob is not None:
-            self.dataframe_adapter = DataFrameAdapter(
-                dask.dataframe.from_pandas(
-                    self.doc.data_blob,
-                    npartitions=self.doc.structure.macro.npartitions,
-                )
-            )
+    @classmethod
+    def new(cls, collection, doc):
+        safe_path(doc.data_url.path).mkdir(parents=True)
+        return cls(collection, doc)
 
     @property
     def structure(self):
@@ -178,48 +161,111 @@ class WritingDataFrameAdapter:
     def specs(self):
         return self.doc.specs
 
-    @dataframe_raise_if_inactive
     def read(self, *args, **kwargs):
         return self.dataframe_adapter.read(*args, **kwargs)
 
-    @dataframe_raise_if_inactive
     def read_partition(self, *args, **kwargs):
         return self.dataframe_adapter.read_partition(*args, **kwargs)
 
     def microstructure(self):
-        return self.dataframe_adapter.microstructure()
+        return DataFrameMicroStructure(**self.doc.structure.micro.dict())
 
     def macrostructure(self):
-        return self.dataframe_adapter.macrostructure()
+        return DataFrameMacroStructure(**self.doc.structure.macro.dict())
 
-    def put_data(self, body):
-        # Organize files into subdirectories with the first two
-        # characters of the key to avoid one giant directory.
-        path = self.directory / self.doc.key[:2] / (self.doc.key + ".parquet")
-        path.parent.mkdir(parents=True, exist_ok=True)
-
+    def put_data(self, body, partition=0):
         dataframe = deserialize_arrow(body)
-
-        dataframe.to_parquet(path)
-        result = self.collection.update_one(
-            {"key": self.doc.key},
-            {
-                "$set": {
-                    "data_url": f"file://localhost/{str(path).replace(os.sep, '/')}"
-                }
-            },
+        dataframe.to_parquet(
+            safe_path(self.doc.data_url.path) / f"partition-{partition}.parquet"
         )
 
-        if result.matched_count != result.modified_count:
-            raise ValueError("Error while writing to database")
+    def delete(self):
+        shutil.rmtree(safe_path(self.doc.data_url.path))
+        result = self.collection.delete_one({"key": self.doc.key})
+        assert result.deleted_count == 1
+
+
+class WritingCOOAdapter:
+    structure_family = "sparse"
+
+    def __init__(self, collection, doc):
+        def load(filepath):
+            import pandas
+
+            df = pandas.read_parquet(filepath)
+            coords = df[df.columns[:-1]].values.T
+            data = df["data"].values
+            return coords, data
+
+        self.collection = collection
+        self.doc = doc
+        assert self.doc.data_blob is None  # not implemented
+        num_blocks = (range(len(n)) for n in self.doc.structure.chunks)
+        directory = safe_path(self.doc.data_url.path)
+        mapping = {}
+        for block in itertools.product(*num_blocks):
+            filepath = directory / f"block-{'.'.join(map(str, block))}.parquet"
+            if filepath.is_file():
+                mapping[block] = lambda filepath=filepath: load(filepath)
+        self.blocks = OneShotCachedMap(mapping)
+
+    @classmethod
+    def new(cls, collection, doc):
+        safe_path(doc.data_url.path).mkdir(parents=True)
+        return cls(collection, doc)
+
+    @property
+    def metadata(self):
+        return self.doc.metadata
+
+    @property
+    def specs(self):
+        return self.doc.specs
+
+    def read_block(self, block, slice=None):
+        coords, data = self.blocks[block]
+        _, shape = slice_and_shape_from_block_and_chunks(
+            block, self.doc.structure.chunks
+        )
+        arr = sparse.COO(data=data[:], coords=coords[:], shape=shape)
+        if slice:
+            arr = arr[slice]
+        return arr
+
+    def read(self, slice=None):
+        all_coords = []
+        all_data = []
+        for (block, (coords, data)) in self.blocks.items():
+            offsets = []
+            for b, c in zip(block, self.doc.structure.chunks):
+                offset = sum(c[:b])
+                offsets.append(offset)
+            global_coords = coords + [[i] for i in offsets]
+            all_coords.append(global_coords)
+            all_data.append(data)
+        arr = sparse.COO(
+            data=numpy.concatenate(all_data),
+            coords=numpy.concatenate(all_coords, axis=-1),
+            shape=self.doc.structure.shape,
+        )
+        if slice:
+            return arr[slice]
+        return arr
+
+    def structure(self):
+        return COOStructure(**self.doc.structure.dict())
+
+    def put_data(self, body, block=None):
+        if block is None:
+            block = (0,) * len(self.doc.structure.shape)
+        dataframe = deserialize_arrow(body)
+        dataframe.to_parquet(
+            safe_path(self.doc.data_url.path)
+            / f"block-{'.'.join(map(str, block))}.parquet"
+        )
 
     def delete(self):
-        if self.doc.data_url is not None:
-            path = self.doc.data_url.path
-            if platform == "win32" and path[0] == "/":
-                path = path[1:]
-
-            Path(path).unlink()
+        shutil.rmtree(safe_path(self.doc.data_url.path))
         result = self.collection.delete_one({"key": self.doc.key})
         assert result.deleted_count == 1
 
@@ -308,8 +354,9 @@ class MongoAdapter(collections.abc.Mapping, IndexersMixin):
     def post_metadata(self, metadata, structure_family, structure, specs):
 
         mime_structure_association = {
-            StructureFamily.array: "application/x-hdf5",
+            StructureFamily.array: "application/x-zarr",
             StructureFamily.dataframe: APACHE_ARROW_FILE_MIME_TYPE,
+            StructureFamily.sparse: APACHE_ARROW_FILE_MIME_TYPE,
         }
 
         key = str(uuid.uuid4())
@@ -321,9 +368,14 @@ class MongoAdapter(collections.abc.Mapping, IndexersMixin):
             metadata=metadata,
             specs=specs,
             mimetype=mime_structure_association[structure_family],
+            data_url=f"file://localhost/{self.directory}/{key[:2]}/{key}",
         )
 
+        _adapter_class_by_family[structure_family]
         self.collection.insert_one(validated_document.dict())
+        _adapter_class_by_family[structure_family].new(
+            self.collection, validated_document
+        )
         return key
 
     def authenticated_as(self, identity):
@@ -346,12 +398,8 @@ class MongoAdapter(collections.abc.Mapping, IndexersMixin):
         if doc is None:
             raise KeyError(key)
 
-        if doc["structure_family"] == StructureFamily.array:
-            return WritingArrayAdapter(self.collection, self.directory, doc)
-        elif doc["structure_family"] == StructureFamily.dataframe:
-            return WritingDataFrameAdapter(self.collection, self.directory, doc)
-        else:
-            raise ValueError("Unsupported Structure Family value in the databse")
+        class_ = _adapter_class_by_family[StructureFamily(doc["structure_family"])]
+        return class_(self.collection, Document(**doc))
 
     def __iter__(self):
         # TODO Apply pagination, as we do in Databroker.
@@ -425,18 +473,8 @@ class MongoAdapter(collections.abc.Mapping, IndexersMixin):
             skip=skip,
             limit=limit,
         ):
-            if doc["structure_family"] == StructureFamily.array:
-                yield (
-                    doc["key"],
-                    WritingArrayAdapter(self.database, self.directory, doc),
-                )
-            elif doc["structure_family"] == StructureFamily.dataframe:
-                yield (
-                    doc["key"],
-                    WritingDataFrameAdapter(self.database, self.directory, doc),
-                )
-            else:
-                raise ValueError("Unsupported Structure Family value in the database")
+            class_ = _adapter_class_by_family[StructureFamily(doc["structure_family"])]
+            yield doc["key"], class_(self.collection, Document(**doc))
 
     def apply_mongo_query(self, query):
         return self.new_variation(
@@ -516,3 +554,16 @@ MongoAdapter.register_query(Regex, regex)
 MongoAdapter.register_query(In, _in)
 MongoAdapter.register_query(NotIn, notin)
 MongoAdapter.register_query(FullText, full_text_search)
+
+
+def safe_path(path):
+    if platform == "win32" and path[0] == "/":
+        path = path[1:]
+    return Path(path)
+
+
+_adapter_class_by_family = {
+    StructureFamily.array: WritingArrayAdapter,
+    StructureFamily.dataframe: WritingDataFrameAdapter,
+    StructureFamily.sparse: WritingCOOAdapter,
+}
