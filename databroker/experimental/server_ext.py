@@ -60,7 +60,7 @@ class WritingArrayAdapter:
         self.array = zarr.open_array(str(safe_path(self.doc.data_url.path)), "r+")
 
     @classmethod
-    def new(cls, collection, doc):
+    def new(cls, collection, revision_coll, doc):
         # Zarr requires evently-sized chunks within each dimension.
         # Use the first chunk along each dimension.
         chunks = tuple(dim[0] for dim in doc.structure.macro.chunks)
@@ -72,7 +72,7 @@ class WritingArrayAdapter:
             chunks=chunks,
             dtype=doc.structure.micro.to_numpy_dtype(),
         )
-        return cls(collection, doc)
+        return cls(collection, revision_coll, doc.key)
 
     @property
     def doc(self):
@@ -209,9 +209,9 @@ class WritingDataFrameAdapter:
         )
 
     @classmethod
-    def new(cls, collection, doc):
+    def new(cls, collection, revision_coll, doc):
         safe_path(doc.data_url.path).mkdir(parents=True)
-        return cls(collection, doc)
+        return cls(collection, revision_coll, doc.key)
 
     @property
     def doc(self):
@@ -298,9 +298,9 @@ class WritingCOOAdapter:
         return self._doc
 
     @classmethod
-    def new(cls, collection, doc):
+    def new(cls, collection, revision_coll, doc):
         safe_path(doc.data_url.path).mkdir(parents=True)
-        return cls(collection, doc)
+        return cls(collection, revision_coll, doc.key)
 
     @property
     def metadata(self):
