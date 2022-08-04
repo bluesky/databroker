@@ -297,7 +297,7 @@ def test_update_metadata(tmpdir):
     test_array = numpy.ones((5, 5))
 
     x = client.write_array(
-        test_array, {"scan_id": 1, "method": "A"}, ["SomeSpec"]
+        test_array, metadata={"scan_id": 1, "method": "A"}, specs=["SomeSpec"]
     )
 
     new_arr_metadata = {"scan_id": 2, "method": "B"}
@@ -322,7 +322,7 @@ def test_update_metadata(tmpdir):
     test_dataframe = pandas.DataFrame(data)
 
     y = client.write_dataframe(
-        test_dataframe, {"scan_id": 3, "method": "C"}, ["SomeSpec"]
+        test_dataframe, metadata={"scan_id": 3, "method": "C"}, specs=["SomeSpec"]
     )
 
     new_df_metadata = {"scan_id": 4, "method": "D"}
