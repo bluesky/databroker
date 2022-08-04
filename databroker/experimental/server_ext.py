@@ -254,6 +254,53 @@ class WritingDataFrameAdapter:
             safe_path(self.doc.data_url.path) / f"partition-{partition}.parquet"
         )
 
+    def put_metadata(self, metadata, specs):
+
+        revisions_doc = self.revisions.find_one(
+            {"key": self.doc.key}, sort=[("revision", -1)]
+        )
+        if revisions_doc is not None:
+            revision = int(revisions_doc["revision"]) + 1
+        else:
+            revision = 1
+
+        validated_revision = DocumentRevision(
+            key=self.doc.key,
+            structure_family=self.doc.structure_family,
+            structure=self.doc.structure,
+            metadata=self.doc.metadata,
+            specs=self.doc.specs,
+            mimetype=self.doc.mimetype,
+            created_at=self.doc.created_at,
+            data_url=self.doc.data_url,
+            updated_at=self.doc.updated_at,
+            revision=revision,
+        )
+
+        result = self.revisions.insert_one(validated_revision.dict())
+
+        updated_at = datetime.now(tz=timezone.utc)
+
+        if len(metadata) == 0:
+            metadata = self.doc.metadata  # Metadata was not requested to be updated
+
+        if len(specs) == 0:
+            specs = self.doc.specs  # Specs was not requested to be updated
+
+        result = self.collection.update_one(
+            {"key": self.key},
+            {
+                "$set": {
+                    "metadata": metadata,
+                    "specs": specs,
+                    "updated_at": updated_at,
+                }
+            },
+        )
+
+        if result.matched_count != result.modified_count:
+            raise ValueError("Error while writing to database")
+
     def delete(self):
         shutil.rmtree(safe_path(self.doc.data_url.path))
         result = self.collection.delete_one({"key": self.doc.key})
