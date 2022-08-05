@@ -51,16 +51,17 @@ from sys import modules, platform
 class WritingArrayAdapter:
     structure_family = "array"
 
-    def __init__(self, collection, revisions, key):
-        self.collection = collection
-        self.revisions = revisions
+    # def __init__(self, collection, revisions, key):
+    def __init__(self, database, key):
+        self.collection = database["nodes"]
+        self.revisions = database["revisions"]
         self.key = key
         self.deadline = 0
         assert self.doc.data_blob is None  # not implemented
         self.array = zarr.open_array(str(safe_path(self.doc.data_url.path)), "r+")
 
     @classmethod
-    def new(cls, collection, revision_coll, doc):
+    def new(cls, database, doc):
         # Zarr requires evently-sized chunks within each dimension.
         # Use the first chunk along each dimension.
         chunks = tuple(dim[0] for dim in doc.structure.macro.chunks)
@@ -72,7 +73,7 @@ class WritingArrayAdapter:
             chunks=chunks,
             dtype=doc.structure.micro.to_numpy_dtype(),
         )
-        return cls(collection, revision_coll, doc.key)
+        return cls(database, doc.key)
 
     @property
     def doc(self):
@@ -149,27 +150,16 @@ class WritingArrayAdapter:
         else:
             revision = 1
 
-        validated_revision = DocumentRevision(
-            key=self.doc.key,
-            structure_family=self.doc.structure_family,
-            structure=self.doc.structure,
-            metadata=self.doc.metadata,
-            specs=self.doc.specs,
-            mimetype=self.doc.mimetype,
-            created_at=self.doc.created_at,
-            data_url=self.doc.data_url,
-            updated_at=self.doc.updated_at,
-            revision=revision,
-        )
+        validated_revision = DocumentRevision.from_document(self.doc, revision)
 
         result = self.revisions.insert_one(validated_revision.dict())
 
         updated_at = datetime.now(tz=timezone.utc)
 
-        if len(metadata) == 0:
+        if metadata is None:
             metadata = self.doc.metadata  # Metadata was not requested to be updated
 
-        if len(specs) == 0:
+        if specs is None:
             specs = self.doc.specs  # Specs was not requested to be updated
 
         result = self.collection.update_one(
@@ -184,7 +174,7 @@ class WritingArrayAdapter:
         )
 
         if result.matched_count != result.modified_count:
-            raise ValueError("Error while writing to database")
+            raise RuntimeError("Error while writing to database")
 
     def delete(self):
         shutil.rmtree(safe_path(self.doc.data_url.path))
@@ -195,9 +185,10 @@ class WritingArrayAdapter:
 class WritingDataFrameAdapter:
     structure_family = "dataframe"
 
-    def __init__(self, collection, revisions, key):
-        self.collection = collection
-        self.revisions = revisions
+    # def __init__(self, collection, revisions, key):
+    def __init__(self, database, key):
+        self.collection = database["nodes"]
+        self.revisions = database["revisions"]
         self.key = key
         self.deadline = 0
         assert self.doc.data_blob is None  # not implemented
@@ -209,9 +200,9 @@ class WritingDataFrameAdapter:
         )
 
     @classmethod
-    def new(cls, collection, revision_coll, doc):
+    def new(cls, database, doc):
         safe_path(doc.data_url.path).mkdir(parents=True)
-        return cls(collection, revision_coll, doc.key)
+        return cls(database, doc.key)
 
     @property
     def doc(self):
@@ -264,18 +255,7 @@ class WritingDataFrameAdapter:
         else:
             revision = 1
 
-        validated_revision = DocumentRevision(
-            key=self.doc.key,
-            structure_family=self.doc.structure_family,
-            structure=self.doc.structure,
-            metadata=self.doc.metadata,
-            specs=self.doc.specs,
-            mimetype=self.doc.mimetype,
-            created_at=self.doc.created_at,
-            data_url=self.doc.data_url,
-            updated_at=self.doc.updated_at,
-            revision=revision,
-        )
+        validated_revision = DocumentRevision.from_document(self.doc, revision)
 
         result = self.revisions.insert_one(validated_revision.dict())
 
@@ -299,7 +279,7 @@ class WritingDataFrameAdapter:
         )
 
         if result.matched_count != result.modified_count:
-            raise ValueError("Error while writing to database")
+            raise RuntimeError("Error while writing to database")
 
     def delete(self):
         shutil.rmtree(safe_path(self.doc.data_url.path))
@@ -310,7 +290,8 @@ class WritingDataFrameAdapter:
 class WritingCOOAdapter:
     structure_family = "sparse"
 
-    def __init__(self, collection, revisions, key):
+    # def __init__(self, collection, revisions, key):
+    def __init__(self, database, key):
         def load(filepath):
             import pandas
 
@@ -319,8 +300,8 @@ class WritingCOOAdapter:
             data = df["data"].values
             return coords, data
 
-        self.collection = collection
-        self.revisions = revisions
+        self.collection = database["nodes"]
+        self.revisions = database["revisions"]
         self.key = key
         self.deadline = 0
         assert self.doc.data_blob is None  # not implemented
@@ -345,9 +326,9 @@ class WritingCOOAdapter:
         return self._doc
 
     @classmethod
-    def new(cls, collection, revision_coll, doc):
+    def new(cls, database, doc):
         safe_path(doc.data_url.path).mkdir(parents=True)
-        return cls(collection, revision_coll, doc.key)
+        return cls(database, doc.key)
 
     @property
     def metadata(self):
@@ -409,18 +390,7 @@ class WritingCOOAdapter:
         else:
             revision = 1
 
-        validated_revision = DocumentRevision(
-            key=self.doc.key,
-            structure_family=self.doc.structure_family,
-            structure=self.doc.structure,
-            metadata=self.doc.metadata,
-            specs=self.doc.specs,
-            mimetype=self.doc.mimetype,
-            created_at=self.doc.created_at,
-            data_url=self.doc.data_url,
-            updated_at=self.doc.updated_at,
-            revision=revision,
-        )
+        validated_revision = DocumentRevision.from_document(self.doc, revision)
 
         result = self.revisions.insert_one(validated_revision.dict())
 
@@ -444,7 +414,7 @@ class WritingCOOAdapter:
         )
 
         if result.matched_count != result.modified_count:
-            raise ValueError("Error while writing to database")
+            raise RuntimeError("Error while writing to database")
 
     def delete(self):
         shutil.rmtree(safe_path(self.doc.data_url.path))
@@ -568,7 +538,7 @@ class MongoAdapter(collections.abc.Mapping, IndexersMixin):
         _adapter_class_by_family[structure_family]
         self.collection.insert_one(validated_document.dict())
         _adapter_class_by_family[structure_family].new(
-            self.collection, self.revision_coll, validated_document
+            self.database, validated_document
         )
         return key
 
@@ -598,7 +568,7 @@ class MongoAdapter(collections.abc.Mapping, IndexersMixin):
             raise KeyError(key)
 
         class_ = _adapter_class_by_family[StructureFamily(doc["structure_family"])]
-        return class_(self.collection, self.revision_coll, key)
+        return class_(self.database, key)
 
     def __iter__(self):
         # TODO Apply pagination, as we do in Databroker.
@@ -673,7 +643,7 @@ class MongoAdapter(collections.abc.Mapping, IndexersMixin):
             limit=limit,
         ):
             class_ = _adapter_class_by_family[StructureFamily(doc["structure_family"])]
-            yield doc["key"], class_(self.collection, self.revision_coll, doc["key"])
+            yield doc["key"], class_(self.database, doc["key"])
 
     def apply_mongo_query(self, query):
         return self.new_variation(

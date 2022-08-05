@@ -28,7 +28,6 @@ class BaseDocument(pydantic.BaseModel):
     metadata: Dict
     specs: List[str]
     mimetype: str
-    created_at: datetime
     updated_at: datetime
 
     @pydantic.root_validator
@@ -70,6 +69,7 @@ class BaseDocument(pydantic.BaseModel):
 
 
 class Document(BaseDocument):
+    created_at: datetime
     data_blob: Optional[bytes]
     data_url: Optional[pydantic.AnyUrl]
 
@@ -86,3 +86,16 @@ class Document(BaseDocument):
 
 class DocumentRevision(BaseDocument):
     revision: int
+
+    @classmethod
+    def from_document(cls, document, revision):
+        return cls(
+            key=document.key,
+            structure_family=document.structure_family,
+            structure=document.structure,
+            metadata=document.metadata,
+            specs=document.specs,
+            mimetype=document.mimetype,
+            updated_at=document.updated_at,
+            revision=revision,
+        )
