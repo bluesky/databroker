@@ -618,6 +618,9 @@ class DatasetFromDocuments:
     def items(self):
         return self._contents.items()
 
+    def __len__(self):
+        return len(self._contents)
+
     def __repr__(self):
         return f"<{type(self).__name__}>"
 
