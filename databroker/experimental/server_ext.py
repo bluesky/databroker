@@ -14,6 +14,7 @@ import zarr
 import zarr.storage
 
 from tiled.adapters.array import slice_and_shape_from_block_and_chunks
+from tiled.adapters.array import ArrayAdapter
 from tiled.adapters.dataframe import DataFrameAdapter
 from tiled.adapters.mapping import MapAdapter
 from tiled.adapters.utils import IndexersMixin, tree_repr
@@ -160,6 +161,9 @@ class WritingDataFrameAdapter:
     @property
     def specs(self):
         return self.doc.specs
+
+    def __getitem__(self, key):
+        return ArrayAdapter(self.dataframe_adapter.read([key])[key].values)
 
     def read(self, *args, **kwargs):
         return self.dataframe_adapter.read(*args, **kwargs)

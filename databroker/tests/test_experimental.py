@@ -78,6 +78,9 @@ def test_write_dataframe(tmpdir):
     result_dataframe = result.read()
 
     pandas.testing.assert_frame_equal(result_dataframe, test_dataframe)
+    # slicing into DataFrameClient returns ArrayClient
+    result_array = result["Column1"][:]
+    assert numpy.array_equal(result_array, dummy_array[0])
     assert result.metadata == metadata
     # TODO In the future this will be accessible via result.specs.
     assert result.item["attributes"]["specs"] == specs
