@@ -21,6 +21,8 @@ from tiled.structures.sparse import COOStructure
 
 from ..experimental.server_ext import MongoAdapter
 
+from ..experimental.schemas import DocumentRevision
+
 
 API_KEY = "secret"
 
@@ -300,7 +302,7 @@ def test_update_metadata(tmpdir):
         test_array, metadata={"scan_id": 1, "method": "A"}, specs=["SomeSpec"]
     )
 
-    new_arr_metadata = {"scan_id": 2, "method": "B"}
+    new_arr_metadata = {"scan_id": 2, "method": "A"}
     new_spec = ["AnotherSpec"]
     x.update_metadata(new_arr_metadata, new_spec)
 
@@ -309,6 +311,14 @@ def test_update_metadata(tmpdir):
 
     assert result.metadata == new_arr_metadata
     assert result.item["attributes"]["specs"] == new_spec
+
+    # Update metadata again to create another entry in revisions
+    x.update_metadata({"scan_id": 2, "method": "B"}, ["AnotherOtherSpec"])
+
+    assert DocumentRevision.from_json(result.metadata_revisions[0])
+    assert len(result.metadata_revisions) == len(result.metadata_revisions[:])
+    del result.metadata_revisions[0]
+    assert len(result.metadata_revisions[:]) == 1
 
     # Update metadata in dataframe client
     data = {
@@ -334,3 +344,10 @@ def test_update_metadata(tmpdir):
     assert result.metadata == new_df_metadata
     assert result.item["attributes"]["specs"] == new_spec
 
+    # Update metadata again to create another entry in revisions
+    y.update_metadata({"scan_id": 4, "method": "E"}, ["AnotherOtherSpec"])
+
+    assert DocumentRevision.from_json(result.metadata_revisions[0])
+    assert len(result.metadata_revisions) == len(result.metadata_revisions[:])
+    del result.metadata_revisions[0]
+    assert len(result.metadata_revisions[:]) == 1

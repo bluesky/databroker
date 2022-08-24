@@ -23,12 +23,18 @@ structure_association = {
 
 class BaseDocument(pydantic.BaseModel):
     key: str
-    structure_family: StructureFamily
-    structure: Union[ArrayStructure, DataFrameStructure, SparseStructure]
     metadata: Dict
     specs: List[str]
-    mimetype: str
     updated_at: datetime
+
+
+class Document(BaseDocument):
+    structure_family: StructureFamily
+    structure: Union[ArrayStructure, DataFrameStructure, SparseStructure]
+    mimetype: str
+    created_at: datetime
+    data_blob: Optional[bytes]
+    data_url: Optional[pydantic.AnyUrl]
 
     @pydantic.root_validator
     def validate_structure_matches_structure_family(cls, values):
@@ -67,12 +73,6 @@ class BaseDocument(pydantic.BaseModel):
             raise ValueError(f"{m_type} is not a valid mime type")
         return v
 
-
-class Document(BaseDocument):
-    created_at: datetime
-    data_blob: Optional[bytes]
-    data_url: Optional[pydantic.AnyUrl]
-
     @pydantic.root_validator
     def check_data_source(cls, values):
         # Making them optional and setting default values might help to meet these conditions
@@ -91,11 +91,18 @@ class DocumentRevision(BaseDocument):
     def from_document(cls, document, revision):
         return cls(
             key=document.key,
-            structure_family=document.structure_family,
-            structure=document.structure,
             metadata=document.metadata,
             specs=document.specs,
-            mimetype=document.mimetype,
             updated_at=document.updated_at,
             revision=revision,
+        )
+
+    @classmethod
+    def from_json(cls, json_doc):
+        return cls(
+            key=json_doc["key"],
+            metadata=json_doc["metadata"],
+            specs=json_doc["specs"],
+            updated_at=json_doc["updated_at"],
+            revision=json_doc["revision"],
         )

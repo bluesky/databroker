@@ -48,13 +48,51 @@ from .schemas import Document, DocumentRevision
 from sys import modules, platform
 
 
+class Revisions:
+    def __init__(self, collection, key):
+        self._collection = collection
+        self._key = key
+
+    def __len__(self):
+        return self._collection.count_documents(
+            {"key": self._key}
+        )  # maybe wrong MongoDB usage here...
+
+    def __getitem__(self, item_):
+        offset = item_.start
+        limit = item_.stop
+        if limit == -1:
+            return list(
+                self._collection.find({"key": self._key})
+                .sort("revision", 1)
+                .skip(offset)
+            )
+        return list(
+            self._collection.find({"key": self._key})
+            .sort("revision", 1)
+            .skip(offset)
+            .limit(limit)
+        )
+
+    def __delitem__(self, n):
+        self._collection.delete_one({"key": self._key, "revision": n})
+
+    def delete_all(self):
+        self._collection.delete_many({"key": self._key})
+
+    def last(self):
+        return self._collection.find_one({"key": self._key}, sort=[("revision", -1)])
+
+    def add_document(self, document):
+        return self._collection.insert_one(document)
+
+
 class WritingArrayAdapter:
     structure_family = "array"
 
-    # def __init__(self, collection, revisions, key):
     def __init__(self, database, key):
         self.collection = database["nodes"]
-        self.revisions = database["revisions"]
+        self.revisions = Revisions(database["revisions"], key)
         self.key = key
         self.deadline = 0
         assert self.doc.data_blob is None  # not implemented
@@ -141,36 +179,28 @@ class WritingArrayAdapter:
         self.array[slice_] = array
 
     def put_metadata(self, metadata, specs):
-
-        revisions_doc = self.revisions.find_one(
-            {"key": self.doc.key}, sort=[("revision", -1)]
-        )
-        if revisions_doc is not None:
-            revision = int(revisions_doc["revision"]) + 1
+        last_revision_doc = self.revisions.last()
+        if last_revision_doc is not None:
+            revision = int(last_revision_doc["revision"]) + 1
         else:
-            revision = 1
+            revision = 0
 
         validated_revision = DocumentRevision.from_document(self.doc, revision)
 
-        result = self.revisions.insert_one(validated_revision.dict())
-
+        result = self.revisions.add_document(validated_revision.dict())
         updated_at = datetime.now(tz=timezone.utc)
 
-        if metadata is None:
-            metadata = self.doc.metadata  # Metadata was not requested to be updated
+        to_set = {"updated_at": updated_at}
 
-        if specs is None:
-            specs = self.doc.specs  # Specs was not requested to be updated
+        if metadata is not None:
+            to_set["metadata"] = metadata
+
+        if specs is not None:
+            to_set["specs"] = specs
 
         result = self.collection.update_one(
             {"key": self.key},
-            {
-                "$set": {
-                    "metadata": metadata,
-                    "specs": specs,
-                    "updated_at": updated_at,
-                }
-            },
+            {"$set": to_set},
         )
 
         if result.matched_count != result.modified_count:
@@ -178,17 +208,17 @@ class WritingArrayAdapter:
 
     def delete(self):
         shutil.rmtree(safe_path(self.doc.data_url.path))
-        result = self.collection.delete_one({"key": self.doc.key})
+        result = self.collection.delete_one({"key": self.key})
         assert result.deleted_count == 1
+        self.revisions.delete_all()
 
 
 class WritingDataFrameAdapter:
     structure_family = "dataframe"
 
-    # def __init__(self, collection, revisions, key):
     def __init__(self, database, key):
         self.collection = database["nodes"]
-        self.revisions = database["revisions"]
+        self.revisions = Revisions(database["revisions"], key)
         self.key = key
         self.deadline = 0
         assert self.doc.data_blob is None  # not implemented
@@ -246,36 +276,28 @@ class WritingDataFrameAdapter:
         )
 
     def put_metadata(self, metadata, specs):
-
-        revisions_doc = self.revisions.find_one(
-            {"key": self.doc.key}, sort=[("revision", -1)]
-        )
-        if revisions_doc is not None:
-            revision = int(revisions_doc["revision"]) + 1
+        last_revision_doc = self.revisions.last()
+        if last_revision_doc is not None:
+            revision = int(last_revision_doc["revision"]) + 1
         else:
-            revision = 1
+            revision = 0
 
         validated_revision = DocumentRevision.from_document(self.doc, revision)
 
-        result = self.revisions.insert_one(validated_revision.dict())
-
+        result = self.revisions.add_document(validated_revision.dict())
         updated_at = datetime.now(tz=timezone.utc)
 
-        if len(metadata) == 0:
-            metadata = self.doc.metadata  # Metadata was not requested to be updated
+        to_set = {"updated_at": updated_at}
 
-        if len(specs) == 0:
-            specs = self.doc.specs  # Specs was not requested to be updated
+        if metadata is not None:
+            to_set["metadata"] = metadata
+
+        if specs is not None:
+            to_set["specs"] = specs
 
         result = self.collection.update_one(
             {"key": self.key},
-            {
-                "$set": {
-                    "metadata": metadata,
-                    "specs": specs,
-                    "updated_at": updated_at,
-                }
-            },
+            {"$set": to_set},
         )
 
         if result.matched_count != result.modified_count:
@@ -285,12 +307,12 @@ class WritingDataFrameAdapter:
         shutil.rmtree(safe_path(self.doc.data_url.path))
         result = self.collection.delete_one({"key": self.doc.key})
         assert result.deleted_count == 1
+        self.revisions.delete_all()
 
 
 class WritingCOOAdapter:
     structure_family = "sparse"
 
-    # def __init__(self, collection, revisions, key):
     def __init__(self, database, key):
         def load(filepath):
             import pandas
@@ -301,7 +323,7 @@ class WritingCOOAdapter:
             return coords, data
 
         self.collection = database["nodes"]
-        self.revisions = database["revisions"]
+        self.revisions = Revisions(database["revisions"], key)
         self.key = key
         self.deadline = 0
         assert self.doc.data_blob is None  # not implemented
@@ -381,36 +403,28 @@ class WritingCOOAdapter:
         )
 
     def put_metadata(self, metadata, specs):
-
-        revisions_doc = self.revisions.find_one(
-            {"key": self.doc.key}, sort=[("revision", -1)]
-        )
-        if revisions_doc is not None:
-            revision = int(revisions_doc["revision"]) + 1
+        last_revision_doc = self.revisions.last()
+        if last_revision_doc is not None:
+            revision = int(last_revision_doc["revision"]) + 1
         else:
-            revision = 1
+            revision = 0
 
         validated_revision = DocumentRevision.from_document(self.doc, revision)
 
-        result = self.revisions.insert_one(validated_revision.dict())
-
+        result = self.revisions.add_document(validated_revision.dict())
         updated_at = datetime.now(tz=timezone.utc)
 
-        if len(metadata) == 0:
-            metadata = self.doc.metadata  # Metadata was not requested to be updated
+        to_set = {"updated_at": updated_at}
 
-        if len(specs) == 0:
-            specs = self.doc.specs  # Specs was not requested to be updated
+        if metadata is not None:
+            to_set["metadata"] = metadata
+
+        if specs is not None:
+            to_set["specs"] = specs
 
         result = self.collection.update_one(
             {"key": self.key},
-            {
-                "$set": {
-                    "metadata": metadata,
-                    "specs": specs,
-                    "updated_at": updated_at,
-                }
-            },
+            {"$set": to_set},
         )
 
         if result.matched_count != result.modified_count:
@@ -420,6 +434,7 @@ class WritingCOOAdapter:
         shutil.rmtree(safe_path(self.doc.data_url.path))
         result = self.collection.delete_one({"key": self.doc.key})
         assert result.deleted_count == 1
+        self.revisions.delete_all()
 
 
 class MongoAdapter(collections.abc.Mapping, IndexersMixin):
