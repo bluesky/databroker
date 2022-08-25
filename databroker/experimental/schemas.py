@@ -1,5 +1,5 @@
 from typing import Dict, List, Optional, Union
-from datetime import datetime, timezone
+from datetime import datetime
 
 import pydantic
 import pydantic.generics

@@ -287,7 +287,7 @@ def test_write_sparse_chunked(tmpdir):
     assert result.specs == specs
 
 
-def test_update_metadata(tmpdir):
+def test_update_array_metadata(tmpdir):
 
     tree = MongoAdapter.from_mongomock(tmpdir)
 
@@ -320,6 +320,17 @@ def test_update_metadata(tmpdir):
     del result.metadata_revisions[0]
     assert len(result.metadata_revisions[:]) == 1
 
+
+def test_update_dataframe_metadata(tmpdir):
+
+    tree = MongoAdapter.from_mongomock(tmpdir)
+
+    client = from_tree(
+        tree, api_key=API_KEY, authentication={"single_user_api_key": API_KEY}
+    )
+
+    test_array = numpy.ones((5, 5))
+
     # Update metadata in dataframe client
     data = {
         "Column1": test_array[0],
@@ -336,6 +347,7 @@ def test_update_metadata(tmpdir):
     )
 
     new_df_metadata = {"scan_id": 4, "method": "D"}
+    new_spec = ["AnotherSpec"]
     y.update_metadata(new_df_metadata, new_spec)
 
     results = client.search(Key("scan_id") == 4)
