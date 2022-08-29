@@ -315,10 +315,17 @@ def test_update_array_metadata(tmpdir):
     # Update metadata again to create another entry in revisions
     x.update_metadata({"scan_id": 2, "method": "B"}, ["AnotherOtherSpec"])
 
-    assert DocumentRevision.from_json(result.metadata_revisions[0])
-    assert len(result.metadata_revisions) == len(result.metadata_revisions[:])
+    rev_document = {
+        "key": result.item["id"],
+        "revision": result.metadata_revisions[0]["data"][0]["revision"],
+    }
+    rev_document.update(result.metadata_revisions[0]["data"][0]["attributes"])
+    assert DocumentRevision.from_json(rev_document)
+
+    assert len(result.metadata_revisions) == len(result.metadata_revisions[:]["data"])
+
     del result.metadata_revisions[0]
-    assert len(result.metadata_revisions[:]) == 1
+    assert len(result.metadata_revisions[:]["data"]) == 1
 
 
 def test_update_dataframe_metadata(tmpdir):
@@ -359,7 +366,14 @@ def test_update_dataframe_metadata(tmpdir):
     # Update metadata again to create another entry in revisions
     y.update_metadata({"scan_id": 4, "method": "E"}, ["AnotherOtherSpec"])
 
-    assert DocumentRevision.from_json(result.metadata_revisions[0])
-    assert len(result.metadata_revisions) == len(result.metadata_revisions[:])
+    rev_document = {
+        "key": result.item["id"],
+        "revision": result.metadata_revisions[0]["data"][0]["revision"],
+    }
+    rev_document.update(result.metadata_revisions[0]["data"][0]["attributes"])
+    assert DocumentRevision.from_json(rev_document)
+
+    assert len(result.metadata_revisions) == len(result.metadata_revisions[:]["data"])
+
     del result.metadata_revisions[0]
-    assert len(result.metadata_revisions[:]) == 1
+    assert len(result.metadata_revisions[:]["data"]) == 1
