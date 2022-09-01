@@ -14,9 +14,9 @@ def temp():
     This is intended for testing, teaching, an demos. The data does not
     persistent. Do not use this for anything important.
     """
-    from .mongo_normalized import Catalog
-    from tiled.client import from_catalog
+    from .mongo_normalized import MongoAdapter
+    from tiled.client import from_tree
 
-    catalog = Catalog.from_mongomock()  # service-side Catalog
-    client = from_catalog(catalog)  # client-side Catalog
+    catalog = MongoAdapter.from_mongomock()  # service-side Catalog
+    client = from_tree(catalog)  # client-side Catalog
     return client
