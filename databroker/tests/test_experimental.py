@@ -306,26 +306,38 @@ def test_update_array_metadata(tmpdir):
     new_spec = ["AnotherSpec"]
     x.update_metadata(new_arr_metadata, new_spec)
 
+    # validate local data after update request
+    assert x.metadata == new_arr_metadata
+    assert x.item["attributes"]["specs"] == new_spec
+
+    # Update metadata again to create another entry in revisions
+    newer_arr_metadata = {"scan_id": 2, "method": "B"}
+    newer_spec = ["AnotherOtherSpec"]
+    x.update_metadata(newer_arr_metadata, newer_spec)
+
+    # Increase the size of revisions for additonal testing
+    latest_arr_metadata = {"scan_id": 2, "method": "C"}
+    x.update_metadata(latest_arr_metadata)
+
     results = client.search(Key("scan_id") == 2)
     result = results.values().first()
 
-    assert result.metadata == new_arr_metadata
-    assert result.item["attributes"]["specs"] == new_spec
-
-    # Update metadata again to create another entry in revisions
-    x.update_metadata({"scan_id": 2, "method": "B"}, ["AnotherOtherSpec"])
+    # validate remote data after update request
+    assert result.metadata == latest_arr_metadata
+    assert result.item["attributes"]["specs"] == newer_spec
 
     rev_document = {
         "key": result.item["id"],
-        "revision": result.metadata_revisions[0]["data"][0]["revision"],
+        "revision": result.metadata_revisions[0][0]["revision"],
     }
-    rev_document.update(result.metadata_revisions[0]["data"][0]["attributes"])
+    rev_document.update(result.metadata_revisions[0][0]["attributes"])
     assert DocumentRevision.from_json(rev_document)
 
-    assert len(result.metadata_revisions) == len(result.metadata_revisions[:]["data"])
+    assert len(result.metadata_revisions[0:2]) == 2
+    assert len(result.metadata_revisions) == len(result.metadata_revisions[:])
 
-    del result.metadata_revisions[0]
-    assert len(result.metadata_revisions[:]["data"]) == 1
+    result.metadata_revisions.delete_revision(0)
+    assert len(result.metadata_revisions[:]) == 2
 
 
 def test_update_dataframe_metadata(tmpdir):
@@ -350,30 +362,42 @@ def test_update_dataframe_metadata(tmpdir):
     test_dataframe = pandas.DataFrame(data)
 
     y = client.write_dataframe(
-        test_dataframe, metadata={"scan_id": 3, "method": "C"}, specs=["SomeSpec"]
+        test_dataframe, metadata={"scan_id": 1, "method": "A"}, specs=["SomeSpec"]
     )
 
-    new_df_metadata = {"scan_id": 4, "method": "D"}
+    new_df_metadata = {"scan_id": 2, "method": "A"}
     new_spec = ["AnotherSpec"]
     y.update_metadata(new_df_metadata, new_spec)
 
-    results = client.search(Key("scan_id") == 4)
-    result = results.values().first()
-
-    assert result.metadata == new_df_metadata
-    assert result.item["attributes"]["specs"] == new_spec
+    # validate local data after update request
+    assert y.metadata == new_df_metadata
+    assert y.item["attributes"]["specs"] == new_spec
 
     # Update metadata again to create another entry in revisions
-    y.update_metadata({"scan_id": 4, "method": "E"}, ["AnotherOtherSpec"])
+    newer_df_metadata = {"scan_id": 2, "method": "B"}
+    newer_spec = ["AnotherOtherSpec"]
+    y.update_metadata(newer_df_metadata, newer_spec)
+
+    # Increase the size of revisions for additonal testing
+    latest_arr_metadata = {"scan_id": 2, "method": "C"}
+    y.update_metadata(latest_arr_metadata)
+
+    results = client.search(Key("scan_id") == 2)
+    result = results.values().first()
+
+    # validate remote data after update request
+    assert result.metadata == latest_arr_metadata
+    assert result.item["attributes"]["specs"] == newer_spec
 
     rev_document = {
         "key": result.item["id"],
-        "revision": result.metadata_revisions[0]["data"][0]["revision"],
+        "revision": result.metadata_revisions[0][0]["revision"],
     }
-    rev_document.update(result.metadata_revisions[0]["data"][0]["attributes"])
+    rev_document.update(result.metadata_revisions[0][0]["attributes"])
     assert DocumentRevision.from_json(rev_document)
 
-    assert len(result.metadata_revisions) == len(result.metadata_revisions[:]["data"])
+    assert len(result.metadata_revisions[0:2]) == 2
+    assert len(result.metadata_revisions) == len(result.metadata_revisions[:])
 
-    del result.metadata_revisions[0]
-    assert len(result.metadata_revisions[:]["data"]) == 1
+    result.metadata_revisions.delete_revision(0)
+    assert len(result.metadata_revisions[:]) == 2

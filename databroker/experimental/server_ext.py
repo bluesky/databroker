@@ -54,9 +54,7 @@ class Revisions:
         self._key = key
 
     def __len__(self):
-        return self._collection.count_documents(
-            {"key": self._key}
-        )  # maybe wrong MongoDB usage here...
+        return self._collection.count_documents({"key": self._key})
 
     def __getitem__(self, item_):
         offset = item_.start
@@ -117,16 +115,14 @@ class WritingArrayAdapter:
     def doc(self):
         now = time.monotonic()
         if now > self.deadline:
-            self._doc = Document(
-                **self.collection.find_one({"key": self.key})
-            )  # run query
+            self._doc = Document(**self.collection.find_one({"key": self.key}))
             self.deadline = now + 0.1  # In seconds
 
         return self._doc
 
     @property
     def structure(self):
-        return ArrayStructure.from_json(self.doc.structure)
+        return self.doc.structure
 
     @property
     def metadata(self):
@@ -247,7 +243,7 @@ class WritingDataFrameAdapter:
 
     @property
     def structure(self):
-        return DataFrameStructure.from_json(self.doc.structure)
+        return self.doc.structure
 
     @property
     def metadata(self):
@@ -391,7 +387,7 @@ class WritingCOOAdapter:
         return arr
 
     def structure(self):
-        return COOStructure(**self.doc.structure.dict())
+        return self.doc.structure
 
     def put_data(self, body, block=None):
         if block is None:
@@ -558,6 +554,8 @@ class MongoAdapter(collections.abc.Mapping, IndexersMixin):
         return key
 
     def create_indexes(self):
+        self.collection.create_index([("key", pymongo.ASCENDING)], unique=True)
+
         self.revision_coll.create_index(
             [("key", pymongo.ASCENDING), ("revision", pymongo.DESCENDING)], unique=True
         )
