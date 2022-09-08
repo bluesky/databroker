@@ -122,7 +122,9 @@ class WritingArrayAdapter:
 
     @property
     def structure(self):
-        return self.doc.structure
+        # Convert pydantic implementation to dataclass implemenetation
+        # expected by server.
+        return ArrayStructure(**self.doc.structure.dict())
 
     @property
     def metadata(self):
@@ -243,7 +245,9 @@ class WritingDataFrameAdapter:
 
     @property
     def structure(self):
-        return self.doc.structure
+        # Convert pydantic implementation to dataclass implemenetation
+        # expected by server.
+        return DataFrameStructure(**self.doc.structure.dict())
 
     @property
     def metadata(self):
@@ -387,7 +391,9 @@ class WritingCOOAdapter:
         return arr
 
     def structure(self):
-        return self.doc.structure
+        # Convert pydantic implementation to dataclass implemenetation
+        # expected by server.
+        return COOStructure(**self.doc.structure.dict())
 
     def put_data(self, body, block=None):
         if block is None:
