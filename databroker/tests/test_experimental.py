@@ -328,9 +328,9 @@ def test_update_array_metadata(tmpdir):
 
     rev_document = {
         "key": result.item["id"],
-        "revision": result.metadata_revisions[0][0]["revision"],
+        "revision": result.metadata_revisions[0]["revision"],
     }
-    rev_document.update(result.metadata_revisions[0][0]["attributes"])
+    rev_document.update(result.metadata_revisions[0]["attributes"])
     assert DocumentRevision.from_json(rev_document)
 
     assert len(result.metadata_revisions[0:2]) == 2
@@ -391,9 +391,9 @@ def test_update_dataframe_metadata(tmpdir):
 
     rev_document = {
         "key": result.item["id"],
-        "revision": result.metadata_revisions[0][0]["revision"],
+        "revision": result.metadata_revisions[0]["revision"],
     }
-    rev_document.update(result.metadata_revisions[0][0]["attributes"])
+    rev_document.update(result.metadata_revisions[0]["attributes"])
     assert DocumentRevision.from_json(rev_document)
 
     assert len(result.metadata_revisions[0:2]) == 2

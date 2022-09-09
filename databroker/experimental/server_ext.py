@@ -34,13 +34,15 @@ from tiled.queries import (
 from tiled.query_registration import QueryTranslationRegistry
 
 from tiled.structures.core import StructureFamily
-from tiled.structures.array import ArrayMacroStructure, BuiltinDtype
-from tiled.structures.dataframe import DataFrameMacroStructure, DataFrameMicroStructure
+from tiled.structures.array import ArrayStructure, ArrayMacroStructure, BuiltinDtype
+from tiled.structures.dataframe import (
+    DataFrameStructure,
+    DataFrameMacroStructure,
+    DataFrameMicroStructure,
+)
 from tiled.structures.sparse import COOStructure
 from tiled.serialization.dataframe import deserialize_arrow
 
-from tiled.server.pydantic_array import ArrayStructure
-from tiled.server.pydantic_dataframe import DataFrameStructure
 from tiled.utils import APACHE_ARROW_FILE_MIME_TYPE, UNCHANGED, OneShotCachedMap
 
 from .schemas import Document, DocumentRevision
@@ -58,13 +60,7 @@ class Revisions:
 
     def __getitem__(self, item_):
         offset = item_.start
-        limit = item_.stop
-        if limit == -1:
-            return list(
-                self._collection.find({"key": self._key})
-                .sort("revision", 1)
-                .skip(offset)
-            )
+        limit = item_.stop - offset
         return list(
             self._collection.find({"key": self._key})
             .sort("revision", 1)
@@ -72,7 +68,7 @@ class Revisions:
             .limit(limit)
         )
 
-    def __delitem__(self, n):
+    def delete_revision(self, n):
         self._collection.delete_one({"key": self._key, "revision": n})
 
     def delete_all(self):
