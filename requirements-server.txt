@@ -10,7 +10,7 @@ pydantic
 pymongo
 pytz
 starlette
-tiled[server] >=0.1.0a67
+tiled[server] >=0.1.0a74
 toolz
 tzlocal
 zarr
