@@ -4,7 +4,9 @@ import itertools
 import os
 import shutil
 import uuid
+import time
 from pathlib import Path
+from datetime import datetime, timezone
 
 import dask.dataframe
 import numpy
@@ -33,31 +35,66 @@ from tiled.queries import (
 from tiled.query_registration import QueryTranslationRegistry
 
 from tiled.structures.core import StructureFamily
-from tiled.structures.array import ArrayMacroStructure, BuiltinDtype
-from tiled.structures.dataframe import DataFrameMacroStructure, DataFrameMicroStructure
+from tiled.structures.array import ArrayStructure, ArrayMacroStructure, BuiltinDtype
+from tiled.structures.dataframe import (
+    DataFrameStructure,
+    DataFrameMacroStructure,
+    DataFrameMicroStructure,
+)
 from tiled.structures.sparse import COOStructure
 from tiled.serialization.dataframe import deserialize_arrow
 
-from tiled.server.pydantic_array import ArrayStructure
-from tiled.server.pydantic_dataframe import DataFrameStructure
 from tiled.utils import APACHE_ARROW_FILE_MIME_TYPE, UNCHANGED, OneShotCachedMap
 
-from .schemas import Document
+from .schemas import Document, DocumentRevision
 
 from sys import modules, platform
+
+
+class Revisions:
+    def __init__(self, collection, key):
+        self._collection = collection
+        self._key = key
+
+    def __len__(self):
+        return self._collection.count_documents({"key": self._key})
+
+    def __getitem__(self, item_):
+        offset = item_.start
+        limit = item_.stop - offset
+        return list(
+            self._collection.find({"key": self._key})
+            .sort("revision", 1)
+            .skip(offset)
+            .limit(limit)
+        )
+
+    def delete_revision(self, n):
+        self._collection.delete_one({"key": self._key, "revision": n})
+
+    def delete_all(self):
+        self._collection.delete_many({"key": self._key})
+
+    def last(self):
+        return self._collection.find_one({"key": self._key}, sort=[("revision", -1)])
+
+    def add_document(self, document):
+        return self._collection.insert_one(document)
 
 
 class WritingArrayAdapter:
     structure_family = "array"
 
-    def __init__(self, collection, doc):
-        self.collection = collection
-        self.doc = doc
+    def __init__(self, database, key):
+        self.collection = database["nodes"]
+        self.revisions = Revisions(database["revisions"], key)
+        self.key = key
+        self.deadline = 0
         assert self.doc.data_blob is None  # not implemented
         self.array = zarr.open_array(str(safe_path(self.doc.data_url.path)), "r+")
 
     @classmethod
-    def new(cls, collection, doc):
+    def new(cls, database, doc):
         # Zarr requires evently-sized chunks within each dimension.
         # Use the first chunk along each dimension.
         chunks = tuple(dim[0] for dim in doc.structure.macro.chunks)
@@ -69,11 +106,22 @@ class WritingArrayAdapter:
             chunks=chunks,
             dtype=doc.structure.micro.to_numpy_dtype(),
         )
-        return cls(collection, doc)
+        return cls(database, doc.key)
+
+    @property
+    def doc(self):
+        now = time.monotonic()
+        if now > self.deadline:
+            self._doc = Document(**self.collection.find_one({"key": self.key}))
+            self.deadline = now + 0.1  # In seconds
+
+        return self._doc
 
     @property
     def structure(self):
-        return ArrayStructure.from_json(self.doc.structure)
+        # Convert pydantic implementation to dataclass implemenetation
+        # expected by server.
+        return ArrayStructure(**self.doc.structure.dict())
 
     @property
     def metadata(self):
@@ -125,18 +173,49 @@ class WritingArrayAdapter:
         ).reshape(shape)
         self.array[slice_] = array
 
+    def put_metadata(self, metadata, specs):
+        last_revision_doc = self.revisions.last()
+        if last_revision_doc is not None:
+            revision = int(last_revision_doc["revision"]) + 1
+        else:
+            revision = 0
+
+        validated_revision = DocumentRevision.from_document(self.doc, revision)
+
+        result = self.revisions.add_document(validated_revision.dict())
+        updated_at = datetime.now(tz=timezone.utc)
+
+        to_set = {"updated_at": updated_at}
+
+        if metadata is not None:
+            to_set["metadata"] = metadata
+
+        if specs is not None:
+            to_set["specs"] = specs
+
+        result = self.collection.update_one(
+            {"key": self.key},
+            {"$set": to_set},
+        )
+
+        if result.matched_count != result.modified_count:
+            raise RuntimeError("Error while writing to database")
+
     def delete(self):
         shutil.rmtree(safe_path(self.doc.data_url.path))
-        result = self.collection.delete_one({"key": self.doc.key})
+        result = self.collection.delete_one({"key": self.key})
         assert result.deleted_count == 1
+        self.revisions.delete_all()
 
 
 class WritingDataFrameAdapter:
     structure_family = "dataframe"
 
-    def __init__(self, collection, doc):
-        self.collection = collection
-        self.doc = doc
+    def __init__(self, database, key):
+        self.collection = database["nodes"]
+        self.revisions = Revisions(database["revisions"], key)
+        self.key = key
+        self.deadline = 0
         assert self.doc.data_blob is None  # not implemented
 
     @property
@@ -146,13 +225,26 @@ class WritingDataFrameAdapter:
         )
 
     @classmethod
-    def new(cls, collection, doc):
+    def new(cls, database, doc):
         safe_path(doc.data_url.path).mkdir(parents=True)
-        return cls(collection, doc)
+        return cls(database, doc.key)
+
+    @property
+    def doc(self):
+        now = time.monotonic()
+        if now > self.deadline:
+            self._doc = Document(
+                **self.collection.find_one({"key": self.key})
+            )  # run query
+            self.deadline = now + 0.1  # In seconds
+
+        return self._doc
 
     @property
     def structure(self):
-        return DataFrameStructure.from_json(self.doc.structure)
+        # Convert pydantic implementation to dataclass implemenetation
+        # expected by server.
+        return DataFrameStructure(**self.doc.structure.dict())
 
     @property
     def metadata(self):
@@ -183,16 +275,45 @@ class WritingDataFrameAdapter:
             safe_path(self.doc.data_url.path) / f"partition-{partition}.parquet"
         )
 
+    def put_metadata(self, metadata, specs):
+        last_revision_doc = self.revisions.last()
+        if last_revision_doc is not None:
+            revision = int(last_revision_doc["revision"]) + 1
+        else:
+            revision = 0
+
+        validated_revision = DocumentRevision.from_document(self.doc, revision)
+
+        result = self.revisions.add_document(validated_revision.dict())
+        updated_at = datetime.now(tz=timezone.utc)
+
+        to_set = {"updated_at": updated_at}
+
+        if metadata is not None:
+            to_set["metadata"] = metadata
+
+        if specs is not None:
+            to_set["specs"] = specs
+
+        result = self.collection.update_one(
+            {"key": self.key},
+            {"$set": to_set},
+        )
+
+        if result.matched_count != result.modified_count:
+            raise RuntimeError("Error while writing to database")
+
     def delete(self):
         shutil.rmtree(safe_path(self.doc.data_url.path))
         result = self.collection.delete_one({"key": self.doc.key})
         assert result.deleted_count == 1
+        self.revisions.delete_all()
 
 
 class WritingCOOAdapter:
     structure_family = "sparse"
 
-    def __init__(self, collection, doc):
+    def __init__(self, database, key):
         def load(filepath):
             import pandas
 
@@ -201,8 +322,10 @@ class WritingCOOAdapter:
             data = df["data"].values
             return coords, data
 
-        self.collection = collection
-        self.doc = doc
+        self.collection = database["nodes"]
+        self.revisions = Revisions(database["revisions"], key)
+        self.key = key
+        self.deadline = 0
         assert self.doc.data_blob is None  # not implemented
         num_blocks = (range(len(n)) for n in self.doc.structure.chunks)
         directory = safe_path(self.doc.data_url.path)
@@ -213,10 +336,21 @@ class WritingCOOAdapter:
                 mapping[block] = lambda filepath=filepath: load(filepath)
         self.blocks = OneShotCachedMap(mapping)
 
+    @property
+    def doc(self):
+        now = time.monotonic()
+        if now > self.deadline:
+            self._doc = Document(
+                **self.collection.find_one({"key": self.key})
+            )  # run query
+            self.deadline = now + 0.1  # In seconds
+
+        return self._doc
+
     @classmethod
-    def new(cls, collection, doc):
+    def new(cls, database, doc):
         safe_path(doc.data_url.path).mkdir(parents=True)
-        return cls(collection, doc)
+        return cls(database, doc.key)
 
     @property
     def metadata(self):
@@ -257,6 +391,8 @@ class WritingCOOAdapter:
         return arr
 
     def structure(self):
+        # Convert pydantic implementation to dataclass implemenetation
+        # expected by server.
         return COOStructure(**self.doc.structure.dict())
 
     def put_data(self, body, block=None):
@@ -268,10 +404,39 @@ class WritingCOOAdapter:
             / f"block-{'.'.join(map(str, block))}.parquet"
         )
 
+    def put_metadata(self, metadata, specs):
+        last_revision_doc = self.revisions.last()
+        if last_revision_doc is not None:
+            revision = int(last_revision_doc["revision"]) + 1
+        else:
+            revision = 0
+
+        validated_revision = DocumentRevision.from_document(self.doc, revision)
+
+        result = self.revisions.add_document(validated_revision.dict())
+        updated_at = datetime.now(tz=timezone.utc)
+
+        to_set = {"updated_at": updated_at}
+
+        if metadata is not None:
+            to_set["metadata"] = metadata
+
+        if specs is not None:
+            to_set["specs"] = specs
+
+        result = self.collection.update_one(
+            {"key": self.key},
+            {"$set": to_set},
+        )
+
+        if result.matched_count != result.modified_count:
+            raise RuntimeError("Error while writing to database")
+
     def delete(self):
         shutil.rmtree(safe_path(self.doc.data_url.path))
         result = self.collection.delete_one({"key": self.doc.key})
         assert result.deleted_count == 1
+        self.revisions.delete_all()
 
 
 class MongoAdapter(collections.abc.Mapping, IndexersMixin):
@@ -292,6 +457,7 @@ class MongoAdapter(collections.abc.Mapping, IndexersMixin):
     ):
         self.database = database
         self.collection = database["nodes"]
+        self.revision_coll = database["revisions"]
         self.directory = Path(directory).resolve()
         if not self.directory.exists():
             raise ValueError(f"Directory {self.directory} does not exist.")
@@ -310,6 +476,11 @@ class MongoAdapter(collections.abc.Mapping, IndexersMixin):
 
     @classmethod
     def from_uri(cls, uri, directory, *, metadata=None):
+        """
+        When calling this method, call create_index() from its instance to define the
+        unique indexes in the revision collection
+
+        """
         if not pymongo.uri_parser.parse_uri(uri)["database"]:
             raise ValueError(
                 f"Invalid URI: {uri!r} Did you forget to include a database?"
@@ -326,7 +497,10 @@ class MongoAdapter(collections.abc.Mapping, IndexersMixin):
         mongo_client = mongomock.MongoClient()
         database = mongo_client[db_name]
 
-        return cls(database=database, directory=directory, metadata=metadata)
+        mongo_adapter = cls(database=database, directory=directory, metadata=metadata)
+        mongo_adapter.create_indexes()
+
+        return mongo_adapter
 
     def new_variation(
         self,
@@ -364,6 +538,7 @@ class MongoAdapter(collections.abc.Mapping, IndexersMixin):
         }
 
         key = str(uuid.uuid4())
+        created_date = datetime.now(tz=timezone.utc)
 
         validated_document = Document(
             key=key,
@@ -373,14 +548,23 @@ class MongoAdapter(collections.abc.Mapping, IndexersMixin):
             specs=specs,
             mimetype=mime_structure_association[structure_family],
             data_url=f"file://localhost/{self.directory}/{key[:2]}/{key}",
+            created_at=created_date,
+            updated_at=created_date,
         )
 
         _adapter_class_by_family[structure_family]
         self.collection.insert_one(validated_document.dict())
         _adapter_class_by_family[structure_family].new(
-            self.collection, validated_document
+            self.database, validated_document
         )
         return key
+
+    def create_indexes(self):
+        self.collection.create_index([("key", pymongo.ASCENDING)], unique=True)
+
+        self.revision_coll.create_index(
+            [("key", pymongo.ASCENDING), ("revision", pymongo.DESCENDING)], unique=True
+        )
 
     def authenticated_as(self, identity):
         if self.principal is not None:
@@ -403,7 +587,7 @@ class MongoAdapter(collections.abc.Mapping, IndexersMixin):
             raise KeyError(key)
 
         class_ = _adapter_class_by_family[StructureFamily(doc["structure_family"])]
-        return class_(self.collection, Document(**doc))
+        return class_(self.database, key)
 
     def __iter__(self):
         # TODO Apply pagination, as we do in Databroker.
@@ -478,7 +662,7 @@ class MongoAdapter(collections.abc.Mapping, IndexersMixin):
             limit=limit,
         ):
             class_ = _adapter_class_by_family[StructureFamily(doc["structure_family"])]
-            yield doc["key"], class_(self.collection, Document(**doc))
+            yield doc["key"], class_(self.database, doc["key"])
 
     def apply_mongo_query(self, query):
         return self.new_variation(

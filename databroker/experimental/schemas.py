@@ -1,4 +1,5 @@
 from typing import Dict, List, Optional, Union
+from datetime import datetime
 
 import pydantic
 import pydantic.generics
@@ -20,13 +21,18 @@ structure_association = {
 }
 
 
-class Document(pydantic.BaseModel):
+class BaseDocument(pydantic.BaseModel):
     key: str
-    structure_family: StructureFamily
-    structure: Union[ArrayStructure, DataFrameStructure, SparseStructure]
     metadata: Dict
     specs: List[str]
+    updated_at: datetime
+
+
+class Document(BaseDocument):
+    structure_family: StructureFamily
+    structure: Union[ArrayStructure, DataFrameStructure, SparseStructure]
     mimetype: str
+    created_at: datetime
     data_blob: Optional[bytes]
     data_url: Optional[pydantic.AnyUrl]
 
@@ -42,16 +48,6 @@ class Document(pydantic.BaseModel):
         elif not isinstance(actual_structure, expected_structure_type):
             raise Exception(
                 "The expected structure type does not match the received structure type"
-            )
-        return values
-
-    @pydantic.root_validator
-    def check_data_source(cls, values):
-        # Making them optional and setting default values might help to meet these conditions
-        # with the current data types without getting any conflicts
-        if values.get("data_blob") is not None and values.get("data_url") is not None:
-            raise ValueError(
-                "Not Valid: data_blob and data_url contain values. Use just one"
             )
         return values
 
@@ -76,3 +72,37 @@ class Document(pydantic.BaseModel):
         if m_type not in mime_type_list:
             raise ValueError(f"{m_type} is not a valid mime type")
         return v
+
+    @pydantic.root_validator
+    def check_data_source(cls, values):
+        # Making them optional and setting default values might help to meet these conditions
+        # with the current data types without getting any conflicts
+        if values.get("data_blob") is not None and values.get("data_url") is not None:
+            raise ValueError(
+                "Not Valid: data_blob and data_url contain values. Use just one"
+            )
+        return values
+
+
+class DocumentRevision(BaseDocument):
+    revision: int
+
+    @classmethod
+    def from_document(cls, document, revision):
+        return cls(
+            key=document.key,
+            metadata=document.metadata,
+            specs=document.specs,
+            updated_at=document.updated_at,
+            revision=revision,
+        )
+
+    @classmethod
+    def from_json(cls, json_doc):
+        return cls(
+            key=json_doc["key"],
+            metadata=json_doc["metadata"],
+            specs=json_doc["specs"],
+            updated_at=json_doc["updated_at"],
+            revision=json_doc["revision"],
+        )

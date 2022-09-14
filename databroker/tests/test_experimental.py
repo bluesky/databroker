@@ -21,6 +21,8 @@ from tiled.structures.sparse import COOStructure
 
 from ..experimental.server_ext import MongoAdapter
 
+from ..experimental.schemas import DocumentRevision
+
 
 API_KEY = "secret"
 
@@ -160,7 +162,7 @@ def test_delete(tmpdir):
     test_dataframe = pandas.DataFrame(data)
 
     x = client.write_dataframe(
-        test_dataframe, metadata={"scan_id": 1, "method": "A"}, specs=["BlueskyNode"]
+        test_dataframe, metadata={"scan_id": 1, "method": "A"}, specs=["SomeSpec"]
     )
 
     del client[x.item["id"]]
@@ -171,7 +173,7 @@ def test_delete(tmpdir):
     test_array = numpy.ones((5, 5))
 
     y = client.write_array(
-        test_array, metadata={"scan_id": 1, "method": "A"}, specs=["BlueskyNode"]
+        test_array, metadata={"scan_id": 1, "method": "A"}, specs=["SomeSpec"]
     )
 
     del client[y.item["id"]]
@@ -286,3 +288,119 @@ def test_write_sparse_chunked(tmpdir):
     # numpy.testing.assert_equal(result_array, sparse.COO(coords=[0, 1, ]))
     assert result.metadata == metadata
     assert result.specs == specs
+
+
+def test_update_array_metadata(tmpdir):
+
+    tree = MongoAdapter.from_mongomock(tmpdir)
+
+    client = from_tree(
+        tree, api_key=API_KEY, authentication={"single_user_api_key": API_KEY}
+    )
+
+    # Update metadata in array client
+    test_array = numpy.ones((5, 5))
+
+    x = client.write_array(
+        test_array, metadata={"scan_id": 1, "method": "A"}, specs=["SomeSpec"]
+    )
+
+    new_arr_metadata = {"scan_id": 2, "method": "A"}
+    new_spec = ["AnotherSpec"]
+    x.update_metadata(new_arr_metadata, new_spec)
+
+    # validate local data after update request
+    assert x.metadata == new_arr_metadata
+    assert x.item["attributes"]["specs"] == new_spec
+
+    # Update metadata again to create another entry in revisions
+    newer_arr_metadata = {"scan_id": 2, "method": "B"}
+    newer_spec = ["AnotherOtherSpec"]
+    x.update_metadata(newer_arr_metadata, newer_spec)
+
+    # Increase the size of revisions for additonal testing
+    latest_arr_metadata = {"scan_id": 2, "method": "C"}
+    x.update_metadata(latest_arr_metadata)
+
+    results = client.search(Key("scan_id") == 2)
+    result = results.values().first()
+
+    # validate remote data after update request
+    assert result.metadata == latest_arr_metadata
+    assert result.item["attributes"]["specs"] == newer_spec
+
+    rev_document = {
+        "key": result.item["id"],
+        "revision": result.metadata_revisions[0]["revision"],
+    }
+    rev_document.update(result.metadata_revisions[0]["attributes"])
+    assert DocumentRevision.from_json(rev_document)
+
+    assert len(result.metadata_revisions[0:2]) == 2
+    assert len(result.metadata_revisions) == len(result.metadata_revisions[:])
+
+    result.metadata_revisions.delete_revision(0)
+    assert len(result.metadata_revisions[:]) == 2
+
+
+def test_update_dataframe_metadata(tmpdir):
+
+    tree = MongoAdapter.from_mongomock(tmpdir)
+
+    client = from_tree(
+        tree, api_key=API_KEY, authentication={"single_user_api_key": API_KEY}
+    )
+
+    test_array = numpy.ones((5, 5))
+
+    # Update metadata in dataframe client
+    data = {
+        "Column1": test_array[0],
+        "Column2": test_array[1],
+        "Column3": test_array[2],
+        "Column4": test_array[3],
+        "Column5": test_array[4],
+    }
+
+    test_dataframe = pandas.DataFrame(data)
+
+    y = client.write_dataframe(
+        test_dataframe, metadata={"scan_id": 1, "method": "A"}, specs=["SomeSpec"]
+    )
+
+    new_df_metadata = {"scan_id": 2, "method": "A"}
+    new_spec = ["AnotherSpec"]
+    y.update_metadata(new_df_metadata, new_spec)
+
+    # validate local data after update request
+    assert y.metadata == new_df_metadata
+    assert y.item["attributes"]["specs"] == new_spec
+
+    # Update metadata again to create another entry in revisions
+    newer_df_metadata = {"scan_id": 2, "method": "B"}
+    newer_spec = ["AnotherOtherSpec"]
+    y.update_metadata(newer_df_metadata, newer_spec)
+
+    # Increase the size of revisions for additonal testing
+    latest_arr_metadata = {"scan_id": 2, "method": "C"}
+    y.update_metadata(latest_arr_metadata)
+
+    results = client.search(Key("scan_id") == 2)
+    result = results.values().first()
+
+    # validate remote data after update request
+    assert result.metadata == latest_arr_metadata
+    assert result.item["attributes"]["specs"] == newer_spec
+
+    rev_document = {
+        "key": result.item["id"],
+        "revision": result.metadata_revisions[0]["revision"],
+    }
+    rev_document.update(result.metadata_revisions[0]["attributes"])
+    assert DocumentRevision.from_json(rev_document)
+
+    assert len(result.metadata_revisions[0:2]) == 2
+    assert len(result.metadata_revisions) == len(result.metadata_revisions[:])
+
+    result.metadata_revisions.delete_revision(0)
+    assert len(result.metadata_revisions[:]) == 2
