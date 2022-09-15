@@ -1044,7 +1044,7 @@ class Header:
         """
         if not fill:
             raise ValueError("Only fill=True is now supported by the data(...) method.")
-        for item in self._run[stream_name]["data"][field][:].data:
+        for item in self._run[stream_name]["data"][field][:]:
             yield item
 
     def stream(self, *args, **kwargs):
