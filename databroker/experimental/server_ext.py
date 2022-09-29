@@ -79,7 +79,7 @@ class Revisions:
         return self._collection.find_one({"key": self._key}, sort=[("revision", -1)])
 
     def add_document(self, document):
-        return self._collection.insert_one(document)
+        return self._collection.insert_one(document.dict())
 
 
 class WritingArrayAdapter:
@@ -131,6 +131,10 @@ class WritingArrayAdapter:
     def specs(self):
         return self.doc.specs
 
+    @property
+    def references(self):
+        return self.doc.references
+
     def read(self, slice=None):
         # Trim overflow because Zarr always has equal-sized chunks.
         arr = self.array[
@@ -173,7 +177,7 @@ class WritingArrayAdapter:
         ).reshape(shape)
         self.array[slice_] = array
 
-    def put_metadata(self, metadata, specs):
+    def put_metadata(self, metadata, specs, references):
         last_revision_doc = self.revisions.last()
         if last_revision_doc is not None:
             revision = int(last_revision_doc["revision"]) + 1
@@ -182,7 +186,7 @@ class WritingArrayAdapter:
 
         validated_revision = DocumentRevision.from_document(self.doc, revision)
 
-        result = self.revisions.add_document(validated_revision.dict())
+        self.revisions.add_document(validated_revision)
         updated_at = datetime.now(tz=timezone.utc)
 
         to_set = {"updated_at": updated_at}
@@ -192,6 +196,10 @@ class WritingArrayAdapter:
 
         if specs is not None:
             to_set["specs"] = specs
+
+        if references is not None:
+            references_dict = [item.dict() for item in references]
+            to_set["references"] = references_dict
 
         result = self.collection.update_one(
             {"key": self.key},
@@ -254,6 +262,10 @@ class WritingDataFrameAdapter:
     def specs(self):
         return self.doc.specs
 
+    @property
+    def references(self):
+        return self.doc.references
+
     def __getitem__(self, key):
         return ArrayAdapter(self.dataframe_adapter.read([key])[key].values)
 
@@ -275,7 +287,7 @@ class WritingDataFrameAdapter:
             safe_path(self.doc.data_url.path) / f"partition-{partition}.parquet"
         )
 
-    def put_metadata(self, metadata, specs):
+    def put_metadata(self, metadata, specs, references):
         last_revision_doc = self.revisions.last()
         if last_revision_doc is not None:
             revision = int(last_revision_doc["revision"]) + 1
@@ -284,7 +296,7 @@ class WritingDataFrameAdapter:
 
         validated_revision = DocumentRevision.from_document(self.doc, revision)
 
-        result = self.revisions.add_document(validated_revision.dict())
+        result = self.revisions.add_document(validated_revision)
         updated_at = datetime.now(tz=timezone.utc)
 
         to_set = {"updated_at": updated_at}
@@ -294,6 +306,10 @@ class WritingDataFrameAdapter:
 
         if specs is not None:
             to_set["specs"] = specs
+
+        if references is not None:
+            references_dict = [item.dict() for item in references]
+            to_set["references"] = references_dict
 
         result = self.collection.update_one(
             {"key": self.key},
@@ -360,6 +376,10 @@ class WritingCOOAdapter:
     def specs(self):
         return self.doc.specs
 
+    @property
+    def references(self):
+        return self.doc.references
+
     def read_block(self, block, slice=None):
         coords, data = self.blocks[block]
         _, shape = slice_and_shape_from_block_and_chunks(
@@ -404,7 +424,7 @@ class WritingCOOAdapter:
             / f"block-{'.'.join(map(str, block))}.parquet"
         )
 
-    def put_metadata(self, metadata, specs):
+    def put_metadata(self, metadata, specs, references):
         last_revision_doc = self.revisions.last()
         if last_revision_doc is not None:
             revision = int(last_revision_doc["revision"]) + 1
@@ -413,7 +433,7 @@ class WritingCOOAdapter:
 
         validated_revision = DocumentRevision.from_document(self.doc, revision)
 
-        result = self.revisions.add_document(validated_revision.dict())
+        result = self.revisions.add_document(validated_revision)
         updated_at = datetime.now(tz=timezone.utc)
 
         to_set = {"updated_at": updated_at}
@@ -423,6 +443,10 @@ class WritingCOOAdapter:
 
         if specs is not None:
             to_set["specs"] = specs
+
+        if references is not None:
+            references_dict = [item.dict() for item in references]
+            to_set["references"] = references_dict
 
         result = self.collection.update_one(
             {"key": self.key},
@@ -529,7 +553,7 @@ class MongoAdapter(collections.abc.Mapping, IndexersMixin):
             **kwargs,
         )
 
-    def post_metadata(self, metadata, structure_family, structure, specs):
+    def post_metadata(self, metadata, structure_family, structure, specs, references):
 
         mime_structure_association = {
             StructureFamily.array: "application/x-zarr",
@@ -546,6 +570,7 @@ class MongoAdapter(collections.abc.Mapping, IndexersMixin):
             structure=structure,
             metadata=metadata,
             specs=specs,
+            references=references,
             mimetype=mime_structure_association[structure_family],
             data_url=f"file://localhost/{self.directory}/{key[:2]}/{key}",
             created_at=created_date,

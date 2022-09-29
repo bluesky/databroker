@@ -39,16 +39,20 @@ def test_write_array(tmpdir):
 
     metadata = {"scan_id": 1, "method": "A"}
     specs = ["SomeSpec"]
-    client.write_array(test_array, metadata=metadata, specs=specs)
+    references = [{"label": "test", "url": "http://www.test.com"}]
+
+    node = client.write_array(
+        test_array, metadata=metadata, specs=specs, references=references
+    )
 
     results = client.search(Key("scan_id") == 1)
     result = results.values().first()
     result_array = result.read()
 
     numpy.testing.assert_equal(result_array, test_array)
-    assert result.metadata == metadata
-    # TODO In the future this will be accessible via result.specs.
-    assert result.item["attributes"]["specs"] == specs
+    assert result.metadata == node.metadata == metadata
+    assert result.specs == node.specs == specs
+    assert result.references == node.references == references
 
 
 def test_write_dataframe(tmpdir):
@@ -72,8 +76,11 @@ def test_write_dataframe(tmpdir):
     test_dataframe = pandas.DataFrame(data)
     metadata = {"scan_id": 1, "method": "A"}
     specs = ["SomeSpec"]
+    references = [{"label": "test", "url": "http://www.test.com"}]
 
-    client.write_dataframe(test_dataframe, metadata=metadata, specs=specs)
+    node = client.write_dataframe(
+        test_dataframe, metadata=metadata, specs=specs, references=references
+    )
 
     results = client.search(Key("scan_id") == 1)
     result = results.values().first()
@@ -83,9 +90,9 @@ def test_write_dataframe(tmpdir):
     # slicing into DataFrameClient returns ArrayClient
     result_array = result["Column1"][:]
     assert numpy.array_equal(result_array, dummy_array[0])
-    assert result.metadata == metadata
-    # TODO In the future this will be accessible via result.specs.
-    assert result.item["attributes"]["specs"] == specs
+    assert result.metadata == node.metadata == metadata
+    assert result.specs == node.specs == specs
+    assert result.references == node.references == references
 
 
 def test_queries(tmpdir):
@@ -162,7 +169,10 @@ def test_delete(tmpdir):
     test_dataframe = pandas.DataFrame(data)
 
     x = client.write_dataframe(
-        test_dataframe, metadata={"scan_id": 1, "method": "A"}, specs=["SomeSpec"]
+        test_dataframe,
+        metadata={"scan_id": 1, "method": "A"},
+        specs=["SomeSpec"],
+        references=[{"label": "test", "url": "http://www.test.com"}],
     )
 
     del client[x.item["id"]]
@@ -173,7 +183,10 @@ def test_delete(tmpdir):
     test_array = numpy.ones((5, 5))
 
     y = client.write_array(
-        test_array, metadata={"scan_id": 1, "method": "A"}, specs=["SomeSpec"]
+        test_array,
+        metadata={"scan_id": 1, "method": "A"},
+        specs=["SomeSpec"],
+        references=[{"label": "test", "url": "http://www.test.com"}],
     )
 
     del client[y.item["id"]]
@@ -192,7 +205,8 @@ def test_write_array_chunked(tmpdir):
 
     metadata = {"scan_id": 1, "method": "A"}
     specs = ["SomeSpec"]
-    client.write_array(a, metadata=metadata, specs=specs)
+    references = [{"label": "test", "url": "http://www.test.com"}]
+    client.write_array(a, metadata=metadata, specs=specs, references=references)
 
     results = client.search(Key("scan_id") == 1)
     result = results.values().first()
@@ -201,6 +215,7 @@ def test_write_array_chunked(tmpdir):
     numpy.testing.assert_equal(result_array, a.compute())
     assert result.metadata == metadata
     assert result.specs == specs
+    assert result.references == references
 
 
 def test_write_dataframe_partitioned(tmpdir):
@@ -215,8 +230,9 @@ def test_write_dataframe_partitioned(tmpdir):
     ddf = dask.dataframe.from_pandas(df, npartitions=3)
     metadata = {"scan_id": 1, "method": "A"}
     specs = ["SomeSpec"]
+    references = [{"label": "test", "url": "http://www.test.com"}]
 
-    client.write_dataframe(ddf, metadata=metadata, specs=specs)
+    client.write_dataframe(ddf, metadata=metadata, specs=specs, references=references)
 
     results = client.search(Key("scan_id") == 1)
     result = results.values().first()
@@ -225,7 +241,8 @@ def test_write_dataframe_partitioned(tmpdir):
     pandas.testing.assert_frame_equal(result_dataframe, df)
     assert result.metadata == metadata
     # TODO In the future this will be accessible via result.specs.
-    assert result.item["attributes"]["specs"] == specs
+    assert result.specs == specs
+    assert result.references == references
 
 
 def test_write_sparse_full(tmpdir):
@@ -239,12 +256,14 @@ def test_write_sparse_full(tmpdir):
 
     metadata = {"scan_id": 1, "method": "A"}
     specs = ["SomeSpec"]
+    references = [{"label": "test", "url": "http://www.test.com"}]
     client.write_sparse(
         coords=coo.coords,
         data=coo.data,
         shape=coo.shape,
         metadata=metadata,
         specs=specs,
+        references=references,
     )
 
     results = client.search(Key("scan_id") == 1)
@@ -254,6 +273,7 @@ def test_write_sparse_full(tmpdir):
     numpy.testing.assert_equal(result_array.todense(), coo.todense())
     assert result.metadata == metadata
     assert result.specs == specs
+    assert result.references == references
 
 
 def test_write_sparse_chunked(tmpdir):
@@ -265,12 +285,14 @@ def test_write_sparse_chunked(tmpdir):
 
     metadata = {"scan_id": 1, "method": "A"}
     specs = ["SomeSpec"]
+    references = [{"label": "test", "url": "http://www.test.com"}]
     N = 5
     x = client.new(
         "sparse",
         COOStructure(shape=(2 * N,), chunks=((N, N),)),
         metadata=metadata,
         specs=specs,
+        references=references,
     )
     x.write_block(coords=[[2, 4]], data=[3.1, 2.8], block=(0,))
     x.write_block(coords=[[0, 1]], data=[6.7, 1.2], block=(1,))
@@ -288,6 +310,7 @@ def test_write_sparse_chunked(tmpdir):
     # numpy.testing.assert_equal(result_array, sparse.COO(coords=[0, 1, ]))
     assert result.metadata == metadata
     assert result.specs == specs
+    assert result.references == references
 
 
 def test_update_array_metadata(tmpdir):
@@ -307,16 +330,19 @@ def test_update_array_metadata(tmpdir):
 
     new_arr_metadata = {"scan_id": 2, "method": "A"}
     new_spec = ["AnotherSpec"]
-    x.update_metadata(new_arr_metadata, new_spec)
+    references = [{"label": "test", "url": "http://www.test.com"}]
+    x.update_metadata(new_arr_metadata, new_spec, references)
 
     # validate local data after update request
     assert x.metadata == new_arr_metadata
-    assert x.item["attributes"]["specs"] == new_spec
+    assert x.specs == new_spec
+    assert x.references == references
 
     # Update metadata again to create another entry in revisions
     newer_arr_metadata = {"scan_id": 2, "method": "B"}
     newer_spec = ["AnotherOtherSpec"]
-    x.update_metadata(newer_arr_metadata, newer_spec)
+    new_references = [{"label": "updated_test", "url": "http://www.updatedtest.com"}]
+    x.update_metadata(newer_arr_metadata, newer_spec, new_references)
 
     # Increase the size of revisions for additonal testing
     latest_arr_metadata = {"scan_id": 2, "method": "C"}
@@ -327,7 +353,8 @@ def test_update_array_metadata(tmpdir):
 
     # validate remote data after update request
     assert result.metadata == latest_arr_metadata
-    assert result.item["attributes"]["specs"] == newer_spec
+    assert result.specs == newer_spec
+    assert result.references == new_references
 
     rev_document = {
         "key": result.item["id"],
@@ -370,16 +397,19 @@ def test_update_dataframe_metadata(tmpdir):
 
     new_df_metadata = {"scan_id": 2, "method": "A"}
     new_spec = ["AnotherSpec"]
-    y.update_metadata(new_df_metadata, new_spec)
+    references = [{"label": "test", "url": "http://www.test.com"}]
+    y.update_metadata(new_df_metadata, new_spec, references)
 
     # validate local data after update request
     assert y.metadata == new_df_metadata
-    assert y.item["attributes"]["specs"] == new_spec
+    assert y.specs == new_spec
+    assert y.references == references
 
     # Update metadata again to create another entry in revisions
     newer_df_metadata = {"scan_id": 2, "method": "B"}
     newer_spec = ["AnotherOtherSpec"]
-    y.update_metadata(newer_df_metadata, newer_spec)
+    new_references = [{"label": "updated_test", "url": "http://www.updatedtest.com"}]
+    y.update_metadata(newer_df_metadata, newer_spec, new_references)
 
     # Increase the size of revisions for additonal testing
     latest_arr_metadata = {"scan_id": 2, "method": "C"}
@@ -390,7 +420,8 @@ def test_update_dataframe_metadata(tmpdir):
 
     # validate remote data after update request
     assert result.metadata == latest_arr_metadata
-    assert result.item["attributes"]["specs"] == newer_spec
+    assert result.specs == newer_spec
+    assert result.references == new_references
 
     rev_document = {
         "key": result.item["id"],
