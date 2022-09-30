@@ -9,8 +9,10 @@ pims
 pydantic
 pymongo
 pytz
+rich
 starlette
 tiled[server] >=0.1.0a74
 toolz
+typer
 tzlocal
 zarr
