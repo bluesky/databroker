@@ -1,4 +1,4 @@
-from typing import List, Optional, Tuple
+from typing import List, Optional
 
 import typer
 
@@ -32,7 +32,7 @@ def shape_fix(
     handler: Optional[List[str]] = typer.Option(None, help="Handler given as 'SPEC = import_path'")
 ):
     if handler is None:
-        handler_registry = databroker.mongo_normalized.discover_handlers()
+        handler_registry = discover_handlers()
     else:
         handler_registry = {}
         for h in handler:
