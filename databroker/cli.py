@@ -4,11 +4,6 @@ import typer
 
 from tiled.utils import import_object
 from rich.progress import Progress
-import databroker.queries
-from databroker.mongo_normalized import MongoAdapter, discover_handlers
-
-
-from .shape_fixer import measure, fix
 
 
 cli_app = typer.Typer()
@@ -31,6 +26,15 @@ def shape_fix(
     limit: Optional[int] = None,
     handler: Optional[List[str]] = typer.Option(None, help="Handler given as 'SPEC = import_path'")
 ):
+    """
+    Fix shape metadata in Event Descriptors.
+    """
+    # Imports are here to avoid making CLI slow.
+    import databroker.queries
+    from databroker.mongo_normalized import MongoAdapter, discover_handlers
+
+
+    from .shape_fixer import measure, fix
     if handler is None:
         handler_registry = discover_handlers()
     else:
