@@ -10,7 +10,14 @@ def log(*args, logfile, progress):
     print(*args, file=logfile, flush=True)
 
 
-def measure(mds_database, asset_database, descriptor, root_map, handler_registry, patch_resource=None):
+def measure(
+    mds_database,
+    asset_database,
+    descriptor,
+    root_map,
+    handler_registry,
+    patch_resource=None,
+):
     """
     Return {data_key: correct shape} for all external data_keys
     """

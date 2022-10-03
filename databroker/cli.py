@@ -24,7 +24,9 @@ def shape_fix(
     strict: bool = False,
     dry_run: bool = False,
     limit: Optional[int] = None,
-    handler: Optional[List[str]] = typer.Option(None, help="Handler given as 'SPEC = import_path'")
+    handler: Optional[List[str]] = typer.Option(
+        None, help="Handler given as 'SPEC = import_path'"
+    ),
 ):
     """
     Fix shape metadata in Event Descriptors.
@@ -33,15 +35,17 @@ def shape_fix(
     import databroker.queries
     from databroker.mongo_normalized import MongoAdapter, discover_handlers
 
-
     from .shape_fixer import measure, fix
+
     if handler is None:
         handler_registry = discover_handlers()
     else:
         handler_registry = {}
         for h in handler:
             if " = " not in h:
-                raise ValueError("Handler must be given as 'SPEC = import_path' (spaces matter)")
+                raise ValueError(
+                    "Handler must be given as 'SPEC = import_path' (spaces matter)"
+                )
             k, _, v = h.partition(" = ")
             handler_registry[k] = import_object(v)
     adapter = MongoAdapter.from_uri(uri, asset_registry_uri=asset_registry_uri)
@@ -81,11 +85,15 @@ def shape_fix(
                         msg = "Edited"
                         fix(mds_database, descriptor, measured_shapes)
                     if recorded_shapes != measured_shapes:
-                        progress.console.print(f"{msg} {uid} {stream_name}: {recorded_shapes} -> {measured_shapes}")
+                        progress.console.print(
+                            f"{msg} {uid} {stream_name}: {recorded_shapes} -> {measured_shapes}"
+                        )
             except Exception as exc:
                 if strict:
                     raise
-                progress.console.print(f"Failed: {uid} {exc!r} (Use --strict for more.)")
+                progress.console.print(
+                    f"Failed: {uid} {exc!r} (Use --strict for more.)"
+                )
             progress.update(task, advance=1)
 
 
