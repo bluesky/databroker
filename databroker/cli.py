@@ -85,5 +85,8 @@ def shape_fix(
             progress.update(task, advance=1)
 
 
+main = cli_app
+
+
 if __name__ == "__main__":
-    cli_app()
+    main()

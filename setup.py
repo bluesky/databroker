@@ -68,6 +68,7 @@ setup(
     extras_require=extras_require,
     python_requires='>={}'.format('.'.join(str(n) for n in min_version)),
     entry_points={
+        "console_scripts": ["databroker = databroker.cli:main"],
         "tiled.special_client": [
             "CatalogOfBlueskyRuns = databroker.client:CatalogOfBlueskyRuns",
             "BlueskyRun = databroker.client:BlueskyRun",
