@@ -54,14 +54,14 @@ def shape_fix(
 
     items = adapter.items()
     if limit:
-        typer.echo(f"Limited to first {limit} only")
+        typer.echo(f"Limited to first {limit} BlueskyRuns only")
         items = items[:limit]
 
     with Progress() as progress:
         task = progress.add_task("Migrating...", total=len(items))
         for uid, run in items:
             try:
-                for stream in run.values():
+                for stream_name, stream in run.items():
                     descriptor = stream.metadata["descriptors"][0]
                     recorded_shapes, measured_shapes = measure(
                         mds_database,
@@ -77,7 +77,7 @@ def shape_fix(
                         msg = "Edited"
                         fix(mds_database, descriptor, measured_shapes)
                     if recorded_shapes != measured_shapes:
-                        progress.console.print(f"{msg} {uid}: {recorded_shapes} -> {measured_shapes}")
+                        progress.console.print(f"{msg} {uid} {stream_name}: {recorded_shapes} -> {measured_shapes}")
             except Exception as exc:
                 if strict:
                     raise
