@@ -1076,7 +1076,6 @@ class MongoAdapter(collections.abc.Mapping, CatalogOfBlueskyRunsMixin, IndexersM
         transforms=None,
         metadata=None,
         access_policy=None,
-        principal=None,
         cache_ttl_complete=60,  # seconds
         cache_ttl_partial=2,  # seconds
     ):
@@ -1153,8 +1152,6 @@ class MongoAdapter(collections.abc.Mapping, CatalogOfBlueskyRunsMixin, IndexersM
             cache_of_complete_bluesky_runs=cache_of_complete_bluesky_runs,
             cache_of_partial_bluesky_runs=cache_of_partial_bluesky_runs,
             metadata=metadata,
-            access_policy=access_policy,
-            principal=principal,
         )
 
     @classmethod
@@ -1166,7 +1163,6 @@ class MongoAdapter(collections.abc.Mapping, CatalogOfBlueskyRunsMixin, IndexersM
         transforms=None,
         metadata=None,
         access_policy=None,
-        principal=None,
         cache_ttl_complete=60,  # seconds
         cache_ttl_partial=2,  # seconds
     ):
@@ -1239,7 +1235,6 @@ class MongoAdapter(collections.abc.Mapping, CatalogOfBlueskyRunsMixin, IndexersM
             cache_of_partial_bluesky_runs=cache_of_partial_bluesky_runs,
             metadata=metadata,
             access_policy=access_policy,
-            principal=principal,
         )
 
     def __init__(
@@ -1255,7 +1250,6 @@ class MongoAdapter(collections.abc.Mapping, CatalogOfBlueskyRunsMixin, IndexersM
         queries=None,
         sorting=None,
         access_policy=None,
-        principal=None,
     ):
         "This is not user-facing. Use MongoAdapter.from_uri."
         self._run_start_collection = metadatastore_db.get_collection("run_start")
@@ -1283,16 +1277,7 @@ class MongoAdapter(collections.abc.Mapping, CatalogOfBlueskyRunsMixin, IndexersM
         if sorting is None:
             sorting = [("time", 1)]
         self._sorting = sorting
-        if isinstance(access_policy, str):
-            access_policy = import_object(access_policy)
-        if (access_policy is not None) and (
-            not access_policy.check_compatibility(self)
-        ):
-            raise ValueError(
-                f"Access policy {access_policy} is not compatible with this MongoAdapter."
-            )
-        self._access_policy = access_policy
-        self._principal = principal
+        self.access_policy = access_policy
         self._serializer = None
         super().__init__()
 
@@ -1350,7 +1335,6 @@ class MongoAdapter(collections.abc.Mapping, CatalogOfBlueskyRunsMixin, IndexersM
         metadata=UNCHANGED,
         queries=UNCHANGED,
         sorting=UNCHANGED,
-        principal=UNCHANGED,
         **kwargs,
     ):
         if metadata is UNCHANGED:
@@ -1359,8 +1343,6 @@ class MongoAdapter(collections.abc.Mapping, CatalogOfBlueskyRunsMixin, IndexersM
             queries = self.queries
         if sorting is UNCHANGED:
             sorting = self._sorting
-        if principal is UNCHANGED:
-            principal = self._principal
         return type(self)(
             *args,
             metadatastore_db=self._metadatastore_db,
@@ -1373,17 +1355,8 @@ class MongoAdapter(collections.abc.Mapping, CatalogOfBlueskyRunsMixin, IndexersM
             queries=queries,
             sorting=sorting,
             access_policy=self.access_policy,
-            principal=principal,
             **kwargs,
         )
-
-    @property
-    def access_policy(self):
-        return self._access_policy
-
-    @property
-    def principal(self):
-        return self._principal
 
     @property
     def metadata_stale_at(self):
@@ -1658,19 +1631,6 @@ class MongoAdapter(collections.abc.Mapping, CatalogOfBlueskyRunsMixin, IndexersM
             self._build_mongo_query(),
         )
 
-    def authenticated_as(self, identity):
-        if self._principal is not None:
-            raise RuntimeError(f"Already authenticated as {self.principal}")
-        if self._access_policy is not None:
-            queries = self._access_policy.modify_queries(
-                self.queries,
-                identity,
-            )
-            tree = self.new_variation(principal=identity, queries=queries)
-        else:
-            tree = self.new_variation(principal=identity)
-        return tree
-
     def search(self, query):
         """
         Return a MongoAdapter with a subset of the mapping.
@@ -1784,27 +1744,6 @@ class SimpleAccessPolicy:
 
     def check_compatibility(self, catalog):
         return isinstance(catalog, MongoAdapter)
-
-    def modify_queries(self, queries, principal):
-        # Get the id (i.e. username) of this Principal for the
-        # associated authentication provider.
-        for identity in principal.identities:
-            if identity.provider == self.provider:
-                id = identity.id
-                break
-        else:
-            raise ValueError(
-                f"Principcal {principal} has no identity from provider {self.provider}. "
-                f"Its identities are: {principal.identities}"
-            )
-        allowed = self.access_lists.get(id, [])
-        if (id is SpecialUsers.admin) or (allowed is self.ALL):
-            modified_queries = queries
-        else:
-            modified_queries = list(queries)
-            modified_queries.append({self.key: {"$in": allowed}})
-        return modified_queries
-
 
 def _get_database(uri):
     if not pymongo.uri_parser.parse_uri(uri)["database"]:
