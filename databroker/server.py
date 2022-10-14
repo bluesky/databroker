@@ -2,7 +2,7 @@ import json
 import msgpack
 from typing import Optional
 
-from fastapi import APIRouter, HTTPException, Request, Security
+from fastapi import APIRouter, HTTPException, Request
 import pydantic
 from tiled.server.core import PatchedStreamingResponse
 from tiled.server.dependencies import SecureEntry
