@@ -35,9 +35,6 @@ from tiled.adapters.mapping import MapAdapter
 from tiled.iterviews import KeysView, ItemsView, ValuesView
 from tiled.query_registration import QueryTranslationRegistry
 from tiled.queries import Contains, Comparison, Eq, FullText, In, NotEq, NotIn, Regex
-from tiled.utils import (
-    SpecialUsers,
-)
 from tiled.adapters.utils import (
     tree_repr,
     IndexersMixin,
@@ -1744,6 +1741,7 @@ class SimpleAccessPolicy:
 
     def check_compatibility(self, catalog):
         return isinstance(catalog, MongoAdapter)
+
 
 def _get_database(uri):
     if not pymongo.uri_parser.parse_uri(uri)["database"]:
