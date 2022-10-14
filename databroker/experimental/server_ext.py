@@ -476,7 +476,6 @@ class MongoAdapter(collections.abc.Mapping, IndexersMixin):
         queries=None,
         sorting=None,
         metadata=None,
-        principal=None,
         access_policy=None,
     ):
         self.database = database
@@ -494,7 +493,6 @@ class MongoAdapter(collections.abc.Mapping, IndexersMixin):
         self.queries = queries or []
         self.sorting = sorting or [("metadata.scan_id", 1)]
         self.metadata = metadata or {}
-        self.principal = principal
         self.access_policy = access_policy
         super().__init__()
 
@@ -531,7 +529,6 @@ class MongoAdapter(collections.abc.Mapping, IndexersMixin):
         metadata=UNCHANGED,
         queries=UNCHANGED,
         sorting=UNCHANGED,
-        principal=UNCHANGED,
         **kwargs,
     ):
         if metadata is UNCHANGED:
@@ -540,8 +537,6 @@ class MongoAdapter(collections.abc.Mapping, IndexersMixin):
             queries = self.queries
         if sorting is UNCHANGED:
             sorting = self.sorting
-        if principal is UNCHANGED:
-            principal = self.principal
         return type(self)(
             database=self.database,
             directory=self.directory,
@@ -549,7 +544,6 @@ class MongoAdapter(collections.abc.Mapping, IndexersMixin):
             queries=queries,
             sorting=sorting,
             access_policy=self.access_policy,
-            principal=principal,
             **kwargs,
         )
 
@@ -590,13 +584,6 @@ class MongoAdapter(collections.abc.Mapping, IndexersMixin):
         self.revision_coll.create_index(
             [("key", pymongo.ASCENDING), ("revision", pymongo.DESCENDING)], unique=True
         )
-
-    def authenticated_as(self, identity):
-        if self.principal is not None:
-            raise RuntimeError(f"Already authenticated as {self.principal}")
-        if self.access_policy is not None:
-            raise NotImplementedError("No support for Access Policy")
-        return self
 
     def _build_mongo_query(self, *queries):
         combined = self.queries + list(queries)
