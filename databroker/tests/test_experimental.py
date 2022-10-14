@@ -18,6 +18,7 @@ from tiled.queries import (
     Regex,
 )
 from tiled.structures.sparse import COOStructure
+from tiled.validation_registration import ValidationRegistry
 
 from ..experimental.server_ext import MongoAdapter
 
@@ -25,6 +26,10 @@ from ..experimental.schemas import DocumentRevision
 
 
 API_KEY = "secret"
+validation_registry = ValidationRegistry()
+validation_registry.register("SomeSpec", lambda *args, **kwargs: None)
+validation_registry.register("AnotherSpec", lambda *args, **kwargs: None)
+validation_registry.register("AnotherOtherSpec", lambda *args, **kwargs: None)
 
 
 def test_write_array(tmpdir):
@@ -32,7 +37,8 @@ def test_write_array(tmpdir):
     tree = MongoAdapter.from_mongomock(tmpdir)
 
     client = from_tree(
-        tree, api_key=API_KEY, authentication={"single_user_api_key": API_KEY}
+        tree, api_key=API_KEY, authentication={"single_user_api_key": API_KEY},
+        validation_registry=validation_registry,
     )
 
     test_array = numpy.ones((5, 7))
@@ -60,7 +66,8 @@ def test_write_dataframe(tmpdir):
     tree = MongoAdapter.from_mongomock(tmpdir)
 
     client = from_tree(
-        tree, api_key=API_KEY, authentication={"single_user_api_key": API_KEY}
+        tree, api_key=API_KEY, authentication={"single_user_api_key": API_KEY},
+        validation_registry=validation_registry,
     )
 
     dummy_array = numpy.ones((5, 7))
@@ -100,7 +107,8 @@ def test_queries(tmpdir):
     tree = MongoAdapter.from_mongomock(tmpdir)
 
     client = from_tree(
-        tree, api_key=API_KEY, authentication={"single_user_api_key": API_KEY}
+        tree, api_key=API_KEY, authentication={"single_user_api_key": API_KEY},
+        validation_registry=validation_registry,
     )
 
     keys = list(string.ascii_lowercase)
@@ -152,7 +160,8 @@ def test_delete(tmpdir):
 
     tree = MongoAdapter.from_mongomock(tmpdir)
     client = from_tree(
-        tree, api_key=API_KEY, authentication={"single_user_api_key": API_KEY}
+        tree, api_key=API_KEY, authentication={"single_user_api_key": API_KEY},
+        validation_registry=validation_registry,
     )
 
     # For dataframes
@@ -198,7 +207,8 @@ def test_write_array_chunked(tmpdir):
 
     tree = MongoAdapter.from_mongomock(tmpdir)
     client = from_tree(
-        tree, api_key=API_KEY, authentication={"single_user_api_key": API_KEY}
+        tree, api_key=API_KEY, authentication={"single_user_api_key": API_KEY},
+        validation_registry=validation_registry,
     )
 
     a = dask.array.arange(24).reshape((4, 6)).rechunk((2, 3))
@@ -222,7 +232,8 @@ def test_write_dataframe_partitioned(tmpdir):
 
     tree = MongoAdapter.from_mongomock(tmpdir)
     client = from_tree(
-        tree, api_key=API_KEY, authentication={"single_user_api_key": API_KEY}
+        tree, api_key=API_KEY, authentication={"single_user_api_key": API_KEY},
+        validation_registry=validation_registry,
     )
 
     data = {f"Column{i}": (1 + i) * numpy.ones(10) for i in range(5)}
@@ -249,7 +260,8 @@ def test_write_sparse_full(tmpdir):
 
     tree = MongoAdapter.from_mongomock(tmpdir)
     client = from_tree(
-        tree, api_key=API_KEY, authentication={"single_user_api_key": API_KEY}
+        tree, api_key=API_KEY, authentication={"single_user_api_key": API_KEY},
+        validation_registry=validation_registry,
     )
 
     coo = sparse.COO(coords=[[0, 1], [2, 3]], data=[3.8, 4.0], shape=(4, 4))
@@ -280,7 +292,8 @@ def test_write_sparse_chunked(tmpdir):
 
     tree = MongoAdapter.from_mongomock(tmpdir)
     client = from_tree(
-        tree, api_key=API_KEY, authentication={"single_user_api_key": API_KEY}
+        tree, api_key=API_KEY, authentication={"single_user_api_key": API_KEY},
+        validation_registry=validation_registry,
     )
 
     metadata = {"scan_id": 1, "method": "A"}
@@ -318,7 +331,8 @@ def test_update_array_metadata(tmpdir):
     tree = MongoAdapter.from_mongomock(tmpdir)
 
     client = from_tree(
-        tree, api_key=API_KEY, authentication={"single_user_api_key": API_KEY}
+        tree, api_key=API_KEY, authentication={"single_user_api_key": API_KEY},
+        validation_registry=validation_registry,
     )
 
     # Update metadata in array client
@@ -375,7 +389,8 @@ def test_update_dataframe_metadata(tmpdir):
     tree = MongoAdapter.from_mongomock(tmpdir)
 
     client = from_tree(
-        tree, api_key=API_KEY, authentication={"single_user_api_key": API_KEY}
+        tree, api_key=API_KEY, authentication={"single_user_api_key": API_KEY},
+        validation_registry=validation_registry,
     )
 
     test_array = numpy.ones((5, 5))
