@@ -2,10 +2,10 @@ import json
 import msgpack
 from typing import Optional
 
-from fastapi import APIRouter, HTTPException, Request, Security
+from fastapi import APIRouter, HTTPException, Request
 import pydantic
 from tiled.server.core import PatchedStreamingResponse
-from tiled.server.dependencies import entry
+from tiled.server.dependencies import SecureEntry
 
 
 class NameDocumentPair(pydantic.BaseModel):
@@ -21,7 +21,7 @@ router = APIRouter()
 def documents(
     request: Request,
     fill: Optional[bool] = False,
-    run=Security(entry, scopes=["read:data", "read:metadata"]),
+    run=SecureEntry(scopes=["read:data", "read:metadata"]),
 ):
     # Check that this is a BlueskyRun.
     if not hasattr(run, "documents"):

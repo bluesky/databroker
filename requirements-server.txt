@@ -11,7 +11,7 @@ pymongo
 pytz
 rich
 starlette
-tiled[server] >=0.1.0a74
+tiled[server] >=0.1.0a75
 toolz
 typer
 tzlocal

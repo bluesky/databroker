@@ -9,6 +9,7 @@ from tiled.server.pydantic_dataframe import DataFrameStructure
 from tiled.server.pydantic_sparse import SparseStructure
 from tiled.structures.core import StructureFamily
 
+from tiled.server.schemas import ReferenceDocument
 
 # Map structure family to the associated
 # structure model. This is used by the validator.
@@ -25,6 +26,7 @@ class BaseDocument(pydantic.BaseModel):
     key: str
     metadata: Dict
     specs: List[str]
+    references: List[ReferenceDocument]
     updated_at: datetime
 
 
@@ -93,6 +95,7 @@ class DocumentRevision(BaseDocument):
             key=document.key,
             metadata=document.metadata,
             specs=document.specs,
+            references=document.references,
             updated_at=document.updated_at,
             revision=revision,
         )
@@ -103,6 +106,7 @@ class DocumentRevision(BaseDocument):
             key=json_doc["key"],
             metadata=json_doc["metadata"],
             specs=json_doc["specs"],
+            references=json_doc["references"],
             updated_at=json_doc["updated_at"],
             revision=json_doc["revision"],
         )
