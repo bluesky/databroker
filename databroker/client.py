@@ -64,15 +64,16 @@ class BlueskyRun(BlueskyRunMixin, Node):
             raise NotImplementedError("fill='delayed' is not supported")
         else:
             fill = bool(fill)
-        # Access internal object context._client here because
-        # Context does not yet expose a streaming API.
-        request = self.context._client.build_request(
+        link = self.item["links"]["self"].replace(
+            "/node/metadata", "/documents", 1
+        )
+        request = self.context.http_client.build_request(
             "GET",
-            f"/documents/{'/'.join(list(self.context.path_parts) + list(self._path))}",
+            link,
             params={"fill": fill},
             headers={"Accept": "application/x-msgpack"},
         )
-        response = self.context._client.send(request, stream=True)
+        response = self.context.http_client.send(request, stream=True)
         try:
             if response.is_error:
                 response.read()
@@ -284,9 +285,9 @@ class CatalogOfBlueskyRuns(CatalogOfBlueskyRunsMixin, Node):
     def get_serializer(self):
         from tiled.server.app import get_root_tree
 
-        if self.context.app is None:
+        if not hasattr(self.context.http_client, "app"):
             raise NotImplementedError("Only works on local application.")
-        tree = self.context.app.dependency_overrides[get_root_tree]()
+        tree = self.context.http_client.app.dependency_overrides[get_root_tree]()
         return tree.get_serializer()
 
     def search(self, query):

@@ -17,6 +17,7 @@ from tiled.queries import (
     NotIn,
     Regex,
 )
+from tiled.structures.core import Spec
 from tiled.structures.sparse import COOStructure
 from tiled.validation_registration import ValidationRegistry
 
@@ -44,7 +45,7 @@ def test_write_array(tmpdir):
     test_array = numpy.ones((5, 7))
 
     metadata = {"scan_id": 1, "method": "A"}
-    specs = ["SomeSpec"]
+    specs = [Spec("SomeSpec")]
     references = [{"label": "test", "url": "http://www.test.com"}]
 
     node = client.write_array(
@@ -82,7 +83,7 @@ def test_write_dataframe(tmpdir):
 
     test_dataframe = pandas.DataFrame(data)
     metadata = {"scan_id": 1, "method": "A"}
-    specs = ["SomeSpec"]
+    specs = [Spec("SomeSpec")]
     references = [{"label": "test", "url": "http://www.test.com"}]
 
     node = client.write_dataframe(
@@ -214,7 +215,7 @@ def test_write_array_chunked(tmpdir):
     a = dask.array.arange(24).reshape((4, 6)).rechunk((2, 3))
 
     metadata = {"scan_id": 1, "method": "A"}
-    specs = ["SomeSpec"]
+    specs = [Spec("SomeSpec")]
     references = [{"label": "test", "url": "http://www.test.com"}]
     client.write_array(a, metadata=metadata, specs=specs, references=references)
 
@@ -240,7 +241,7 @@ def test_write_dataframe_partitioned(tmpdir):
     df = pandas.DataFrame(data)
     ddf = dask.dataframe.from_pandas(df, npartitions=3)
     metadata = {"scan_id": 1, "method": "A"}
-    specs = ["SomeSpec"]
+    specs = [Spec("SomeSpec")]
     references = [{"label": "test", "url": "http://www.test.com"}]
 
     client.write_dataframe(ddf, metadata=metadata, specs=specs, references=references)
@@ -267,7 +268,7 @@ def test_write_sparse_full(tmpdir):
     coo = sparse.COO(coords=[[0, 1], [2, 3]], data=[3.8, 4.0], shape=(4, 4))
 
     metadata = {"scan_id": 1, "method": "A"}
-    specs = ["SomeSpec"]
+    specs = [Spec("SomeSpec")]
     references = [{"label": "test", "url": "http://www.test.com"}]
     client.write_sparse(
         coords=coo.coords,
@@ -297,7 +298,7 @@ def test_write_sparse_chunked(tmpdir):
     )
 
     metadata = {"scan_id": 1, "method": "A"}
-    specs = ["SomeSpec"]
+    specs = [Spec("SomeSpec")]
     references = [{"label": "test", "url": "http://www.test.com"}]
     N = 5
     x = client.new(
@@ -343,7 +344,7 @@ def test_update_array_metadata(tmpdir):
     )
 
     new_arr_metadata = {"scan_id": 2, "method": "A"}
-    new_spec = ["AnotherSpec"]
+    new_spec = [Spec("AnotherSpec")]
     references = [{"label": "test", "url": "http://www.test.com"}]
     x.update_metadata(new_arr_metadata, new_spec, references)
 
@@ -354,7 +355,7 @@ def test_update_array_metadata(tmpdir):
 
     # Update metadata again to create another entry in revisions
     newer_arr_metadata = {"scan_id": 2, "method": "B"}
-    newer_spec = ["AnotherOtherSpec"]
+    newer_spec = [Spec("AnotherOtherSpec")]
     new_references = [{"label": "updated_test", "url": "http://www.updatedtest.com"}]
     x.update_metadata(newer_arr_metadata, newer_spec, new_references)
 
@@ -411,7 +412,7 @@ def test_update_dataframe_metadata(tmpdir):
     )
 
     new_df_metadata = {"scan_id": 2, "method": "A"}
-    new_spec = ["AnotherSpec"]
+    new_spec = [Spec("AnotherSpec")]
     references = [{"label": "test", "url": "http://www.test.com"}]
     y.update_metadata(new_df_metadata, new_spec, references)
 
@@ -422,7 +423,7 @@ def test_update_dataframe_metadata(tmpdir):
 
     # Update metadata again to create another entry in revisions
     newer_df_metadata = {"scan_id": 2, "method": "B"}
-    newer_spec = ["AnotherOtherSpec"]
+    newer_spec = [Spec("AnotherOtherSpec")]
     new_references = [{"label": "updated_test", "url": "http://www.updatedtest.com"}]
     y.update_metadata(newer_df_metadata, newer_spec, new_references)
 

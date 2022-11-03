@@ -34,7 +34,7 @@ from tiled.queries import (
 )
 from tiled.query_registration import QueryTranslationRegistry
 
-from tiled.structures.core import StructureFamily
+from tiled.structures.core import Spec, StructureFamily
 from tiled.structures.array import ArrayStructure, ArrayMacroStructure, BuiltinDtype
 from tiled.structures.dataframe import (
     DataFrameStructure,
@@ -129,7 +129,8 @@ class WritingArrayAdapter:
 
     @property
     def specs(self):
-        return self.doc.specs
+        # Convert from pydantic to dataclass.
+        return [Spec(**dict(spec)) for spec in self.doc.specs]
 
     @property
     def references(self):
@@ -195,7 +196,7 @@ class WritingArrayAdapter:
             to_set["metadata"] = metadata
 
         if specs is not None:
-            to_set["specs"] = specs
+            to_set["specs"] = [spec.dict() for spec in specs]
 
         if references is not None:
             references_dict = [item.dict() for item in references]
@@ -260,7 +261,8 @@ class WritingDataFrameAdapter:
 
     @property
     def specs(self):
-        return self.doc.specs
+        # Convert from pydantic to dataclass.
+        return [Spec(**dict(spec)) for spec in self.doc.specs]
 
     @property
     def references(self):
@@ -305,7 +307,7 @@ class WritingDataFrameAdapter:
             to_set["metadata"] = metadata
 
         if specs is not None:
-            to_set["specs"] = specs
+            to_set["specs"] = [spec.dict() for spec in specs]
 
         if references is not None:
             references_dict = [item.dict() for item in references]
@@ -374,7 +376,8 @@ class WritingCOOAdapter:
 
     @property
     def specs(self):
-        return self.doc.specs
+        # Convert from pydantic to dataclass.
+        return [Spec(**dict(spec)) for spec in self.doc.specs]
 
     @property
     def references(self):
@@ -442,7 +445,7 @@ class WritingCOOAdapter:
             to_set["metadata"] = metadata
 
         if specs is not None:
-            to_set["specs"] = specs
+            to_set["specs"] = [spec.dict() for spec in specs]
 
         if references is not None:
             references_dict = [item.dict() for item in references]
