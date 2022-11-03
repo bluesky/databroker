@@ -39,6 +39,7 @@ from tiled.adapters.utils import (
     tree_repr,
     IndexersMixin,
 )
+from tiled.structures.core import Spec
 from tiled.utils import import_object, OneShotCachedMap, UNCHANGED
 
 from .common import BlueskyEventStreamMixin, BlueskyRunMixin, CatalogOfBlueskyRunsMixin
@@ -213,19 +214,23 @@ class DatasetMapAdapter(MapAdapter):
         # is respected.
         data_vars = {}
         coords = {}
+        spec_names = set(spec.name for spec in array_adapter)
         for key, array_adapter in self.items():
-            if "xarray_data_var" in array_adapter.specs:
+            if "xarray_data_var" in spec_names:
                 data_vars[key] = (
                     array_adapter.macrostructure().dims,
                     array_adapter.read(),
                 )
-            elif "xarray_coord" in array_adapter.specs:
+            elif "xarray_coord" in spec_names:
                 coords[key] = (
                     array_adapter.macrostructure().dims,
                     array_adapter.read(),
                 )
             else:
-                assert False, "Expected a spec"
+                raise ValueError(
+                    "Child nodes of xarray_dataset should include spec "
+                    "'xarray_coord' or 'xarray_data_var'."
+                )
         return xarray.Dataset(
             data_vars=data_vars, coords=coords, attrs=self.metadata["attrs"]
         )
@@ -252,7 +257,7 @@ class BlueskyRun(MapAdapter, BlueskyRunMixin):
         if specs is None:
             specs = []
         specs = list(specs)
-        specs.append("BlueskyRun")
+        specs.append(Spec("BlueskyRun", version="1"))
         super().__init__(*args, specs=specs, **kwargs)
         self.transforms = transforms or {}
         self.root_map = root_map
@@ -433,7 +438,7 @@ class BlueskyEventStream(MapAdapter, BlueskyEventStreamMixin):
         if specs is None:
             specs = []
         specs = list(specs)
-        specs.append("BlueskyEventStream")
+        specs.append(Spec("BlueskyEventStream", version="1"))
         super().__init__(*args, specs=specs, **kwargs)
         self._event_collection = event_collection
         self._cutoff_seq_num = cutoff_seq_num
@@ -529,7 +534,7 @@ class DatasetFromDocuments:
     """
 
     structure_family = "node"
-    specs = ["xarray_dataset"]
+    specs = [Spec("xarray_dataset")]
 
     def __init__(
         self,
@@ -597,9 +602,9 @@ class DatasetFromDocuments:
                         ArrayFromDocuments,
                         self,
                         field,
-                        specs=["xarray_coord"]
+                        specs=[Spec("xarray_coord")]
                         if field == "time"
-                        else ["xarray_data_var"],
+                        else [Spec("xarray_data_var")],
                     )
                     for field in self.array_structures
                 }
@@ -672,7 +677,7 @@ class DatasetFromDocuments:
                 array = raw_array.astype(dtype)
             else:
                 array = raw_array
-            specs = ["xarray_coord"] if key == "time" else ["xarray_data_var"]
+            specs = [Spec("xarray_coord")] if key == "time" else [Spec("xarray_data_var")]
             if isinstance(array, dask.array.Array):
                 constructor = ArrayAdapter
             else:
@@ -1052,7 +1057,7 @@ def build_config_xarray(
 
 class MongoAdapter(collections.abc.Mapping, CatalogOfBlueskyRunsMixin, IndexersMixin):
     structure_family = "node"
-    specs = ["CatalogOfBlueskyRuns"]
+    specs = [Spec("CatalogOfBlueskyRuns", version="1")]
 
     # Define classmethods for managing what queries this MongoAdapter knows.
     query_registry = QueryTranslationRegistry()

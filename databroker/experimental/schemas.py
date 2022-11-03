@@ -9,7 +9,7 @@ from tiled.server.pydantic_dataframe import DataFrameStructure
 from tiled.server.pydantic_sparse import SparseStructure
 from tiled.structures.core import StructureFamily
 
-from tiled.server.schemas import ReferenceDocument
+from tiled.server.schemas import ReferenceDocument, Spec
 
 # Map structure family to the associated
 # structure model. This is used by the validator.
@@ -25,7 +25,7 @@ structure_association = {
 class BaseDocument(pydantic.BaseModel):
     key: str
     metadata: Dict
-    specs: List[str]
+    specs: List[Spec]
     references: List[ReferenceDocument]
     updated_at: datetime
 
