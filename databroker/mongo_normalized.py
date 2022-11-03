@@ -724,7 +724,6 @@ class DatasetFromDocuments:
             array = array[slice]
         return array
 
-    @functools.lru_cache(maxsize=1024)
     def _get_time_coord(self, slice_params):
         if slice_params is None:
             min_seq_num = 1
@@ -812,7 +811,6 @@ class DatasetFromDocuments:
 
         return result
 
-    @functools.lru_cache(maxsize=1024)
     def _inner_get_columns(self, keys, min_seq_num, max_seq_num):
         columns = {key: [] for key in keys}
         # IMPORTANT: Access via self.metadata so that transforms are applied.
