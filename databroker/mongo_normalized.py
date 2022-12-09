@@ -1023,7 +1023,7 @@ def build_config_xarray(
         data_array = xarray.DataArray(columns[key], dims=dims, attrs=attrs)
         data_arrays[key] = data_array
     ds = xarray.Dataset(data_arrays)
-    return DatasetAdapter(ds)
+    return DatasetAdapter.from_dataset(ds)
 
 
 class MongoAdapter(collections.abc.Mapping, CatalogOfBlueskyRunsMixin, IndexersMixin):
