@@ -1,1 +1,1 @@
-from .replay import replay
+from .replay import replay  # noqa F401
