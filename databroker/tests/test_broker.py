@@ -742,6 +742,11 @@ def test_config_data(db, RE, hw):
                 'baseline': [{'y': 2, 'z': 4}]}
     assert actual == expected
 
+    # https://github.com/bluesky/databroker/issues/745
+    if hasattr(db, 'v2'):
+        db.v2[uid]['primary']['config']['det']['y'][:]
+        db.v2[uid]['primary']['config']['det']['z'][:]
+
 
 def test_events(db, RE, hw):
     RE.subscribe(db.insert)
