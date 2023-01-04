@@ -4,7 +4,7 @@ import warnings
 
 import msgpack
 from tiled.adapters.utils import IndexCallable
-from tiled.client.node import Node
+from tiled.client.node import DEFAULT_STRUCTURE_CLIENT_DISPATCH, Node
 from tiled.client.utils import handle_error
 
 from .common import BlueskyEventStreamMixin, BlueskyRunMixin, CatalogOfBlueskyRunsMixin
@@ -207,7 +207,7 @@ and then read() will return dask objects.""",
             stacklevel=2,
         )
         return self.new_variation(
-            structure_clients=Node.DEFAULT_STRUCTURE_CLIENT_DISPATCH["dask"]
+            structure_clients=DEFAULT_STRUCTURE_CLIENT_DISPATCH["dask"]
         ).read()
 
 
