@@ -1,4 +1,5 @@
 area-detector-handlers
+bson
 cachetools
 entrypoints
 event-model
