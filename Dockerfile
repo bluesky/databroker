@@ -13,7 +13,7 @@ FROM base as builder
 WORKDIR /build
 
 # Copy requirements over first so this layer is cached and we don't have to
-# reinstall dependencies when only the tiled source has changed.
+# reinstall dependencies when only the databroker source has changed.
 COPY requirements-server.txt /build/
 RUN pip install --upgrade --no-cache-dir pip wheel
 RUN pip install --upgrade --no-cache-dir -r /code/requirements-server.txt
