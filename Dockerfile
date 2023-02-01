@@ -2,6 +2,11 @@ FROM ghcr.io/bluesky/tiled:v0.1.0a83 as base
 
 FROM base as builder
 
+# We need git at build time in order for versioneer to work. This
+# does not leak out of the API (at this time) but it seems useful
+# to have it correctly reported in the build logs.
+RUN apt-get -y update && apt-get install -y git
+
 WORKDIR /code
 
 # Copy requirements over first so this layer is cached and we don't have to
