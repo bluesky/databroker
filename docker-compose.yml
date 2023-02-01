@@ -10,10 +10,11 @@
 #
 #     python examples/write_and_read_back_data.py
 
-version: "3.2"
+version: "3.7"
+
 services:
   tiled:
-    image: ghcr.io/bluesky/databroker:v2.0.0b14
+    image: databroker
     volumes:
       - type: bind
         source: ./example_config.yml
@@ -22,7 +23,14 @@ services:
       - TILED_SINGLE_USER_API_KEY=$TILED_SINGLE_USER_API_KEY
     ports:
       - 8000:8000
+    networks:
+      - backend
+    depends_on:
+      - mongo
   mongo:
     image: docker.io/mongo:6.0.4
-    ports:
-      - 27017:27017
+    networks:
+      - backend
+
+networks:
+  backend: {}

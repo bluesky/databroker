@@ -305,3 +305,13 @@ class CatalogOfBlueskyRuns(CatalogOfBlueskyRunsMixin, Node):
 
             self._v1 = Broker(self)
         return self._v1
+
+    def post_document(self, name, doc):
+        link = self.item["links"]["self"].replace(
+            "/node/metadata", "/documents", 1
+        )
+        response = self.context.http_client.post(
+            link,
+            json={"name": name, "document": doc}
+        )
+        handle_error(response)
