@@ -1,0 +1,28 @@
+# The environment variable TILED_SINGLE_USER_API_KEY must be set, as in:
+#
+#     TILED_SINGLE_USER_API_KEY=secret docker-compose up
+#
+# or using a environment file as described in the docker-compose documentation:
+#
+#     https://docs.docker.com/compose/environment-variables/set-environment-variables/
+#
+# Test using, for example:
+#
+#     python examples/write_and_read_back_data.py
+
+version: "3.2"
+services:
+  tiled:
+    image: ghcr.io/bluesky/databroker:v2.0.0b14
+    volumes:
+      - type: bind
+        source: ./example_config.yml
+        target: /deploy/config.yml
+    environment:
+      - TILED_SINGLE_USER_API_KEY=$TILED_SINGLE_USER_API_KEY
+    ports:
+      - 8000:8000
+  mongo:
+    image: docker.io/mongo:6.0.4
+    ports:
+      - 27017:27017

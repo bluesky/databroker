@@ -1,12 +1,4 @@
-# Build:
-#
-#   docker build -t databroker .
-#
-# Run:
-#
-#   docker run -it -p 8000:8000 -e TILED_SINGLE_USER_API_KEY=secret -v ./example_config.yml:/deploy/config.yml databroker
-
-FROM ghcr.io/bluesky/tiled:v0.1.0a82 as base
+FROM ghcr.io/bluesky/tiled:v0.1.0a83 as base
 
 FROM base as builder
 
