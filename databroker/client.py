@@ -82,7 +82,7 @@ class BlueskyRun(BlueskyRunMixin, Node):
             for chunk in response.iter_bytes():
                 unpacker.feed(chunk)
                 for item in unpacker:
-                    yield (item["name"], _document_types[name](item["doc"]))
+                    yield (item["name"], _document_types[item["name"]](item["doc"]))
         finally:
             response.close()
 
