@@ -6,6 +6,7 @@ import msgpack
 from tiled.adapters.utils import IndexCallable
 from tiled.client.node import DEFAULT_STRUCTURE_CLIENT_DISPATCH, Node
 from tiled.client.utils import handle_error
+from tiled.utils import safe_json_dump
 
 from .common import BlueskyEventStreamMixin, BlueskyRunMixin, CatalogOfBlueskyRunsMixin
 from .queries import PartialUID, RawMongo, ScanID
@@ -312,6 +313,6 @@ class CatalogOfBlueskyRuns(CatalogOfBlueskyRunsMixin, Node):
         )
         response = self.context.http_client.post(
             link,
-            json={"name": name, "doc": doc}
+            data=safe_json_dump({"name": name, "doc": doc})
         )
         handle_error(response)
