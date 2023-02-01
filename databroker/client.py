@@ -81,8 +81,8 @@ class BlueskyRun(BlueskyRunMixin, Node):
             unpacker = msgpack.Unpacker()
             for chunk in response.iter_bytes():
                 unpacker.feed(chunk)
-                for name, doc in unpacker:
-                    yield (name, _document_types[name](doc))
+                for item in unpacker:
+                    yield (item["name"], _document_types[name](item["doc"]))
         finally:
             response.close()
 
@@ -312,6 +312,6 @@ class CatalogOfBlueskyRuns(CatalogOfBlueskyRunsMixin, Node):
         )
         response = self.context.http_client.post(
             link,
-            json={"name": name, "document": doc}
+            json={"name": name, "doc": doc}
         )
         handle_error(response)
