@@ -120,15 +120,6 @@ class Broker:
         self.v2._Broker__v1 = self
         self._reg = Registry(catalog)
 
-        # When the user asks for a Serializer, give a RunRouter
-        # that will generate a fresh Serializer instance for each
-        # run.
-
-        def factory(name, doc):
-            return [self._catalog.get_serializer()], []
-
-        self._run_router = event_model.RunRouter([factory])
-
     @property
     def aliases(self):
         _no_aliases()
@@ -150,10 +141,6 @@ class Broker:
 
     def clear_filters(self, *args, **kwargs):
         _no_filters()
-
-    @property
-    def _serializer(self):
-        return self._run_router
 
     @property
     def reg(self):
@@ -781,14 +768,7 @@ class Broker:
         return total_size * 1e-9
 
     def insert(self, name, doc):
-        if self._serializer is None:
-            raise RuntimeError("No Serializer was configured for this.")
-        warnings.warn(
-            "The method Broker.insert may be removed in a future release of "
-            "databroker.",
-            PendingDeprecationWarning,
-        )
-        self._serializer(name, doc)
+        self.v2.post_document(name, doc)
 
     def fill_event(*args, **kwargs):
         raise NotImplementedError(
