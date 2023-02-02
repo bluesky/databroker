@@ -3,6 +3,7 @@ cachetools
 entrypoints
 event-model
 fastapi
+jsonschema
 mongomock
 msgpack >=1.0.0
 pims
@@ -11,6 +12,7 @@ pymongo
 pytz
 rich
 starlette
+suitcase-mongo
 tiled[server] >=0.1.0a79
 toolz
 typer

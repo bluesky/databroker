@@ -6,6 +6,7 @@ import msgpack
 from tiled.adapters.utils import IndexCallable
 from tiled.client.node import DEFAULT_STRUCTURE_CLIENT_DISPATCH, Node
 from tiled.client.utils import handle_error
+from tiled.utils import safe_json_dump
 
 from .common import BlueskyEventStreamMixin, BlueskyRunMixin, CatalogOfBlueskyRunsMixin
 from .queries import PartialUID, RawMongo, ScanID
@@ -81,8 +82,8 @@ class BlueskyRun(BlueskyRunMixin, Node):
             unpacker = msgpack.Unpacker()
             for chunk in response.iter_bytes():
                 unpacker.feed(chunk)
-                for name, doc in unpacker:
-                    yield (name, _document_types[name](doc))
+                for item in unpacker:
+                    yield (item["name"], _document_types[item["name"]](item["doc"]))
         finally:
             response.close()
 
@@ -305,3 +306,13 @@ class CatalogOfBlueskyRuns(CatalogOfBlueskyRunsMixin, Node):
 
             self._v1 = Broker(self)
         return self._v1
+
+    def post_document(self, name, doc):
+        link = self.item["links"]["self"].replace(
+            "/node/metadata", "/documents", 1
+        )
+        response = self.context.http_client.post(
+            link,
+            data=safe_json_dump({"name": name, "doc": doc})
+        )
+        handle_error(response)
