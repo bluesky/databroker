@@ -14,7 +14,8 @@ version: "3.7"
 
 services:
   tiled:
-    image: databroker
+    build:
+      context: .
     volumes:
       - type: bind
         source: ./example_config.yml
