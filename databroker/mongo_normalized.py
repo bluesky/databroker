@@ -1125,6 +1125,7 @@ class MongoAdapter(collections.abc.Mapping, CatalogOfBlueskyRunsMixin, IndexersM
             cache_of_complete_bluesky_runs=cache_of_complete_bluesky_runs,
             cache_of_partial_bluesky_runs=cache_of_partial_bluesky_runs,
             metadata=metadata,
+            access_policy=access_policy,
         )
 
     @classmethod
