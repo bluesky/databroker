@@ -34,7 +34,7 @@ class CatalogOfBlueskyRunsMixin:
         # This is a copy/paste of the general-purpose implementation
         # tiled.adapters.utils.tree_repr
         # with some modifications to extract scan_id from the metadata.
-        sample = self.items_indexer[:10]
+        sample = self.items()[:10]
         # Use scan_id (int) if defined; otherwise fall back to uid.
         sample_reprs = [
             repr(value.metadata["start"].get("scan_id", key)) for key, value in sample
