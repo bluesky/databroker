@@ -22,6 +22,7 @@ import pymongo.errors
 import toolz.itertoolz
 import xarray
 
+from tiled.access_policies import ALL_SCOPES, NO_ACCESS, SpecialUsers
 from tiled.adapters.array import ArrayAdapter
 from tiled.adapters.xarray import DatasetAdapter
 from tiled.structures.array import (
@@ -1707,17 +1708,46 @@ class SimpleAccessPolicy:
 
     ALL = object()  # sentinel
 
-    def __init__(self, access_lists, key, provider):
+    def __init__(self, access_lists, *, key, provider, scopes=None):
         self.access_lists = {}
         self.key = key
         self.provider = provider
-        for identity, entries in (access_lists or {}).items():
-            if isinstance(entries, str):
-                entries = import_object(entries)
-            self.access_lists[identity] = entries
+        self.scopes = scopes if (scopes is not None) else ALL_SCOPES
+        for key, value in access_lists.items():
+            if isinstance(value, str):
+                value = import_object(value)
+            self.access_lists[key] = value
 
-    def check_compatibility(self, catalog):
-        return isinstance(catalog, MongoAdapter)
+    def _get_id(self, principal):
+        # Get the id (i.e. username) of this Principal for the
+        # associated authentication provider.
+        for identity in principal.identities:
+            if identity.provider == self.provider:
+                id = identity.id
+                break
+        else:
+            raise ValueError(
+                f"Principcal {principal} has no identity from provider {self.provider}. "
+                f"Its identities are: {principal.identities}"
+            )
+        return id
+
+    def allowed_scopes(self, node, principal):
+        # The simple policy does not provide for different Principals to
+        # have different scopes on different Nodes. If the Principal has access,
+        # they have the same hard-coded access everywhere.
+        return self.scopes
+
+    def filters(self, node, principal, scopes):
+        if not scopes.issubset(self.scopes):
+            return NO_ACCESS
+        id = self._get_id(principal)
+        access_list = self.access_lists.get(id, [])
+        queries = []
+        if not ((principal is SpecialUsers.admin) or (access_list is self.ALL)):
+            allowed = set(access_list or [])
+            queries.append(In(self.key, allowed))
+        return queries
 
 
 def _get_database(uri):
