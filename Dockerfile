@@ -17,7 +17,7 @@ RUN pip install --upgrade --no-cache-dir -r /code/requirements-server.txt
 
 COPY . .
 # note requirements listed here but all deps should be already satisfied
-RUN pip install .[server]
+RUN pip install .[back-compat,server]
 
 FROM base as runner
 
