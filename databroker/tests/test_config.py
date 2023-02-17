@@ -10,7 +10,7 @@ import yaml
 from bluesky.plans import count
 from databroker.utils import ensure_path_exists
 from databroker.tests.utils import get_uids
-from databroker import (lookup_config, list_configs, describe_configs)
+from databroker import (lookup_config, list_configs, describe_configs, temp)
 from databroker.v0 import Broker, temp_config
 
 
@@ -103,3 +103,9 @@ def test_uri(RE, hw):
 
     config['api_version'] = 0
     broker = Broker.from_config(config)
+
+
+def test_temp():
+    # Two ways of getting a temporary Broker (backed by mongomock)
+    Broker.named("temp")
+    temp()
