@@ -210,7 +210,7 @@ class Broker:
                 "from the client."
             )
         if name == "temp":
-            raise NotImplementedError("databroker 2.0.0 does not yet support 'temp' Broker")
+            return temp()
         client = from_profile(name)
         if try_raw:
             try:
