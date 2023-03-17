@@ -22,7 +22,7 @@ import pymongo.errors
 import toolz.itertoolz
 import xarray
 
-from tiled.access_policies import ALL_SCOPES, NO_ACCESS, SpecialUsers
+from tiled.access_policies import ALL_ACCESS, ALL_SCOPES, NO_ACCESS, SpecialUsers
 from tiled.adapters.array import ArrayAdapter
 from tiled.adapters.xarray import DatasetAdapter
 from tiled.structures.array import (
@@ -1706,7 +1706,7 @@ class SimpleAccessPolicy:
     >>> SimpleAccessPolicy({"alice": [<data_session>, key="data_session")
     """
 
-    ALL = object()  # sentinel
+    ALL = ALL_ACCESS
 
     def __init__(self, access_lists, *, key, provider, scopes=None):
         self.access_lists = {}
@@ -1744,8 +1744,16 @@ class SimpleAccessPolicy:
         id = self._get_id(principal)
         access_list = self.access_lists.get(id, [])
         queries = []
-        if not ((principal is SpecialUsers.admin) or (access_list is self.ALL)):
-            allowed = set(access_list or [])
+        if not ((principal is SpecialUsers.admin) or (access_list == self.ALL)):
+            try:
+                allowed = set(access_list or [])
+            except TypeError:
+                # Provide rich debugging info because we have encountered a confusing
+                # bug here in a previous implementation.
+                raise TypeError(
+                    f"Unexpected access_list {access_list} of type {type(access_list)}. "
+                    f"Expected iterable or {self.ALL}, instance of {type(self.ALL)}."
+                )
             queries.append(In(self.key, allowed))
         return queries
 
