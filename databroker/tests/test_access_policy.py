@@ -4,7 +4,8 @@ import getpass
 from bluesky import RunEngine
 from bluesky.plans import count
 import pytest
-from tiled.client import from_config
+from tiled.client import Context, from_context
+from tiled.server.app import build_app_from_config
 
 from ..mongo_normalized import MongoAdapter, SimpleAccessPolicy
 
@@ -73,17 +74,18 @@ def test_access_policy_example(tmpdir, enter_password):
             }
         ],
     }
-    with enter_password("secret"):
-        client = from_config(config, username="alice", token_cache=tmpdir)
+    with Context.from_app(build_app_from_config(config), token_cache=tmpdir) as context:
+        with enter_password("secret"):
+            client = from_context(context, username="alice", prompt_for_reauthentication=True)
 
-    def post_document(name, doc):
-        client.post_document(name, doc)
+        def post_document(name, doc):
+            client.post_document(name, doc)
 
-    RE = RunEngine()
-    RE.subscribe(post_document)
-    (red_uid,) = RE(count([], md={"color": "red"}))
-    (blue_uid,) = RE(count([], md={"color": "green"}))
-    (blue_uid,) = RE(count([], md={"color": "blue"}))
+        RE = RunEngine()
+        RE.subscribe(post_document)
+        (red_uid,) = RE(count([], md={"color": "red"}))
+        (blue_uid,) = RE(count([], md={"color": "green"}))
+        (blue_uid,) = RE(count([], md={"color": "blue"}))
 
-    # alice can see red and blue but not green
-    assert set(client.keys()) == {red_uid, blue_uid}
+        # alice can see red and blue but not green
+        assert set(client.keys()) == {red_uid, blue_uid}

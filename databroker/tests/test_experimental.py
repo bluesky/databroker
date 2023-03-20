@@ -4,8 +4,9 @@ import dask.array
 import dask.dataframe
 import numpy
 import pandas
+import pytest
 import sparse
-from tiled.client import from_tree
+from tiled.client import Context, from_context
 from tiled.queries import (
     Contains,
     Comparison,
@@ -17,6 +18,7 @@ from tiled.queries import (
     NotIn,
     Regex,
 )
+from tiled.server.app import build_app
 from tiled.structures.core import Spec
 from tiled.structures.sparse import COOStructure
 from tiled.validation_registration import ValidationRegistry
@@ -33,15 +35,16 @@ validation_registry.register("AnotherSpec", lambda *args, **kwargs: None)
 validation_registry.register("AnotherOtherSpec", lambda *args, **kwargs: None)
 
 
-def test_write_array(tmpdir):
-
+@pytest.fixture
+def client(tmpdir):
     tree = MongoAdapter.from_mongomock(tmpdir)
+    app = build_app(tree, validation_registry=validation_registry)
+    with Context.from_app(app) as context:
+        client = from_context(context)
+        yield client
 
-    client = from_tree(
-        tree, api_key=API_KEY, authentication={"single_user_api_key": API_KEY},
-        validation_registry=validation_registry,
-    )
 
+def test_write_array(client):
     test_array = numpy.ones((5, 7))
 
     metadata = {"scan_id": 1, "method": "A"}
@@ -62,15 +65,7 @@ def test_write_array(tmpdir):
     assert result.references == node.references == references
 
 
-def test_write_dataframe(tmpdir):
-
-    tree = MongoAdapter.from_mongomock(tmpdir)
-
-    client = from_tree(
-        tree, api_key=API_KEY, authentication={"single_user_api_key": API_KEY},
-        validation_registry=validation_registry,
-    )
-
+def test_write_dataframe(client):
     dummy_array = numpy.ones((5, 7))
 
     data = {
@@ -103,15 +98,7 @@ def test_write_dataframe(tmpdir):
     assert result.references == node.references == references
 
 
-def test_queries(tmpdir):
-
-    tree = MongoAdapter.from_mongomock(tmpdir)
-
-    client = from_tree(
-        tree, api_key=API_KEY, authentication={"single_user_api_key": API_KEY},
-        validation_registry=validation_registry,
-    )
-
+def test_queries(client):
     keys = list(string.ascii_lowercase)
 
     for letter, number in zip(keys, range(26)):
@@ -157,14 +144,7 @@ def test_queries(tmpdir):
     assert test8.values()[0].metadata["letter"] != "a"
 
 
-def test_delete(tmpdir):
-
-    tree = MongoAdapter.from_mongomock(tmpdir)
-    client = from_tree(
-        tree, api_key=API_KEY, authentication={"single_user_api_key": API_KEY},
-        validation_registry=validation_registry,
-    )
-
+def test_delete(client):
     # For dataframes
     dummy_array = numpy.ones((5, 5))
 
@@ -204,14 +184,7 @@ def test_delete(tmpdir):
     assert y.item["id"] not in client
 
 
-def test_write_array_chunked(tmpdir):
-
-    tree = MongoAdapter.from_mongomock(tmpdir)
-    client = from_tree(
-        tree, api_key=API_KEY, authentication={"single_user_api_key": API_KEY},
-        validation_registry=validation_registry,
-    )
-
+def test_write_array_chunked(client):
     a = dask.array.arange(24).reshape((4, 6)).rechunk((2, 3))
 
     metadata = {"scan_id": 1, "method": "A"}
@@ -229,14 +202,7 @@ def test_write_array_chunked(tmpdir):
     assert result.references == references
 
 
-def test_write_dataframe_partitioned(tmpdir):
-
-    tree = MongoAdapter.from_mongomock(tmpdir)
-    client = from_tree(
-        tree, api_key=API_KEY, authentication={"single_user_api_key": API_KEY},
-        validation_registry=validation_registry,
-    )
-
+def test_write_dataframe_partitioned(client):
     data = {f"Column{i}": (1 + i) * numpy.ones(10) for i in range(5)}
     df = pandas.DataFrame(data)
     ddf = dask.dataframe.from_pandas(df, npartitions=3)
@@ -257,14 +223,7 @@ def test_write_dataframe_partitioned(tmpdir):
     assert result.references == references
 
 
-def test_write_sparse_full(tmpdir):
-
-    tree = MongoAdapter.from_mongomock(tmpdir)
-    client = from_tree(
-        tree, api_key=API_KEY, authentication={"single_user_api_key": API_KEY},
-        validation_registry=validation_registry,
-    )
-
+def test_write_sparse_full(client):
     coo = sparse.COO(coords=[[0, 1], [2, 3]], data=[3.8, 4.0], shape=(4, 4))
 
     metadata = {"scan_id": 1, "method": "A"}
@@ -289,14 +248,7 @@ def test_write_sparse_full(tmpdir):
     assert result.references == references
 
 
-def test_write_sparse_chunked(tmpdir):
-
-    tree = MongoAdapter.from_mongomock(tmpdir)
-    client = from_tree(
-        tree, api_key=API_KEY, authentication={"single_user_api_key": API_KEY},
-        validation_registry=validation_registry,
-    )
-
+def test_write_sparse_chunked(client):
     metadata = {"scan_id": 1, "method": "A"}
     specs = [Spec("SomeSpec")]
     references = [{"label": "test", "url": "http://www.test.com"}]
@@ -327,15 +279,7 @@ def test_write_sparse_chunked(tmpdir):
     assert result.references == references
 
 
-def test_update_array_metadata(tmpdir):
-
-    tree = MongoAdapter.from_mongomock(tmpdir)
-
-    client = from_tree(
-        tree, api_key=API_KEY, authentication={"single_user_api_key": API_KEY},
-        validation_registry=validation_registry,
-    )
-
+def test_update_array_metadata(client):
     # Update metadata in array client
     test_array = numpy.ones((5, 5))
 
@@ -385,15 +329,7 @@ def test_update_array_metadata(tmpdir):
     assert len(result.metadata_revisions[:]) == 2
 
 
-def test_update_dataframe_metadata(tmpdir):
-
-    tree = MongoAdapter.from_mongomock(tmpdir)
-
-    client = from_tree(
-        tree, api_key=API_KEY, authentication={"single_user_api_key": API_KEY},
-        validation_registry=validation_registry,
-    )
-
+def test_update_dataframe_metadata(client):
     test_array = numpy.ones((5, 5))
 
     # Update metadata in dataframe client

@@ -17,7 +17,8 @@ from .. import mongo_normalized
 import suitcase.jsonl
 import suitcase.mongo_normalized
 import suitcase.mongo_embedded
-from tiled.client import from_tree
+from tiled.client import Context, from_context
+from tiled.server.app import build_app
 
 def get_uids(result):
     if hasattr(result, "run_start_uids"):
@@ -29,20 +30,33 @@ def get_uids(result):
 def build_jsonl_backed_broker(request):
     tmp_dir = tempfile.TemporaryDirectory()
 
-    def teardown():
-        tmp_dir.cleanup()
-
-    request.addfinalizer(teardown)
     broker = JSONLTree.from_directory(
         tmp_dir.name,
         handler_registry={'NPY_SEQ': ophyd.sim.NumpySeqHandler})
-    return from_tree(broker).v1
+    context = Context.from_app(build_app(broker))
+    client = from_context(context)
+
+    def teardown():
+        context.__exit__()
+        tmp_dir.cleanup()
+
+    request.addfinalizer(teardown)
+
+    return client.v1
 
 
 def build_tiled_mongo_backed_broker(request):
     adapter = mongo_normalized.MongoAdapter.from_mongomock(
         handler_registry={'NPY_SEQ': ophyd.sim.NumpySeqHandler})
-    return from_tree(adapter).v1
+    context = Context.from_app(build_app(adapter))
+    client = from_context(context)
+
+    def teardown():
+        context.__exit__()
+
+    request.addfinalizer(teardown)
+
+    return client.v1
 
 
 def build_sqlite_backed_broker(request):
