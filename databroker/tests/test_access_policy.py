@@ -74,9 +74,9 @@ def test_access_policy_example(tmpdir, enter_password):
             }
         ],
     }
-    with Context.from_app(build_app_from_config(config)) as context:
+    with Context.from_app(build_app_from_config(config), token_cache=tmpdir) as context:
         with enter_password("secret"):
-            client = from_context(context, username="alice", token_cache=tmpdir)
+            client = from_context(context, username="alice", prompt_for_reauthentication=True)
 
         def post_document(name, doc):
             client.post_document(name, doc)
