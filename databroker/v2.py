@@ -15,8 +15,11 @@ def temp():
     persistent. Do not use this for anything important.
     """
     from .mongo_normalized import MongoAdapter
-    from tiled.client import from_tree
+    from tiled.client import Context, from_context
+    from tiled.server.app import build_app
 
-    catalog = MongoAdapter.from_mongomock()  # service-side Catalog
-    client = from_tree(catalog)  # client-side Catalog
+    tree = MongoAdapter.from_mongomock()
+    app = build_app(tree)
+    context = Context.from_app(app)
+    client = from_context(context)
     return client
