@@ -27,6 +27,7 @@ from tiled.queries import (
     Eq,
     FullText,
     In,
+    KeysFilter,
     NotEq,
     NotIn,
     Operator,
@@ -500,7 +501,7 @@ class MongoAdapter(collections.abc.Mapping, IndexersMixin):
         super().__init__()
 
     @classmethod
-    def from_uri(cls, uri, directory, *, metadata=None):
+    def from_uri(cls, uri, directory, **kwargs):
         """
         When calling this method, call create_index() from its instance to define the
         unique indexes in the revision collection
@@ -512,17 +513,17 @@ class MongoAdapter(collections.abc.Mapping, IndexersMixin):
             )
         client = pymongo.MongoClient(uri)
         database = client.get_database()
-        return cls(database=database, directory=directory, metadata=metadata)
+        return cls(database=database, directory=directory, **kwargs)
 
     @classmethod
-    def from_mongomock(cls, directory, *, metadata=None):
+    def from_mongomock(cls, directory, **kwargs):
         import mongomock
 
         db_name = f"temp-{str(uuid.uuid4())}"
         mongo_client = mongomock.MongoClient()
         database = mongo_client[db_name]
 
-        mongo_adapter = cls(database=database, directory=directory, metadata=metadata)
+        mongo_adapter = cls(database=database, directory=directory, **kwargs)
         mongo_adapter.create_indexes()
 
         return mongo_adapter
@@ -749,12 +750,17 @@ def full_text_search(query, catalog):
     )
 
 
+def keys_filter(query, catalog):
+    return catalog.apply_mongo_query({"key": {"$in": list(query.keys)}})
+
+
 MongoAdapter.register_query(Contains, contains)
 MongoAdapter.register_query(Comparison, comparison)
 MongoAdapter.register_query(Eq, eq)
 MongoAdapter.register_query(NotEq, noteq)
 MongoAdapter.register_query(Regex, regex)
 MongoAdapter.register_query(In, _in)
+MongoAdapter.register_query(KeysFilter, keys_filter)
 MongoAdapter.register_query(NotIn, notin)
 MongoAdapter.register_query(FullText, full_text_search)
 

@@ -1,32 +1,9 @@
-import contextlib
-import getpass
-
 from bluesky import RunEngine
 from bluesky.plans import count
-import pytest
 from tiled.client import Context, from_context
 from tiled.server.app import build_app_from_config
 
 from ..mongo_normalized import MongoAdapter, SimpleAccessPolicy
-
-
-@pytest.fixture
-def enter_password(monkeypatch):
-    """
-    Return a context manager that overrides getpass, used like:
-
-    >>> with enter_password(...):
-    ...     # Run code that calls getpass.getpass().
-    """
-
-    @contextlib.contextmanager
-    def f(password):
-        original = getpass.getpass
-        monkeypatch.setattr("getpass.getpass", lambda: password)
-        yield
-        monkeypatch.setattr("getpass.getpass", original)
-
-    return f
 
 
 def test_access_policy_pass_through():
