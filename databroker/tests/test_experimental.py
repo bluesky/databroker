@@ -1,7 +1,9 @@
+import contextlib
 import string
 
 import dask.array
 import dask.dataframe
+import httpx
 import numpy
 import pandas
 import pytest
@@ -18,14 +20,14 @@ from tiled.queries import (
     NotIn,
     Regex,
 )
-from tiled.server.app import build_app
+from tiled.server.app import build_app, build_app_from_config
 from tiled.structures.core import Spec
 from tiled.structures.sparse import COOStructure
 from tiled.validation_registration import ValidationRegistry
 
 from ..experimental.server_ext import MongoAdapter
-
 from ..experimental.schemas import DocumentRevision
+# from .test_access_policy import enter_password
 
 
 API_KEY = "secret"
@@ -387,3 +389,56 @@ def test_update_dataframe_metadata(client):
 
     result.metadata_revisions.delete_revision(0)
     assert len(result.metadata_revisions[:]) == 2
+
+
+@contextlib.contextmanager
+def fail_with_status_code(status_code):
+    with pytest.raises(httpx.HTTPStatusError) as info:
+        yield
+    assert info.value.response.status_code == status_code
+
+
+def test_simple_access_policy(tmpdir, enter_password):
+
+    config = {
+        "authentication": {
+            "providers": [
+                {
+                    "provider": "toy",
+                    "authenticator": "tiled.authenticators:DictionaryAuthenticator",
+                    "args": {"users_to_passwords": {"alice": "secret1", "bob": "secret2", "cara": "secret3"}},
+                }
+            ],
+        },
+        "trees": [
+            {
+                "path": "/",
+                "tree": "databroker.experimental.server_ext:MongoAdapter.from_mongomock",
+                "args": {"directory": tmpdir},
+                "access_control": {
+                    "access_policy": "tiled.access_policies:SimpleAccessPolicy",
+                    "args": {
+                        "provider": "toy",
+                        "access_lists": {
+                            "alice": [],
+                            "cara": "tiled.access_policies:ALL_ACCESS",
+                        },
+                    },
+                },
+            }
+        ],
+    }
+    with Context.from_app(build_app_from_config(config), token_cache=tmpdir) as context:
+        # User with all access
+        with enter_password("secret3"):
+            client = from_context(context, username="cara", prompt_for_reauthentication=True)
+        client.write_array([1, 2, 3])
+        assert len(list(client)) == 1
+        # User with no access
+        with enter_password("secret1"):
+            client = from_context(context, username="alice", prompt_for_reauthentication=True)
+        assert len(list(client)) == 0
+        # User with implicitly no access (not mentioned in policy)
+        with enter_password("secret2"):
+            client = from_context(context, username="bob", prompt_for_reauthentication=True)
+        assert len(list(client)) == 0
