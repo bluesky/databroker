@@ -1138,3 +1138,20 @@ def test_run_metadata(db, RE, hw):
         assert key in run.metadata
         with pytest.warns(DeprecationWarning):
             assert key in run().metadata  # intake compat
+
+
+def test_v2_accessor(db, RE, hw):
+    "Test for v2 accessor to support code compatible with v1- and v2-style objects."
+    RE.subscribe(db.insert)
+    if not hasattr(db, "v2"):
+        raise pytest.skip("v0 has no v2 accessor")
+    uid, = get_uids(RE(count([hw.det], 5)))
+    h = db[uid]
+    # v1-style Header has v2 accessor
+    assert db[uid].v2.start["uid"] == h.start["uid"]
+    # v2-style BlueskyRun has v2 accessor
+    assert db[uid].v2.v2.v2.start["uid"] == h.start["uid"]
+    # v1-style Broker has v2 accessor
+    assert db.v2[uid].start["uid"] == h.start["uid"]
+    # v2-style CatalogOfBlueskyRuns has v2 accessor
+    assert db.v2.v2.v2[uid].start["uid"] == h.start["uid"]
