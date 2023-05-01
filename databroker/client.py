@@ -55,6 +55,10 @@ class BlueskyRun(BlueskyRunMixin, Node):
         """
         return self.metadata["stop"]
 
+    @property
+    def v2(self):
+        return self
+
     def documents(self, fill=False):
         # For back-compat with v2:
         if fill == "yes":
@@ -228,6 +232,10 @@ class CatalogOfBlueskyRuns(CatalogOfBlueskyRunsMixin, Node):
         self.scan_id = IndexCallable(self._lookup_by_scan_id)
         self.uid = IndexCallable(self._lookup_by_partial_uid)
         self._v1 = None
+
+    @property
+    def v2(self):
+        return self
 
     def __getitem__(self, key):
         # For convenience and backward-compatiblity reasons, we support
