@@ -492,6 +492,10 @@ def test_distinct(client):
         "tag", structure_families=True, specs=True, counts=True
     )
 
+    # Results are retrieved from the database as an unsorted list.
+    # They are sorted by count to validate them during the test run.
+    results["metadata"]["tag"].sort(key=lambda k: k["count"])
+
     expected = {
         "metadata": {
             "tag": [{"value": "Prime", "count": 2}, {"value": "NotPrime", "count": 3}]
