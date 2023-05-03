@@ -457,7 +457,7 @@ def test_simple_access_policy(tmpdir, enter_password):
 
 
 def test_distinct(client):
-    #### Generate the test data
+    # Begin of test data generation
 
     # Added additional field in metadata to implement consecutive search and distinct queries
     for i in range(10):
@@ -486,7 +486,7 @@ def test_distinct(client):
 
         client.write_dataframe(df, metadata=metadata, specs=[Spec("test")])
 
-    ####
+    # End of test data generation
 
     results = client.search(Key("group") == "B").distinct(
         "tag", structure_families=True, specs=True, counts=True

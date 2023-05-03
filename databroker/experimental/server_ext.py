@@ -7,7 +7,6 @@ import uuid
 import time
 from pathlib import Path
 from datetime import datetime, timezone
-from collections import Counter
 
 import dask.dataframe
 import numpy
