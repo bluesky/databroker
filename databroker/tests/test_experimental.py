@@ -494,7 +494,7 @@ def test_distinct(client):
 
     expected = {
         "metadata": {
-            "tag": [{"value": "NotPrime", "count": 3}, {"value": "Prime", "count": 2}]
+            "tag": [{"value": "Prime", "count": 2}, {"value": "NotPrime", "count": 3}]
         },
         "specs": [
             {"value": ["test"], "count": 5},
