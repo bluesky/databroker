@@ -7,6 +7,7 @@ import uuid
 import time
 from pathlib import Path
 from datetime import datetime, timezone
+from collections import Counter
 
 import dask.dataframe
 import numpy
@@ -397,7 +398,7 @@ class WritingCOOAdapter:
     def read(self, slice=None):
         all_coords = []
         all_data = []
-        for (block, (coords, data)) in self.blocks.items():
+        for block, (coords, data) in self.blocks.items():
             offsets = []
             for b, c in zip(block, self.doc.structure.chunks):
                 offset = sum(c[:b])
@@ -552,7 +553,6 @@ class MongoAdapter(collections.abc.Mapping, IndexersMixin):
         )
 
     def post_metadata(self, metadata, structure_family, structure, specs, references):
-
         mime_structure_association = {
             StructureFamily.array: "application/x-zarr",
             StructureFamily.dataframe: APACHE_ARROW_FILE_MIME_TYPE,
@@ -637,6 +637,61 @@ class MongoAdapter(collections.abc.Mapping, IndexersMixin):
         Return a MongoAdapter with a subset of the mapping.
         """
         return self.query_registry(query, self)
+
+    def get_distinct(self, metadata, structure_families, specs, counts):
+        data = {}
+        if metadata:
+            data["metadata"] = {}
+            for metadata_key in metadata:
+                key_list = self.collection.distinct(
+                    "metadata." + metadata_key,
+                    self._build_mongo_query({"data_url": {"$ne": None}}),
+                )
+                if len(key_list) > 0:
+                    if counts:
+                        data["metadata"][metadata_key] = []
+                        for k in key_list:
+                            v = len(
+                                self.apply_mongo_query({f"metadata.{metadata_key}": k})
+                            )
+                            distinct_key = {"value": k, "count": v}
+                            data["metadata"][metadata_key].append(distinct_key)
+                    else:
+                        data["metadata"][metadata_key] = [
+                            {"value": k} for k in key_list
+                        ]
+
+        if structure_families:
+            structure_family_list = self.collection.distinct(
+                "structure_family", self._build_mongo_query({"data_url": {"$ne": None}})
+            )
+            if len(structure_family_list) > 0:
+                if counts:
+                    data["structure_families"] = []
+                    for k in structure_family_list:
+                        v = len(self.apply_mongo_query({"structure_family": k.value}))
+                        distinct_structure_families = {"value": k, "count": v}
+                        data["structure_families"].append(distinct_structure_families)
+                else:
+                    data["structure_families"] = [
+                        {"value": k} for k in structure_family_list
+                    ]
+
+        if specs:
+            specs_list = self.collection.distinct(
+                "specs", self._build_mongo_query({"data_url": {"$ne": None}})
+            )
+            if len(specs_list) > 0:
+                if counts:
+                    data["specs"] = []
+                    for k in specs_list:
+                        v = len(self.apply_mongo_query({"specs": k}))
+                        distinct_specs = {"value": [k["name"]], "count": v}
+                        data["specs"].append(distinct_specs)
+                else:
+                    data["specs"] = [{"value": k} for k in specs_list]
+
+        return data
 
     def sort(self, sorting):
         return self.new_variation(sorting=sorting)
