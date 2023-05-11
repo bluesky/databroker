@@ -677,18 +677,17 @@ class MongoAdapter(collections.abc.Mapping, IndexersMixin):
                     ]
 
         if specs:
-            specs_list = self.collection.distinct(
-                "specs", self._build_mongo_query({"data_url": {"$ne": None}})
-            )
-            if len(specs_list) > 0:
-                if counts:
-                    data["specs"] = []
-                    for k in specs_list:
-                        v = len(self.apply_mongo_query({"specs": k}))
-                        distinct_specs = {"value": [k["name"]], "count": v}
-                        data["specs"].append(distinct_specs)
-                else:
-                    data["specs"] = [{"value": k} for k in specs_list]
+            select = {"$match": self._build_mongo_query({"data_url": {"$ne": None}})}
+
+            if counts:
+                project = {"$project": {"_id": 0, "value": "$_id", "count": "$count"}}
+            else:
+                project = {"$project": {"_id": 0, "value": "$_id"}}
+
+            group = {"$group": {"_id": "$specs", "count": {"$sum": 1}}}
+
+            distinct_list = list(self.collection.aggregate([select, group, project]))
+            data["specs"] = distinct_list
 
         return data
 

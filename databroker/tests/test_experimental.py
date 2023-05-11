@@ -468,8 +468,10 @@ def test_distinct(client):
 
         if i % 2 == 0:
             subgroup = "even"
+            specs = [Spec("test")]
         else:
             subgroup = "odd"
+            specs = [Spec("test"), Spec("moreTest")]
 
         if i == 0:
             tag = "Zero"
@@ -484,7 +486,7 @@ def test_distinct(client):
         df = pandas.DataFrame({"a": i * numpy.ones(10)})
         metadata = {"group": group, "subgroup": subgroup, "tag": tag}
 
-        client.write_dataframe(df, metadata=metadata, specs=[Spec("test")])
+        client.write_dataframe(df, metadata=metadata, specs=specs)
 
     # End of test data generation
 
@@ -495,13 +497,21 @@ def test_distinct(client):
     # Results are retrieved from the database as an unsorted list.
     # They are sorted by count to validate them during the test run.
     results["metadata"]["tag"].sort(key=lambda k: k["count"])
+    results["specs"].sort(key=lambda k: k["count"])
 
     expected = {
         "metadata": {
             "tag": [{"value": "Prime", "count": 2}, {"value": "NotPrime", "count": 3}]
         },
         "specs": [
-            {"value": ["test"], "count": 5},
+            {"value": [{"name": "test", "version": None}], "count": 2},
+            {
+                "value": [
+                    {"name": "test", "version": None},
+                    {"name": "moreTest", "version": None},
+                ],
+                "count": 3,
+            },
         ],
         "structure_families": [
             {"value": "dataframe", "count": 5},
