@@ -639,53 +639,32 @@ class MongoAdapter(collections.abc.Mapping, IndexersMixin):
 
     def get_distinct(self, metadata, structure_families, specs, counts):
         data = {}
+
+        select = {"$match": self._build_mongo_query({"data_url": {"$ne": None}})}
+
+        if counts:
+            project = {"$project": {"_id": 0, "value": "$_id", "count": "$count"}}
+        else:
+            project = {"$project": {"_id": 0, "value": "$_id"}}
+
         if metadata:
             data["metadata"] = {}
             for metadata_key in metadata:
-                key_list = self.collection.distinct(
-                    "metadata." + metadata_key,
-                    self._build_mongo_query({"data_url": {"$ne": None}}),
+                group = {
+                    "$group": {"_id": f"$metadata.{metadata_key}", "count": {"$sum": 1}}
+                }
+                data["metadata"][f"{metadata_key}"] = list(
+                    self.collection.aggregate([select, group, project])
                 )
-                if len(key_list) > 0:
-                    if counts:
-                        data["metadata"][metadata_key] = []
-                        for k in key_list:
-                            v = len(
-                                self.apply_mongo_query({f"metadata.{metadata_key}": k})
-                            )
-                            distinct_key = {"value": k, "count": v}
-                            data["metadata"][metadata_key].append(distinct_key)
-                    else:
-                        data["metadata"][metadata_key] = [
-                            {"value": k} for k in key_list
-                        ]
 
         if structure_families:
-            structure_family_list = self.collection.distinct(
-                "structure_family", self._build_mongo_query({"data_url": {"$ne": None}})
+            group = {"$group": {"_id": "$structure_family", "count": {"$sum": 1}}}
+            data["structure_families"] = list(
+                self.collection.aggregate([select, group, project])
             )
-            if len(structure_family_list) > 0:
-                if counts:
-                    data["structure_families"] = []
-                    for k in structure_family_list:
-                        v = len(self.apply_mongo_query({"structure_family": k.value}))
-                        distinct_structure_families = {"value": k, "count": v}
-                        data["structure_families"].append(distinct_structure_families)
-                else:
-                    data["structure_families"] = [
-                        {"value": k} for k in structure_family_list
-                    ]
 
         if specs:
-            select = {"$match": self._build_mongo_query({"data_url": {"$ne": None}})}
-
-            if counts:
-                project = {"$project": {"_id": 0, "value": "$_id", "count": "$count"}}
-            else:
-                project = {"$project": {"_id": 0, "value": "$_id"}}
-
             group = {"$group": {"_id": "$specs", "count": {"$sum": 1}}}
-
             distinct_list = list(self.collection.aggregate([select, group, project]))
             data["specs"] = distinct_list
 

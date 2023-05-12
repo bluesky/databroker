@@ -490,6 +490,41 @@ def test_distinct(client):
 
     # End of test data generation
 
+    # Not Counting
+    results = client.search(Key("group") == "B").distinct(
+        "tag", structure_families=True, specs=True, counts=False
+    )
+
+    # Results are retrieved from the database as an unsorted list.
+    # They are sorted by count to validate them during the test run.
+    results["metadata"]["tag"].sort(key=lambda k: k["value"])
+    results["specs"].sort(key=lambda k: k["value"])
+
+    expected = {
+        "metadata": {
+            "tag": [
+                {"value": "NotPrime", "count": None},
+                {"value": "Prime", "count": None},
+            ]
+        },
+        "specs": [
+            {"value": [{"name": "test", "version": None}], "count": None},
+            {
+                "value": [
+                    {"name": "test", "version": None},
+                    {"name": "moreTest", "version": None},
+                ],
+                "count": None,
+            },
+        ],
+        "structure_families": [{"value": "dataframe", "count": None}],
+    }
+
+    assert results["metadata"] == expected["metadata"]
+    assert results["specs"] == expected["specs"]
+    assert results["structure_families"] == expected["structure_families"]
+
+    # Counting
     results = client.search(Key("group") == "B").distinct(
         "tag", structure_families=True, specs=True, counts=True
     )
