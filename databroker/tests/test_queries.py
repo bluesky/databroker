@@ -3,7 +3,17 @@ import pickle
 from bluesky.plans import count
 import pytest
 
-from ..queries import Contains, FullText, In, Key, NotIn, TimeRange, Regex, ScanID, ScanIDRange
+from ..queries import (
+    Contains,
+    FullText,
+    In,
+    Key,
+    NotIn,
+    TimeRange,
+    Regex,
+    ScanID,
+    ScanIDRange,
+)
 from ..tests.utils import get_uids
 
 
@@ -75,24 +85,24 @@ def test_scan_id(c, RE, hw):
     (should_match,) = get_uids(RE(count([hw.det])))
     (should_not_match,) = get_uids(RE(count([hw.det])))
 
-    scan_id = c[should_match].start['scan_id']
+    scan_id = c[should_match].start["scan_id"]
     results = c.search(ScanID(scan_id))
 
-    assert scan_id == results[0].start['scan_id']
+    assert scan_id == results[0].start["scan_id"]
 
 
 def test_scan_id_range(c, RE, hw):
     RE.subscribe(c.v1.insert)
 
     (scan1,) = get_uids(RE(count([hw.det])))
-    scan_id1 = c[scan1].start['scan_id']
+    scan_id1 = c[scan1].start["scan_id"]
     (scan2,) = get_uids(RE(count([hw.det])))
-    scan_id2 = c[scan2].start['scan_id']
+    scan_id2 = c[scan2].start["scan_id"]
     (scan3,) = get_uids(RE(count([hw.det])))
-    scan_id3 = c[scan3].start['scan_id']
+    scan_id3 = c[scan3].start["scan_id"]
 
     results = c.search(ScanIDRange(scan_id1, scan_id3))
-    scan_id_results = [run.start['scan_id'] for uid, run in results.items()]
+    scan_id_results = [run.start["scan_id"] for uid, run in results.items()]
     assert scan_id_results == [scan_id1, scan_id2]
     assert scan_id3 not in scan_id_results
 
@@ -139,3 +149,24 @@ def test_contains(c, RE, hw):
     results = c.search(Contains("foo", 3))
     assert should_match in results
     assert should_not_match not in results
+
+
+def test_distinct(c, RE, hw):
+    RE.subscribe(c.v1.insert)
+
+    (should_match,) = get_uids(RE(count([hw.det]), foo="a"))
+    (should_not_match,) = get_uids(RE(count([hw.det]), foo="b"))
+
+    expected = {
+        "metadata": {
+            "start.foo": [{"value": "a", "count": 1}, {"value": "b", "count": 1}]
+        },
+        "structure_families": [{"value": "node", "count": 2}],
+        "specs": [{"value": [{"name": "BlueskyRun", "version": "1"}], "count": 2}],
+    }
+
+    results = c.distinct("foo", structure_families=True, specs=True, counts=True)
+
+    assert results["metadata"] == expected["metadata"]
+    assert results["specs"] == expected["specs"]
+    assert results["structure_families"] == expected["structure_families"]
