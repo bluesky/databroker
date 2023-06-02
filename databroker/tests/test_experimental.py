@@ -27,6 +27,7 @@ from tiled.validation_registration import ValidationRegistry
 
 from ..experimental.server_ext import MongoAdapter
 from ..experimental.schemas import DocumentRevision
+
 # from .test_access_policy import enter_password
 
 
@@ -399,14 +400,19 @@ def fail_with_status_code(status_code):
 
 
 def test_simple_access_policy(tmpdir, enter_password):
-
     config = {
         "authentication": {
             "providers": [
                 {
                     "provider": "toy",
                     "authenticator": "tiled.authenticators:DictionaryAuthenticator",
-                    "args": {"users_to_passwords": {"alice": "secret1", "bob": "secret2", "cara": "secret3"}},
+                    "args": {
+                        "users_to_passwords": {
+                            "alice": "secret1",
+                            "bob": "secret2",
+                            "cara": "secret3",
+                        }
+                    },
                 }
             ],
         },
@@ -431,14 +437,122 @@ def test_simple_access_policy(tmpdir, enter_password):
     with Context.from_app(build_app_from_config(config), token_cache=tmpdir) as context:
         # User with all access
         with enter_password("secret3"):
-            client = from_context(context, username="cara", prompt_for_reauthentication=True)
+            client = from_context(
+                context, username="cara", prompt_for_reauthentication=True
+            )
         client.write_array([1, 2, 3])
         assert len(list(client)) == 1
         # User with no access
         with enter_password("secret1"):
-            client = from_context(context, username="alice", prompt_for_reauthentication=True)
+            client = from_context(
+                context, username="alice", prompt_for_reauthentication=True
+            )
         assert len(list(client)) == 0
         # User with implicitly no access (not mentioned in policy)
         with enter_password("secret2"):
-            client = from_context(context, username="bob", prompt_for_reauthentication=True)
+            client = from_context(
+                context, username="bob", prompt_for_reauthentication=True
+            )
         assert len(list(client)) == 0
+
+
+def test_distinct(client):
+    # Begin of test data generation
+
+    # Added additional field in metadata to implement consecutive search and distinct queries
+    for i in range(10):
+        if i < 5:
+            group = "A"
+        else:
+            group = "B"
+
+        if i % 2 == 0:
+            subgroup = "even"
+            specs = [Spec("test")]
+        else:
+            subgroup = "odd"
+            specs = [Spec("test"), Spec("moreTest")]
+
+        if i == 0:
+            tag = "Zero"
+        else:
+            for j in range(2, int(i / 2) + 1):
+                if (i % j) == 0:
+                    tag = "NotPrime"
+                    break
+            else:
+                tag = "Prime"
+
+        df = pandas.DataFrame({"a": i * numpy.ones(10)})
+        metadata = {"group": group, "subgroup": subgroup, "tag": tag}
+
+        client.write_dataframe(df, metadata=metadata, specs=specs)
+
+    # End of test data generation
+
+    # Not Counting
+    results = client.search(Key("group") == "B").distinct(
+        "tag", structure_families=True, specs=True, counts=False
+    )
+
+    # Results are retrieved from the database as an unsorted list.
+    # They are sorted by count to validate them during the test run.
+    results["metadata"]["tag"].sort(key=lambda k: k["value"])
+    results["specs"].sort(key=lambda k: k["value"])
+
+    expected = {
+        "metadata": {
+            "tag": [
+                {"value": "NotPrime", "count": None},
+                {"value": "Prime", "count": None},
+            ]
+        },
+        "specs": [
+            {"value": [{"name": "test", "version": None}], "count": None},
+            {
+                "value": [
+                    {"name": "test", "version": None},
+                    {"name": "moreTest", "version": None},
+                ],
+                "count": None,
+            },
+        ],
+        "structure_families": [{"value": "dataframe", "count": None}],
+    }
+
+    assert results["metadata"] == expected["metadata"]
+    assert results["specs"] == expected["specs"]
+    assert results["structure_families"] == expected["structure_families"]
+
+    # Counting
+    results = client.search(Key("group") == "B").distinct(
+        "tag", structure_families=True, specs=True, counts=True
+    )
+
+    # Results are retrieved from the database as an unsorted list.
+    # They are sorted by count to validate them during the test run.
+    results["metadata"]["tag"].sort(key=lambda k: k["count"])
+    results["specs"].sort(key=lambda k: k["count"])
+
+    expected = {
+        "metadata": {
+            "tag": [{"value": "Prime", "count": 2}, {"value": "NotPrime", "count": 3}]
+        },
+        "specs": [
+            {"value": [{"name": "test", "version": None}], "count": 2},
+            {
+                "value": [
+                    {"name": "test", "version": None},
+                    {"name": "moreTest", "version": None},
+                ],
+                "count": 3,
+            },
+        ],
+        "structure_families": [
+            {"value": "dataframe", "count": 5},
+        ],
+    }
+
+    assert results["metadata"] == expected["metadata"]
+    assert results["specs"] == expected["specs"]
+    assert results["structure_families"] == expected["structure_families"]

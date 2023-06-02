@@ -397,7 +397,7 @@ class WritingCOOAdapter:
     def read(self, slice=None):
         all_coords = []
         all_data = []
-        for (block, (coords, data)) in self.blocks.items():
+        for block, (coords, data) in self.blocks.items():
             offsets = []
             for b, c in zip(block, self.doc.structure.chunks):
                 offset = sum(c[:b])
@@ -552,7 +552,6 @@ class MongoAdapter(collections.abc.Mapping, IndexersMixin):
         )
 
     def post_metadata(self, metadata, structure_family, structure, specs, references):
-
         mime_structure_association = {
             StructureFamily.array: "application/x-zarr",
             StructureFamily.dataframe: APACHE_ARROW_FILE_MIME_TYPE,
@@ -637,6 +636,39 @@ class MongoAdapter(collections.abc.Mapping, IndexersMixin):
         Return a MongoAdapter with a subset of the mapping.
         """
         return self.query_registry(query, self)
+
+    def get_distinct(self, metadata, structure_families, specs, counts):
+        data = {}
+
+        select = {"$match": self._build_mongo_query({"data_url": {"$ne": None}})}
+
+        if counts:
+            project = {"$project": {"_id": 0, "value": "$_id", "count": "$count"}}
+        else:
+            project = {"$project": {"_id": 0, "value": "$_id"}}
+
+        if metadata:
+            data["metadata"] = {}
+            for metadata_key in metadata:
+                group = {
+                    "$group": {"_id": f"$metadata.{metadata_key}", "count": {"$sum": 1}}
+                }
+                data["metadata"][f"{metadata_key}"] = list(
+                    self.collection.aggregate([select, group, project])
+                )
+
+        if structure_families:
+            group = {"$group": {"_id": "$structure_family", "count": {"$sum": 1}}}
+            data["structure_families"] = list(
+                self.collection.aggregate([select, group, project])
+            )
+
+        if specs:
+            group = {"$group": {"_id": "$specs", "count": {"$sum": 1}}}
+            distinct_list = list(self.collection.aggregate([select, group, project]))
+            data["specs"] = distinct_list
+
+        return data
 
     def sort(self, sorting):
         return self.new_variation(sorting=sorting)
