@@ -40,7 +40,7 @@ from tiled.adapters.utils import (
     tree_repr,
     IndexersMixin,
 )
-from tiled.structures.core import Spec
+from tiled.structures.core import Spec, StructureFamily
 from tiled.utils import import_object, OneShotCachedMap, UNCHANGED
 
 from .common import BlueskyEventStreamMixin, BlueskyRunMixin, CatalogOfBlueskyRunsMixin
@@ -216,6 +216,9 @@ class DatasetMapAdapter(MapAdapter):
         return True
 
 
+BLUESKYRUN_SPEC = Spec("BlueskyRun", version="1")
+
+
 class BlueskyRun(MapAdapter, BlueskyRunMixin):
     def __init__(
         self,
@@ -231,7 +234,7 @@ class BlueskyRun(MapAdapter, BlueskyRunMixin):
         if specs is None:
             specs = []
         specs = list(specs)
-        specs.append(Spec("BlueskyRun", version="1"))
+        specs.append(BLUESKYRUN_SPEC)
         super().__init__(*args, specs=specs, **kwargs)
         self.transforms = transforms or {}
         self.root_map = root_map
@@ -651,7 +654,9 @@ class DatasetFromDocuments:
                 array = raw_array.astype(dtype)
             else:
                 array = raw_array
-            specs = [Spec("xarray_coord")] if key == "time" else [Spec("xarray_data_var")]
+            specs = (
+                [Spec("xarray_coord")] if key == "time" else [Spec("xarray_data_var")]
+            )
             if isinstance(array, dask.array.Array):
                 constructor = ArrayAdapter
             else:
@@ -1616,6 +1621,60 @@ class MongoAdapter(collections.abc.Mapping, CatalogOfBlueskyRunsMixin, IndexersM
         return self.new_variation(
             queries=self.queries + [query],
         )
+
+    def get_distinct(self, metadata, structure_families, specs, counts):
+        data = {}
+
+        select = {"$match": self._build_mongo_query()}
+
+        if counts:
+            project = {"$project": {"_id": 0, "value": "$_id", "count": "$count"}}
+        else:
+            project = {"$project": {"_id": 0, "value": "$_id"}}
+
+        if metadata:
+            data["metadata"] = {}
+            for metadata_key in metadata:
+                group = {"$group": {"_id": f"${metadata_key}", "count": {"$sum": 1}}}
+
+                start_list = list(
+                    self._run_start_collection.aggregate([select, group, project])
+                )
+                for item in start_list:
+                    if item["value"] is None:
+                        start_list.remove(item)
+                if len(start_list) > 0:
+                    data["metadata"][f"start.{metadata_key}"] = start_list
+
+                stop_list = list(
+                    self._run_stop_collection.aggregate([select, group, project])
+                )
+                for item in stop_list:
+                    if item["value"] is None:
+                        stop_list.remove(item)
+                if len(stop_list) > 0:
+                    data["metadata"][f"stop.{metadata_key}"] = stop_list
+
+        if structure_families or specs:
+            node_size = len(self.apply_mongo_query({}))
+
+        if structure_families:
+            distinct_structure_families = {
+                "value": StructureFamily.node,
+                "count": node_size,
+            }
+            data["structure_families"] = [distinct_structure_families]
+
+        if specs:
+            distinct_specs = {
+                "value": [
+                    {"name": BLUESKYRUN_SPEC.name, "version": BLUESKYRUN_SPEC.version}
+                ],
+                "count": node_size,
+            }
+            data["specs"] = [distinct_specs]
+
+        return data
 
     def sort(self, sorting):
         return self.new_variation(sorting=sorting)
