@@ -413,7 +413,7 @@ def partial_uid(query, catalog):
     for partial_uid in query.partial_uids:
         if len(partial_uid) < 5:
             raise QueryValueError(
-                f"Partial uid {partial_uid} is too short. "
+                f"Partial uid {partial_uid!r} is too short. "
                 "It must include at least 5 characters."
             )
         result = catalog.apply_mongo_query({"uid": {"$regex": f"^{partial_uid}"}})
