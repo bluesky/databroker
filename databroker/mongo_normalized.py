@@ -1432,10 +1432,14 @@ class MongoAdapter(collections.abc.Mapping, CatalogOfBlueskyRunsMixin, IndexersM
                 },
             ]
         )
-        (result,) = cursor
-        cutoff_seq_num = (
-            1 + result["highest_seq_num"]
-        )  # `1 +` because we use a half-open interval
+        results = list(cursor)
+        if results:
+            (result,) = results
+            cutoff_seq_num = (
+                1 + result["highest_seq_num"]
+            )  # `1 +` because we use a half-open interval
+        else:
+            cutoff_seq_num = 1
         object_names = event_descriptors[0]["object_keys"]
         run = self[run_start_uid]
         mapping = OneShotCachedMap(
