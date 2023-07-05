@@ -4,7 +4,7 @@ import warnings
 
 import msgpack
 from tiled.adapters.utils import IndexCallable
-from tiled.client.node import DEFAULT_STRUCTURE_CLIENT_DISPATCH, Node
+from tiled.client.container import DEFAULT_STRUCTURE_CLIENT_DISPATCH, Container
 from tiled.client.utils import handle_error
 from tiled.utils import safe_json_dump
 
@@ -28,11 +28,11 @@ _document_types = {
 _IPYTHON_METHODS = {"_ipython_canary_method_should_not_exist_", "_repr_mimebundle_"}
 
 
-class BlueskyRun(BlueskyRunMixin, Node):
+class BlueskyRun(BlueskyRunMixin, Container):
     """
     This encapsulates the data and metadata for one Bluesky 'run'.
 
-    This adds for bluesky-specific conveniences to the standard client Node.
+    This adds for bluesky-specific conveniences to the standard client Container.
     """
 
     @property
@@ -70,7 +70,7 @@ class BlueskyRun(BlueskyRunMixin, Node):
         else:
             fill = bool(fill)
         link = self.item["links"]["self"].replace(
-            "/node/metadata", "/documents", 1
+            "/metadata", "/documents", 1
         )
         request = self.context.http_client.build_request(
             "GET",
@@ -142,11 +142,11 @@ class BlueskyRun(BlueskyRunMixin, Node):
     to_dask = read
 
 
-class BlueskyEventStream(BlueskyEventStreamMixin, Node):
+class BlueskyEventStream(BlueskyEventStreamMixin, Container):
     """
     This encapsulates the data and metadata for one 'stream' in a Bluesky 'run'.
 
-    This adds for bluesky-specific conveniences to the standard client Node.
+    This adds for bluesky-specific conveniences to the standard client Container.
     """
 
     @property
@@ -216,9 +216,9 @@ and then read() will return dask objects.""",
         ).read()
 
 
-class CatalogOfBlueskyRuns(CatalogOfBlueskyRunsMixin, Node):
+class CatalogOfBlueskyRuns(CatalogOfBlueskyRunsMixin, Container):
     """
-    This adds some bluesky-specific conveniences to the standard client Node.
+    This adds some bluesky-specific conveniences to the standard client Container.
 
     >>> catalog.scan_id[1234]  # scan_id lookup
     >>> catalog.uid["9acjef"]  # (partial) uid lookup
@@ -317,7 +317,7 @@ class CatalogOfBlueskyRuns(CatalogOfBlueskyRunsMixin, Node):
 
     def post_document(self, name, doc):
         link = self.item["links"]["self"].replace(
-            "/node/metadata", "/documents", 1
+            "/metadata", "/documents", 1
         )
         response = self.context.http_client.post(
             link,
