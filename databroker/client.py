@@ -321,6 +321,6 @@ class CatalogOfBlueskyRuns(CatalogOfBlueskyRunsMixin, Container):
         )
         response = self.context.http_client.post(
             link,
-            data=safe_json_dump({"name": name, "doc": doc})
+            content=safe_json_dump({"name": name, "doc": doc})
         )
         handle_error(response)
