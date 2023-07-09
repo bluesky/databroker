@@ -161,7 +161,7 @@ def test_distinct(c, RE, hw):
         "metadata": {
             "start.foo": [{"value": "a", "count": 1}, {"value": "b", "count": 1}]
         },
-        "structure_families": [{"value": "node", "count": 2}],
+        "structure_families": [{"value": "container", "count": 2}],
         "specs": [{"value": [{"name": "BlueskyRun", "version": "1"}], "count": 2}],
     }
 

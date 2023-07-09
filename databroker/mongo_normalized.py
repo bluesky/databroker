@@ -510,7 +510,7 @@ class DatasetFromDocuments:
     An xarray.Dataset from a sub-dict of an Event stream
     """
 
-    structure_family = "node"
+    structure_family = StructureFamily.container
     specs = [Spec("xarray_dataset")]
 
     def __init__(
@@ -1033,7 +1033,7 @@ def build_config_xarray(
 
 
 class MongoAdapter(collections.abc.Mapping, CatalogOfBlueskyRunsMixin, IndexersMixin):
-    structure_family = "node"
+    structure_family = StructureFamily.container
     specs = [Spec("CatalogOfBlueskyRuns", version="1")]
 
     # Define classmethods for managing what queries this MongoAdapter knows.
@@ -1664,7 +1664,7 @@ class MongoAdapter(collections.abc.Mapping, CatalogOfBlueskyRunsMixin, IndexersM
 
         if structure_families:
             distinct_structure_families = {
-                "value": StructureFamily.node,
+                "value": StructureFamily.container,
                 "count": node_size,
             }
             data["structure_families"] = [distinct_structure_families]

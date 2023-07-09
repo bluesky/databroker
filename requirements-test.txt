@@ -16,6 +16,6 @@ sphinx
 suitcase-jsonl >=0.1.0b2
 suitcase-mongo >=0.1.0
 suitcase-msgpack >=0.2.2
-tiled[all] >=0.1.0a89
+tiled[all] >=0.1.0a98
 ujson
 vcrpy
