@@ -5,7 +5,6 @@ import pytest
 import sys
 from databroker.tests.utils import (build_sqlite_backed_broker,
                                     build_legacy_mongo_backed_broker,
-                                    build_jsonl_backed_broker,
                                     build_tiled_mongo_backed_broker,
                                     )
 import tempfile
@@ -26,7 +25,6 @@ if sys.version_info >= (3, 5):
 
 param_map = {'sqlite-legacy': build_sqlite_backed_broker,
              'mongo-legacy': build_legacy_mongo_backed_broker,
-             'jsonl': build_jsonl_backed_broker,
              'mongo-tiled': build_tiled_mongo_backed_broker,
              }
 params = [

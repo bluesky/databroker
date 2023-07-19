@@ -12,9 +12,7 @@ import tzlocal
 from databroker import v0, v1
 from databroker.headersource import HeaderSourceShim
 from databroker.eventsource import EventSourceShim
-from ..from_files import JSONLTree, MsgpackTree
 from .. import mongo_normalized
-import suitcase.jsonl
 import suitcase.mongo_normalized
 import suitcase.mongo_embedded
 from tiled.client import Context, from_context
@@ -25,24 +23,6 @@ def get_uids(result):
         return result.run_start_uids
     else:
         return result
-
-
-def build_jsonl_backed_broker(request):
-    tmp_dir = tempfile.TemporaryDirectory()
-
-    broker = JSONLTree.from_directory(
-        tmp_dir.name,
-        handler_registry={'NPY_SEQ': ophyd.sim.NumpySeqHandler})
-    context = Context.from_app(build_app(broker))
-    client = from_context(context)
-
-    def teardown():
-        context.__exit__()
-        tmp_dir.cleanup()
-
-    request.addfinalizer(teardown)
-
-    return client.v1
 
 
 def build_tiled_mongo_backed_broker(request):
