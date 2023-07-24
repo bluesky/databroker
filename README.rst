@@ -24,7 +24,7 @@ generic data access tool (outside of the Bluesky Project).
 
 ============== ==============================================================
 PyPI           ``pip install databroker``
-Conda          ``pip install -c nsls2forge databroker``
+Conda          ``conda install -c conda-forge databroker``
 Source code    https://github.com/bluesky/databroker
 Documentation  https://blueskyproject.io/databroker
 ============== ==============================================================
