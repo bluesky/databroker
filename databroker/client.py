@@ -1,8 +1,8 @@
 import collections.abc
+import json
 import keyword
 import warnings
 
-import msgpack
 from tiled.adapters.utils import IndexCallable
 from tiled.client.container import DEFAULT_STRUCTURE_CLIENT_DISPATCH, Container
 from tiled.client.utils import handle_error
@@ -76,17 +76,16 @@ class BlueskyRun(BlueskyRunMixin, Container):
             "GET",
             link,
             params={"fill": fill},
-            headers={"Accept": "application/x-msgpack"},
+            headers={"Accept": "application/json-seq"},
         )
         response = self.context.http_client.send(request, stream=True)
         try:
             if response.is_error:
                 response.read()
                 handle_error(response)
-            unpacker = msgpack.Unpacker()
             for chunk in response.iter_bytes():
-                unpacker.feed(chunk)
-                for item in unpacker:
+                for line in chunk.decode().splitlines():
+                    item = json.loads(line)
                     yield (item["name"], _document_types[item["name"]](item["doc"]))
         finally:
             response.close()
