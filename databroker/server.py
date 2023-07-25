@@ -30,7 +30,7 @@ def get_documents(
 
     if not isinstance(run, BlueskyRun):
         raise HTTPException(status_code=404, detail="This is not a BlueskyRun.")
-    DEFAULT_MEDIA_TYPE = "application/json"
+    DEFAULT_MEDIA_TYPE = "application/json-seq"
     media_types = request.headers.get("Accept", DEFAULT_MEDIA_TYPE).split(", ")
     for media_type in media_types:
         if media_type == "*/*":
@@ -47,16 +47,16 @@ def get_documents(
             return PatchedStreamingResponse(
                 generator, media_type="application/x-msgpack"
             )
-        if media_type == "application/json":
+        if media_type == "application/json-seq":
             # (name, doc) pairs as newline-delimited JSON
             generator = (json.dumps({"name": name, "doc": doc}) + "\n" for name, doc in run.documents(fill=fill))
             return PatchedStreamingResponse(
-                generator, media_type="application/x-ndjson"
+                generator, media_type="application/json-seq"
             )
     else:
         raise HTTPException(
             status_code=406,
-            detail=", ".join(["application/json", "application/x-msgpack"]),
+            detail=", ".join(["application/json-seq", "application/x-msgpack"]),
         )
 
 
