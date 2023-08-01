@@ -8,15 +8,7 @@ FROM base as builder
 RUN apt-get -y update && apt-get install -y git
 
 WORKDIR /code
-
-# Copy requirements over first so this layer is cached and we don't have to
-# reinstall dependencies when only the databroker source has changed.
-COPY requirements-server.txt /code/
-RUN pip install --upgrade --no-cache-dir pip wheel
-RUN pip install --upgrade --no-cache-dir -r /code/requirements-server.txt
-
 COPY . .
-# note requirements listed here but all deps should be already satisfied
 RUN pip install .[back-compat,server]
 
 FROM base as runner
