@@ -49,7 +49,7 @@ class BlueskyMapAdapter(MapAdapter, CatalogOfBlueskyRunsMixin):
         matches = {
             key: value
             for key, value in self.items()
-            if query_obj.match(value.metadata["start"])
+            if query_obj.match(value.metadata()["start"])
         }
         return type(self)(mapping=matches)
 
@@ -348,13 +348,13 @@ def scan_id(query, catalog):
         # aggregations in Mongo from queries.
         results_by_scan_id = {}
         for key, value in mongo_results.items():
-            results_by_scan_id[value.metadata["start"]["scan_id"]] = (key, value)
+            results_by_scan_id[value.metadata()["start"]["scan_id"]] = (key, value)
         results = BlueskyMapAdapter(
             dict(results_by_scan_id.values()), must_revalidate=False
         )
     elif query.duplicates == "error":
         scan_ids = list(
-            value.metadata["start"]["scan_id"] for value in mongo_results.values()
+            value.metadata()["start"]["scan_id"] for value in mongo_results.values()
         )
         counter = collections.Counter(scan_ids)
         duplicated = []
@@ -383,13 +383,13 @@ def scan_id_range(query, catalog):
         # aggregations in Mongo from queries.
         results_by_scan_id = {}
         for key, value in mongo_results.items():
-            results_by_scan_id[value.metadata["start"]["scan_id"]] = (key, value)
+            results_by_scan_id[value.metadata()["start"]["scan_id"]] = (key, value)
         results = BlueskyMapAdapter(
             dict(results_by_scan_id.values()), must_revalidate=False
         )
     elif query.duplicates == "error":
         scan_ids = list(
-            value.metadata["start"]["scan_id"] for value in mongo_results.values()
+            value.metadata()["start"]["scan_id"] for value in mongo_results.values()
         )
         counter = collections.Counter(scan_ids)
         duplicated = []
