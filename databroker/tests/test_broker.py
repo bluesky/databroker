@@ -1168,3 +1168,23 @@ def test_v2_accessor(db, RE, hw):
     assert db.v2[uid].start["uid"] == h.start["uid"]
     # v2-style CatalogOfBlueskyRuns has v2 accessor
     assert db.v2.v2.v2[uid].start["uid"] == h.start["uid"]
+
+
+def test_string_column(db, RE, hw):
+    "Test string data."
+    from ophyd.sim import EnumSignal
+
+
+    class StringSignal(EnumSignal):
+        def describe(self):
+            desc = super().describe()
+            desc[self.name]["dtype"] = "string"
+            return desc
+
+    if not hasattr(db, "v2"):
+        raise pytest.skip("v0 has no v2 accessor")
+
+    RE.subscribe(db.insert)
+    signal = StringSignal(value="A", enum_strings=("A", "B"), name="signal")
+    uid, = get_uids(RE(count([signal], 5)))
+    data = db.v2[uid]["primary"]["data"]
