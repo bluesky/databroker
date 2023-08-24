@@ -549,7 +549,7 @@ class DatasetFromDocuments:
             for key, field_metadata in descriptor["data_keys"].items():
                 if field_metadata["dtype"] == "string":
                     # Skip this if it has a dtype_str with an itemsize.
-                    dtype_str = field_metadata().get("dtype_str")
+                    dtype_str = field_metadata.get("dtype_str")
                     if dtype_str is not None:
                         if numpy.dtype(dtype_str).itemsize != 0:
                             continue
