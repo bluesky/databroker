@@ -29,7 +29,7 @@ analysis results, we have to do some of that works ourselves.
 
    .. code:: python
 
-      import bluesky_live.run_builder import build_simple_run
+      from bluesky_live.run_builder import build_simple_run
 
       run = buiLd_simple_run({'x': [1, 2, 3], 'y': [4, 5, 6]}, metadata={'sample': 'Cu'})    
 
@@ -43,7 +43,7 @@ analysis results, we have to do some of that works ourselves.
 
    .. code:: python
 
-      import bluesky_live.run_builder import RunBuilder
+      from bluesky_live.run_builder import RunBuilder
 
       with RunBuilder(metadata={'sample': 'Cu'}) as builder:
           builder.add_stream("primary", data={'x': [1, 2, 3], 'y': [10, 20, 30]})
