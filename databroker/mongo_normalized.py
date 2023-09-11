@@ -652,14 +652,10 @@ class DatasetFromDocuments:
             specs = (
                 [Spec("xarray_coord")] if key == "time" else [Spec("xarray_data_var")]
             )
-            if isinstance(array, dask.array.Array):
-                constructor = ArrayAdapter
-            else:
-                constructor = ArrayAdapter.from_array
-            mapping[key] = constructor(
+            mapping[key] = ArrayAdapter(
                 array,
                 metadata=self.array_metadata[key],
-                dims=structure.dims,
+                structure=structure,
                 specs=specs,
             )
         return DatasetMapAdapter(mapping, metadata=self.metadata(), specs=self.specs)
