@@ -14,7 +14,6 @@ from bson.objectid import ObjectId, InvalidId
 import cachetools
 import entrypoints
 import event_model
-import dask.array
 from dask.array.core import cached_cumsum, normalize_chunks
 import numpy
 import pymongo
