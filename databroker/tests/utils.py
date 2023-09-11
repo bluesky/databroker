@@ -119,4 +119,6 @@ def build_legacy_mongo_backed_broker(request):
 
     request.addfinalizer(delete_fs)
 
+    # Create indexes.
+    suitcase.mongo_normalized.Serializer(mds._db, fs._db)
     return v0.Broker(mds, fs)
