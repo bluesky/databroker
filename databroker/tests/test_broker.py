@@ -28,6 +28,7 @@ from databroker.tests.utils import get_uids
 from bluesky import __version__ as bluesky_version
 from bluesky.plans import count
 from bluesky.plan_stubs import trigger_and_read, configure, one_shot
+import bluesky.plan_stubs as bps
 from bluesky.preprocessors import (monitor_during_wrapper,
                                    run_decorator,
                                    baseline_wrapper,
@@ -98,7 +99,14 @@ def test_no_events(db, RE):
     if packaging.version.parse(bluesky_version) < packaging.version.parse("1.11.0"):
         pytest.skip("This test relies on the pre-declare streams feature added in bluesky 1.11")
     RE.subscribe(db.insert)
-    uid, = get_uids(RE(count([])))
+
+
+    def test_plan():
+        yield from bps.open_run()
+        yield from bps.declare_stream(name='primary')
+        yield from bps.close_run()
+
+    uid, = get_uids(RE(test_plan()))
     header = db[uid]
     header.table()
 
