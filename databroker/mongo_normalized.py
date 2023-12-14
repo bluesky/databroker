@@ -514,6 +514,7 @@ class DatasetFromDocuments:
         event_collection,
         root_map,
         sub_dict,
+        validate_shape,
     ):
         self._run = run
         self._stream_name = stream_name
@@ -522,6 +523,7 @@ class DatasetFromDocuments:
         self._event_collection = event_collection
         self._sub_dict = sub_dict
         self.root_map = root_map
+        self.validate_shape = validate_shape
 
         # metadata should look like
         # {
@@ -851,7 +853,7 @@ class DatasetFromDocuments:
                 if expected_shape and (not is_external):
                     validated_column = list(
                         map(
-                            lambda item: default_validate_shape(
+                            lambda item: self.validate_shape(
                                 key, numpy.asarray(item), expected_shape
                             ),
                             result[key],
@@ -936,7 +938,7 @@ class DatasetFromDocuments:
                         last_datum_id=None,
                     )
                     filled_data = filled_mock_event["data"][key]
-                    validated_filled_data = default_validate_shape(
+                    validated_filled_data = self.validate_shape(
                         key, filled_data, expected_shape
                     )
                     filled_column.append(validated_filled_data)
@@ -1457,6 +1459,7 @@ class MongoAdapter(collections.abc.Mapping, CatalogOfBlueskyRunsMixin, IndexersM
                     event_collection=self._event_collection,
                     root_map=self.root_map,
                     sub_dict="data",
+                    validate_shape=self.validate_shape,
                 ),
                 "timestamps": lambda: DatasetFromDocuments(
                     run=run,
@@ -1466,6 +1469,7 @@ class MongoAdapter(collections.abc.Mapping, CatalogOfBlueskyRunsMixin, IndexersM
                     event_collection=self._event_collection,
                     root_map=self.root_map,
                     sub_dict="timestamps",
+                    validate_shape=self.validate_shape,
                 ),
                 "config": lambda: Config(
                     OneShotCachedMap(
