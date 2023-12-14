@@ -1264,7 +1264,7 @@ class MongoAdapter(collections.abc.Mapping, CatalogOfBlueskyRunsMixin, IndexersM
             validate_shape = default_validate_shape
         elif isinstance(validate_shape, str):
             validate_shape = import_object(validate_shape)
-        self.validate_shape=validate_shape
+        self.validate_shape = validate_shape
         super().__init__()
 
     @property
