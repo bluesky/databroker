@@ -72,23 +72,23 @@ class BlueskyRun(BlueskyRunMixin, Container):
         link = self.item["links"]["self"].replace(
             "/metadata", "/documents", 1
         )
-        request = self.context.http_client.build_request(
-            "GET",
-            link,
-            params={"fill": fill},
-            headers={"Accept": "application/json-seq"},
-        )
-        response = self.context.http_client.send(request, stream=True)
-        try:
+        with self.context.http_client.stream(
+            "GET", link, params={"fill": fill},
+            headers={"Accept": "application/json-seq"}
+        ) as response:
             if response.is_error:
                 response.read()
                 handle_error(response)
+            tail = ""
             for chunk in response.iter_bytes():
                 for line in chunk.decode().splitlines():
-                    item = json.loads(line)
-                    yield (item["name"], _document_types[item["name"]](item["doc"]))
-        finally:
-            response.close()
+                    try:
+                        item = json.loads(tail + line)
+                    except json.JSONDecodeError:
+                        tail += line
+                    else:
+                        yield (item["name"], _document_types[item["name"]](item["doc"]))
+                        tail = ""
 
     def __getattr__(self, key):
         """

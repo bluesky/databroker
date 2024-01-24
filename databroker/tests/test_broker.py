@@ -21,9 +21,11 @@ import pytest
 import six
 import numpy as np
 import event_model
+import httpx
 
 from databroker._core import DOCT_NAMES
 from databroker.tests.utils import get_uids
+from tiled.client import from_uri
 
 from bluesky import __version__ as bluesky_version
 from bluesky.plans import count
@@ -1196,3 +1198,13 @@ def test_string_column(db, RE, hw):
     signal = StringSignal(value="A", enum_strings=("A", "B"), name="signal")
     uid, = get_uids(RE(count([signal], 5)))
     data = db.v2[uid]["primary"]["data"]
+
+def test_large_document():
+    API_URL = "https://tiled-demo.blueskyproject.io/api/v1/"
+    try:
+        httpx.get(API_URL).raise_for_status()
+    except Exception:
+        raise pytest.skip(f"Could not connect to {API_URL}")
+    c = from_uri(API_URL)
+    run = c["csx"]["raw"]["ca658886-ee6b-4b3c-b47f-a58b08dbac8b"]
+    list(run.documents())
