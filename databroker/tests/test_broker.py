@@ -21,9 +21,11 @@ import pytest
 import six
 import numpy as np
 import event_model
+import httpx
 
 from databroker._core import DOCT_NAMES
 from databroker.tests.utils import get_uids
+from tiled.client import from_uri
 
 from bluesky import __version__ as bluesky_version
 from bluesky.plans import count
@@ -1197,21 +1199,12 @@ def test_string_column(db, RE, hw):
     uid, = get_uids(RE(count([signal], 5)))
     data = db.v2[uid]["primary"]["data"]
 
-# def test_large_document(db, RE, hw):
-#     "Exercise JSON deserialization on large documents."
-#     RE.subscribe(db.insert)
-#     if not hasattr(db, "v2"):
-#         raise pytest.skip("v0 has no v2 accessor")
-#     large_dict = { str(k): hex(k)*100_000 for k in range(10000) }
-#     uid, = get_uids(RE(count([hw.det], 5, md=large_dict)))
-#     list(db.v2[uid].documents())
-
-def test_large_document(db, RE, hw):
-    "Exercise JSON deserialization on large documents."
-    import json
-    if not hasattr(db, "v2"):
-        raise pytest.skip("v0 has no v2 accessor")
-    with open("databroker/tests/large_dict.json", "r") as f:
-        large_dict = json.loads(f.read())
-    for _, line in large_dict.items():
-        db.insert(line["name"], line["doc"])
+def test_large_document():
+    API_URL = "https://tiled-demo.blueskyproject.io/api/v1/"
+    try:
+        httpx.get(API_URL).raise_for_status()
+    except Exception:
+        raise pytest.skip(f"Could not connect to {API_URL}")
+    c = from_uri(API_URL)
+    run = c["csx"]["raw"]["ca658886-ee6b-4b3c-b47f-a58b08dbac8b"]
+    list(run.documents())
