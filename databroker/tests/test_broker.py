@@ -1196,3 +1196,12 @@ def test_string_column(db, RE, hw):
     signal = StringSignal(value="A", enum_strings=("A", "B"), name="signal")
     uid, = get_uids(RE(count([signal], 5)))
     data = db.v2[uid]["primary"]["data"]
+
+def test_large_document(db, RE, hw):
+    "Exercise JSON deserialization on large documents."
+    RE.subscribe(db.insert)
+    if not hasattr(db, "v2"):
+        raise pytest.skip("v0 has no v2 accessor")
+    large_dict = { str(k): hex(k)*100_000 for k in range(10000) }
+    uid, = get_uids(RE(count([hw.det], 5, md=large_dict)))
+    list(db.v2[uid].documents())
