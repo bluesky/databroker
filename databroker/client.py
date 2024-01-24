@@ -72,13 +72,10 @@ class BlueskyRun(BlueskyRunMixin, Container):
         link = self.item["links"]["self"].replace(
             "/metadata", "/documents", 1
         )
-        request = self.context.http_client.build_request(
-            "GET",
-            link,
-            params={"fill": fill},
-            headers={"Accept": "application/json-seq"},
-        )
-        with self.context.http_client.stream(request) as response:
+        with self.context.http_client.stream(
+            "GET", link, params={"fill": fill},
+            headers={"Accept": "application/json-seq"}
+        ) as response:
             if response.is_error:
                 response.read()
                 handle_error(response)
