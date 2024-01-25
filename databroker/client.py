@@ -81,14 +81,13 @@ class BlueskyRun(BlueskyRunMixin, Container):
                 handle_error(response)
             tail = ""
             for chunk in response.iter_bytes():
-                for line in chunk.decode().splitlines():
-                    try:
+                for line in chunk.decode().splitlines(keepends=True):
+                    if line[-1] == "\n":
                         item = json.loads(tail + line)
-                    except json.JSONDecodeError:
-                        tail += line
-                    else:
                         yield (item["name"], _document_types[item["name"]](item["doc"]))
                         tail = ""
+                    else:
+                        tail += line
 
     def __getattr__(self, key):
         """
