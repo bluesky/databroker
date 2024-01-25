@@ -88,6 +88,9 @@ class BlueskyRun(BlueskyRunMixin, Container):
                         tail = ""
                     else:
                         tail += line
+            if tail:
+                item = json.loads(tail)
+                yield (item["name"], _document_types[item["name"]](item["doc"]))
 
     def __getattr__(self, key):
         """
