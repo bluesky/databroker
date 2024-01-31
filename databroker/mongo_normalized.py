@@ -261,6 +261,9 @@ class BlueskyRun(MapAdapter, BlueskyRunMixin):
             transformed["stop"] = self.transforms["stop"](self._metadata["stop"])
         metadata = dict(collections.ChainMap(transformed, self._metadata))
         return metadata
+    
+    async def update_metadata(self, metadata=None, specs=None):
+        raise NotImplementedError('update_metadata method not implemented')
 
     @property
     def filler(self):
@@ -440,6 +443,9 @@ class BlueskyEventStream(MapAdapter, BlueskyEventStreamMixin):
             ]
         metadata = dict(collections.ChainMap(transformed, self._metadata))
         return metadata
+    
+    async def update_metadata(self, metadata=None, specs=None):
+        raise NotImplementedError('update_metadata method not implemented')
 
     def new_variation(self, **kwargs):
         return super().new_variation(
