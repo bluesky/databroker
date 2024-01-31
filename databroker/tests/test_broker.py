@@ -16,6 +16,7 @@ from databroker import (wrap_in_doct, wrap_in_deprecated_doct,
 from .test_config import EXAMPLE
 import doct
 import copy
+import warnings
 
 import pytest
 import six
@@ -860,13 +861,13 @@ def test_deprecated_doct():
         ev.data
         ev._name
 
-    with pytest.warns(None) as record:
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
         ev['data']
         ev.values()
         ev._repr_html_()
         with pytest.raises(AttributeError):
             ev.nonexistent
-    assert not record  # i.e. assert no warning
 
 
 def test_ingest_array_data(db_empty, RE):
