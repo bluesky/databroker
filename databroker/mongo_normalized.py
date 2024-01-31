@@ -110,10 +110,10 @@ def structure_from_descriptor(descriptor, sub_dict, max_seq_num, unicode_columns
         # if the EventDescriptor doesn't provide names for the
         # dimensions (it's optional) use the same default dimension
         # names that xarray would.
-        try:
+        ndim = len(field_metadata["shape"])
+        if "dims" in field_metadata and len(field_metadata["dims"]) == ndim:
             dims = ["time"] + field_metadata["dims"]
-        except KeyError:
-            ndim = len(field_metadata["shape"])
+        else:
             dims = ["time"] + [f"dim_{next(dim_counter)}" for _ in range(ndim)]
         attrs = {}
         # Record which object (i.e. device) this column is associated with,
@@ -1005,10 +1005,10 @@ def build_config_xarray(
             # if the EventDescriptor doesn't provide names for the
             # dimensions (it's optional) use the same default dimension
             # names that xarray would.
-            try:
+            ndim = len(field_metadata["shape"])
+            if "dims" in field_metadata and len(field_metadata["dims"]) == ndim:
                 dims = ["time"] + field_metadata["dims"]
-            except KeyError:
-                ndim = len(field_metadata["shape"])
+            else:
                 dims = ["time"] + [f"dim_{next(dim_counter)}" for _ in range(ndim)]
             units = field_metadata.get("units")
             if units:
