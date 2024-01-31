@@ -62,6 +62,10 @@ from .queries import (
 )
 from .server import router
 
+from jsonschema import ValidationError
+
+from event_model import DocumentNames, schema_validators
+
 
 CHUNK_SIZE_LIMIT = os.getenv("DATABROKER_CHUNK_SIZE_LIMIT", "100MB")
 MAX_AD_FRAMES_PER_CHUNK = int(os.getenv("DATABROKER_MAX_AD_FRAMES_PER_CHUNK", "10"))
@@ -216,6 +220,7 @@ class BlueskyRun(MapAdapter, BlueskyRunMixin):
     def __init__(
         self,
         *args,
+        serializer,
         handler_registry,
         transforms,
         root_map,
@@ -236,7 +241,9 @@ class BlueskyRun(MapAdapter, BlueskyRunMixin):
         # This is used to create the Filler on first access.
         self._init_handler_registry = handler_registry
         self._filler = None
+        self._serializer = serializer
         self._filler_creation_lock = threading.RLock()
+
 
     def must_revalidate(self):
         return self._metadata["stop"] is not None
@@ -263,7 +270,18 @@ class BlueskyRun(MapAdapter, BlueskyRunMixin):
         return metadata
     
     async def update_metadata(self, metadata=None, specs=None):
-        raise NotImplementedError('update_metadata method not implemented')
+        # if(specs is not None or "start" not in metadata):
+        #     raise NotImplementedError('update_metadata method not implemented')
+        start = metadata["start"]
+        # stop = metadata["stop"]
+        try:
+            schema_validators[DocumentNames.start].validate(start)
+            # schema_validators[DocumentNames.stop].validate(stop)
+        except ValidationError as err:
+            raise
+        # Update start
+        self._serializer.update("start", metadata["start"])
+        # self._serializer.update("stop", metadata["stop"])
 
     @property
     def filler(self):
@@ -445,7 +463,19 @@ class BlueskyEventStream(MapAdapter, BlueskyEventStreamMixin):
         return metadata
     
     async def update_metadata(self, metadata=None, specs=None):
-        raise NotImplementedError('update_metadata method not implemented')
+        # if(specs is not None or "start" not in metadata):
+        #     raise NotImplementedError('update_metadata method not implemented')
+        start = metadata["start"]
+        # stop = metadata["stop"]
+        try:
+            schema_validators[DocumentNames.start].validate(start)
+            # schema_validators[DocumentNames.stop].validate(stop)
+        except ValidationError as err:
+            raise
+        # Update start
+        self._serializer.update("start", metadata["start"])
+        # self._serializer.update("stop", metadata["stop"])
+        
 
     def new_variation(self, **kwargs):
         return super().new_variation(
@@ -1415,6 +1445,7 @@ class MongoAdapter(collections.abc.Mapping, CatalogOfBlueskyRunsMixin, IndexersM
                 "stop": run_stop_doc,
                 "summary": build_summary(run_start_doc, run_stop_doc, stream_names),
             },
+            serializer=self.get_serializer(),
             handler_registry=self.handler_registry,
             transforms=copy.copy(self.transforms),
             root_map=copy.copy(self.root_map),
