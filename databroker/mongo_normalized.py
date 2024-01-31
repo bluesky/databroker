@@ -257,6 +257,10 @@ class BlueskyRun(MapAdapter, BlueskyRunMixin):
         if self._metadata["stop"] is not None:
             return datetime.utcnow() + timedelta(hours=1)
 
+    @property
+    def key(self):
+        return self._metadata["start"]["uid"]
+
     def metadata(self):
         "Metadata about this MongoAdapter."
         # If there are transforms configured, shadow the 'start' and 'stop' documents
