@@ -111,11 +111,8 @@ def structure_from_descriptor(descriptor, sub_dict, max_seq_num, unicode_columns
         # dimensions (it's optional) use the same default dimension
         # names that xarray would.
         ndim = len(field_metadata["shape"])
-        if "dims" in field_metadata:
-            if len(field_metadata["dims"]) == ndim:
-                dims = ["time"] + field_metadata["dims"]
-            else:
-                dims = ["time"] + [f"dim_{next(dim_counter)}" for _ in range(ndim)]
+        if "dims" in field_metadata and len(field_metadata["dims"]) == ndim:
+            dims = ["time"] + field_metadata["dims"]
         else:
             dims = ["time"] + [f"dim_{next(dim_counter)}" for _ in range(ndim)]
         attrs = {}
@@ -1009,11 +1006,8 @@ def build_config_xarray(
             # dimensions (it's optional) use the same default dimension
             # names that xarray would.
             ndim = len(field_metadata["shape"])
-            if "dims" in field_metadata:
-                if len(field_metadata["dims"]) == ndim:
-                    dims = ["time"] + field_metadata["dims"]
-                else:
-                    dims = ["time"] + [f"dim_{next(dim_counter)}" for _ in range(ndim)]
+            if "dims" in field_metadata and len(field_metadata["dims"]) == ndim:
+                dims = ["time"] + field_metadata["dims"]
             else:
                 dims = ["time"] + [f"dim_{next(dim_counter)}" for _ in range(ndim)]
             units = field_metadata.get("units")
