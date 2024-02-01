@@ -1343,6 +1343,7 @@ class MongoAdapter(collections.abc.Mapping, CatalogOfBlueskyRunsMixin, IndexersM
             queries=queries,
             sorting=sorting,
             access_policy=self.access_policy,
+            validate_shape=self.validate_shape,
             **kwargs,
         )
 
