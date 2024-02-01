@@ -276,18 +276,19 @@ class BlueskyRun(MapAdapter, BlueskyRunMixin):
     async def update_metadata(self, metadata=None, specs=None):
         if("start" not in metadata):
              raise NotImplementedError('update_metadata method not implemented')
-        elif(specs is not None):
+        elif(specs is None):
             raise NotImplementedError('Updating of specs is not yet supported.')
         start = metadata["start"]
-        # stop = metadata["stop"]
+        stop = metadata["stop"] if "stop" in metadata else None
         try:
             schema_validators[DocumentNames.start].validate(start)
-            # schema_validators[DocumentNames.stop].validate(stop)
+            if (stop is not None):
+                schema_validators[DocumentNames.stop].validate(stop)
         except ValidationError as err:
             raise
         # Update start
         self._serializer.update("start", metadata["start"])
-        # self._serializer.update("stop", metadata["stop"])
+        self._serializer.update("stop", metadata["stop"])
 
     @property
     def filler(self):
