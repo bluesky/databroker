@@ -469,8 +469,10 @@ class BlueskyEventStream(MapAdapter, BlueskyEventStreamMixin):
         return metadata
     
     async def update_metadata(self, metadata=None, specs=None):
-        # if(specs is not None or "start" not in metadata):
-        #     raise NotImplementedError('update_metadata method not implemented')
+        if("start" not in metadata):
+             raise NotImplementedError('update_metadata method not implemented')
+        elif(specs is not None):
+            raise NotImplementedError('Updating of specs is not yet supported.')
         start = metadata["start"]
         # stop = metadata["stop"]
         try:
@@ -480,6 +482,11 @@ class BlueskyEventStream(MapAdapter, BlueskyEventStreamMixin):
             raise
         # Update start
         self._serializer.update("start", metadata["start"])
+        # Update descriptors
+        # TODO: uncomment when support is added in suitcase mongo
+        # for descriptor in metadata["descriptors"]:
+        #     self.serializer.update("descriptor", descriptor)
+        # Update stop
         # self._serializer.update("stop", metadata["stop"])
         
 
