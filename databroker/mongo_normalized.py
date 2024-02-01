@@ -470,25 +470,11 @@ class BlueskyEventStream(MapAdapter, BlueskyEventStreamMixin):
         return metadata
     
     async def update_metadata(self, metadata=None, specs=None):
-        if("start" not in metadata):
+        if("descriptors" not in metadata):
              raise NotImplementedError('update_metadata method not implemented')
-        elif(specs is not None):
-            raise NotImplementedError('Updating of specs is not yet supported.')
-        start = metadata["start"]
-        # stop = metadata["stop"]
-        try:
-            schema_validators[DocumentNames.start].validate(start)
-            # schema_validators[DocumentNames.stop].validate(stop)
-        except ValidationError as err:
-            raise
-        # Update start
-        self._serializer.update("start", metadata["start"])
         # Update descriptors
-        # TODO: uncomment when support is added in suitcase mongo
-        # for descriptor in metadata["descriptors"]:
-        #     self.serializer.update("descriptor", descriptor)
-        # Update stop
-        # self._serializer.update("stop", metadata["stop"])
+        for descriptor in metadata["descriptors"]:
+            self.serializer.update("descriptor", descriptor)        # self._serializer.update("stop", metadata["stop"])
         
 
     def new_variation(self, **kwargs):
