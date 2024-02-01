@@ -274,8 +274,10 @@ class BlueskyRun(MapAdapter, BlueskyRunMixin):
         return metadata
     
     async def update_metadata(self, metadata=None, specs=None):
-        # if(specs is not None or "start" not in metadata):
-        #     raise NotImplementedError('update_metadata method not implemented')
+        if("start" not in metadata):
+             raise NotImplementedError('update_metadata method not implemented')
+        elif(specs is not None):
+            raise NotImplementedError('Updating of specs is not yet supported.')
         start = metadata["start"]
         # stop = metadata["stop"]
         try:
