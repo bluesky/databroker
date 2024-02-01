@@ -471,10 +471,10 @@ class BlueskyEventStream(MapAdapter, BlueskyEventStreamMixin):
     
     async def update_metadata(self, metadata=None, specs=None):
         if("descriptors" not in metadata):
-             raise NotImplementedError('update_metadata method not implemented')
+             raise NotImplementedError('Update_metadata method requires descriptors.')
         # Update descriptors
         for descriptor in metadata["descriptors"]:
-            self.serializer.update("descriptor", descriptor)        # self._serializer.update("stop", metadata["stop"])
+            self.serializer.update("descriptor", descriptor)
         
 
     def new_variation(self, **kwargs):
