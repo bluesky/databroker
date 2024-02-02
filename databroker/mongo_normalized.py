@@ -478,7 +478,7 @@ class BlueskyEventStream(MapAdapter, BlueskyEventStreamMixin):
         # Update descriptors
         for descriptor in metadata["descriptors"]:
             schema_validators[DocumentNames.descriptor].validate(descriptor)
-            self.serializer.update("descriptor", descriptor)
+            self._serializer.update("descriptor", descriptor)
         self._clear_from_cache()
 
     def new_variation(self, **kwargs):
