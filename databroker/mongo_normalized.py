@@ -474,6 +474,10 @@ class BlueskyEventStream(MapAdapter, BlueskyEventStreamMixin):
              raise NotImplementedError('Update_metadata method requires descriptors.')
         # Update descriptors
         for descriptor in metadata["descriptors"]:
+            try:
+                schema_validators[DocumentNames.descriptor].validate(descriptor)
+            except ValidationError as err:
+                raise
             self.serializer.update("descriptor", descriptor)
         
 
