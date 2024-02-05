@@ -13,7 +13,7 @@ pytz
 rich
 starlette
 suitcase-mongo >=0.4.0
-tiled[server] >=0.1.0a110
+tiled[server] >=0.1.0a114
 toolz
 typer
 tzlocal
