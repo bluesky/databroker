@@ -20,7 +20,7 @@ import pymongo
 import pymongo.errors
 import toolz.itertoolz
 import xarray
-
+from event_model import DocumentNames, schema_validators
 from tiled.access_policies import ALL_ACCESS, ALL_SCOPES, NO_ACCESS, SpecialUsers
 from tiled.adapters.array import ArrayAdapter
 from tiled.adapters.xarray import DatasetAdapter
@@ -192,7 +192,9 @@ def structure_from_descriptor(descriptor, sub_dict, max_seq_num, unicode_columns
                 f"dtype={numpy_dtype}"
             ) from err
 
-        structures[key] = ArrayStructure(shape=shape, chunks=chunks, dims=dims, data_type=dtype)
+        structures[key] = ArrayStructure(
+            shape=shape, chunks=chunks, dims=dims, data_type=dtype
+        )
         metadata[key] = {"attrs": attrs}
 
     return structures, metadata
@@ -216,6 +218,8 @@ class BlueskyRun(MapAdapter, BlueskyRunMixin):
     def __init__(
         self,
         *args,
+        serializer,
+        clear_from_cache,
         handler_registry,
         transforms,
         root_map,
@@ -236,6 +240,8 @@ class BlueskyRun(MapAdapter, BlueskyRunMixin):
         # This is used to create the Filler on first access.
         self._init_handler_registry = handler_registry
         self._filler = None
+        self._serializer = serializer
+        self._clear_from_cache = clear_from_cache
         self._filler_creation_lock = threading.RLock()
 
     def must_revalidate(self):
@@ -250,6 +256,10 @@ class BlueskyRun(MapAdapter, BlueskyRunMixin):
         if self._metadata["stop"] is not None:
             return datetime.utcnow() + timedelta(hours=1)
 
+    @property
+    def key(self):
+        return self._metadata["start"]["uid"]
+
     def metadata(self):
         "Metadata about this MongoAdapter."
         # If there are transforms configured, shadow the 'start' and 'stop' documents
@@ -261,6 +271,26 @@ class BlueskyRun(MapAdapter, BlueskyRunMixin):
             transformed["stop"] = self.transforms["stop"](self._metadata["stop"])
         metadata = dict(collections.ChainMap(transformed, self._metadata))
         return metadata
+
+    async def update_metadata(self, metadata=None, specs=None):
+        if "start" not in metadata:
+            raise NotImplementedError(
+                "A start document is required when updating metadata."
+            )
+        elif specs is None:
+            raise NotImplementedError("Updating of specs is not yet supported.")
+        # Security : Key and relationship checks
+        if self.key != metadata["start"]["uid"]:
+            raise ValueError("The UID in the metadata must match the request's UID.")
+        start = metadata["start"]
+        stop = metadata["stop"] if "stop" in metadata else None
+        schema_validators[DocumentNames.start].validate(start)
+        if stop is not None:
+            schema_validators[DocumentNames.stop].validate(stop)
+        self._serializer.update("start", metadata["start"])
+        if stop is not None:
+            self._serializer.update("stop", metadata["stop"])
+        self._clear_from_cache()
 
     @property
     def filler(self):
@@ -295,6 +325,8 @@ class BlueskyRun(MapAdapter, BlueskyRunMixin):
     def new_variation(self, *args, **kwargs):
         return super().new_variation(
             *args,
+            serializer=self._serializer,
+            clear_from_cache=self._clear_from_cache,
             handler_registry=self.handler_registry,
             transforms=self.transforms,
             root_map=self.root_map,
@@ -402,13 +434,23 @@ class BlueskyRun(MapAdapter, BlueskyRunMixin):
 
 class BlueskyEventStream(MapAdapter, BlueskyEventStreamMixin):
     def __init__(
-        self, *args, event_collection, cutoff_seq_num, run, specs=None, **kwargs
+        self,
+        *args,
+        serializer,
+        clear_from_cache,
+        event_collection,
+        cutoff_seq_num,
+        run,
+        specs=None,
+        **kwargs,
     ):
         if specs is None:
             specs = []
         specs = list(specs)
         specs.append(Spec("BlueskyEventStream", version="1"))
         super().__init__(*args, specs=specs, **kwargs)
+        self._serializer = serializer
+        self._clear_from_cache = clear_from_cache
         self._event_collection = event_collection
         self._cutoff_seq_num = cutoff_seq_num
         self._run = run
@@ -441,8 +483,23 @@ class BlueskyEventStream(MapAdapter, BlueskyEventStreamMixin):
         metadata = dict(collections.ChainMap(transformed, self._metadata))
         return metadata
 
+    @property
+    def key(self):
+        return self._metadata["descriptors"][0]["name"]
+
+    async def update_metadata(self, metadata=None, specs=None):
+        if "descriptors" not in metadata:
+            raise NotImplementedError("Update_metadata method requires descriptors.")
+        # Update descriptors
+        for descriptor in metadata["descriptors"]:
+            schema_validators[DocumentNames.descriptor].validate(descriptor)
+            self._serializer.update("descriptor", descriptor)
+        self._clear_from_cache()
+
     def new_variation(self, **kwargs):
         return super().new_variation(
+            serializer=self._serializer,
+            clear_from_cache=self._clear_from_cache,
             event_collection=self._event_collection,
             cutoff_seq_num=self._cutoff_seq_num,
             run=self._run,
@@ -450,7 +507,9 @@ class BlueskyEventStream(MapAdapter, BlueskyEventStreamMixin):
         )
 
     def iter_descriptors_and_events(self):
-        for descriptor in sorted(self.metadata()["descriptors"], key=lambda d: d["time"]):
+        for descriptor in sorted(
+            self.metadata()["descriptors"], key=lambda d: d["time"]
+        ):
             yield ("descriptor", descriptor)
             # TODO Grab paginated chunks.
             events = list(
@@ -533,9 +592,9 @@ class DatasetFromDocuments:
         # }
         # We intentionally do not put the descriptors in attrs (ruins UI)
         # but we put the stream_name there.
-        self._metadata = self._run[
-            self._stream_name
-        ].metadata().copy()  # {"descriptors": [...], "stream_name: "..."}
+        self._metadata = (
+            self._run[self._stream_name].metadata().copy()
+        )  # {"descriptors": [...], "stream_name: "..."}
         # Put the stream_name in attrs so it shows up in the xarray repr.
         self._metadata["attrs"] = {"stream_name": self.metadata()["stream_name"]}
 
@@ -1049,7 +1108,7 @@ class MongoAdapter(collections.abc.Mapping, CatalogOfBlueskyRunsMixin, IndexersM
         access_policy=None,
         cache_ttl_complete=60,  # seconds
         cache_ttl_partial=2,  # seconds
-        validate_shape=None
+        validate_shape=None,
     ):
         """
         Create a MongoAdapter from MongoDB with the "normalized" (original) layout.
@@ -1142,7 +1201,7 @@ class MongoAdapter(collections.abc.Mapping, CatalogOfBlueskyRunsMixin, IndexersM
         access_policy=None,
         cache_ttl_complete=60,  # seconds
         cache_ttl_partial=2,  # seconds
-        validate_shape=None
+        validate_shape=None,
     ):
         """
         Create a transient MongoAdapter from backed by "mongomock".
@@ -1385,6 +1444,10 @@ class MongoAdapter(collections.abc.Mapping, CatalogOfBlueskyRunsMixin, IndexersM
                 self._cache_of_complete_bluesky_runs[uid] = run
             return run
 
+    def _clear_from_cache(self, uid):
+        self._cache_of_partial_bluesky_runs.pop(uid, None)
+        self._cache_of_complete_bluesky_runs.pop(uid, None)
+
     def _build_run(self, run_start_doc):
         "This should not be called directly, even internally. Use _get_run."
         # Instantiate a BlueskyRun for this run_start_doc.
@@ -1403,6 +1466,7 @@ class MongoAdapter(collections.abc.Mapping, CatalogOfBlueskyRunsMixin, IndexersM
                 stream_name=stream_name,
                 is_complete=(run_stop_doc is not None),
             )
+
         return BlueskyRun(
             OneShotCachedMap(mapping),
             metadata={
@@ -1410,6 +1474,8 @@ class MongoAdapter(collections.abc.Mapping, CatalogOfBlueskyRunsMixin, IndexersM
                 "stop": run_stop_doc,
                 "summary": build_summary(run_start_doc, run_stop_doc, stream_names),
             },
+            serializer=self.get_serializer(),
+            clear_from_cache=lambda: self._clear_from_cache(uid),
             handler_registry=self.handler_registry,
             transforms=copy.copy(self.transforms),
             root_map=copy.copy(self.root_map),
@@ -1503,6 +1569,8 @@ class MongoAdapter(collections.abc.Mapping, CatalogOfBlueskyRunsMixin, IndexersM
         return BlueskyEventStream(
             mapping,
             metadata=metadata,
+            serializer=self._serializer,
+            clear_from_cache=lambda: self._clear_from_cache(run_start_uid),
             event_collection=self._event_collection,
             cutoff_seq_num=cutoff_seq_num,
             run=run,
