@@ -12,7 +12,7 @@ pymongo
 pytz
 rich
 starlette
-suitcase-mongo >=0.4.0
+suitcase-mongo >=0.5.0
 tiled[server] >=0.1.0a114
 toolz
 typer
