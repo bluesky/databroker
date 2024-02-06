@@ -14,7 +14,7 @@ pytest >=4.4,!=5.4.0
 pytest-rerunfailures
 sphinx
 suitcase-jsonl >=0.1.0b2
-suitcase-mongo >=0.4.0
+suitcase-mongo >=0.5.0
 suitcase-msgpack >=0.2.2
 tiled[all] >=0.1.0a114
 ujson
