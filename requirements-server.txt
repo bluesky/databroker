@@ -3,6 +3,8 @@ cachetools
 entrypoints
 event-model
 fastapi
+json-merge-patch
+jsonpatch
 jsonschema
 mongomock
 msgpack >=1.0.0
