@@ -766,10 +766,10 @@ def _(key, db):
     if abs(key) <= max_int_value:
         key = int(key)
     else:
-        reason = " ".join(
+        reason = " ".join((
             f"Integer key must be less than +/-{max_int_value};",
             f"cannot convert value {key} of type {type(key)}."
-        )
+        ))
         raise KeyError(reason)
     if key > -1:
         # Interpret key as a scan_id.
