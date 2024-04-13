@@ -239,7 +239,6 @@ def test_indexing(db_empty, RE, hw):
         db[-11]
 
 
-@pytest.mark.xfail(reason="Databroker catalog expects int not int64")
 def test_int64_indexing(db_empty, RE, hw):
     db = db_empty
     RE.subscribe(db.insert)
@@ -257,6 +256,12 @@ def test_int64_indexing(db_empty, RE, hw):
     assert not isinstance(integer64_index, int)
     assert isinstance(integer64_index, numbers.Integral)
     with does_not_raise():
+        db[integer64_index]
+
+    integer64_index = np.int64(2**33)
+    assert not isinstance(integer64_index, int)
+    assert isinstance(integer64_index, numbers.Integral)
+    with pytest.raises(KeyError):
         db[integer64_index]
 
 
