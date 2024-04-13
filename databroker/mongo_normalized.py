@@ -643,6 +643,9 @@ class DatasetFromDocuments:
     def metadata(self):
         return self._metadata
 
+    def structure(self):
+        return None
+
     def keys(self):
         return self._contents.keys()
 
@@ -1417,6 +1420,9 @@ class MongoAdapter(collections.abc.Mapping, CatalogOfBlueskyRunsMixin, IndexersM
     def metadata(self):
         "Metadata about this MongoAdapter."
         return self._metadata
+
+    def structure(self):
+        return None
 
     @property
     def sorting(self):
