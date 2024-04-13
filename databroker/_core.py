@@ -761,6 +761,16 @@ def _(key, db):
 @search.register(numbers.Integral)
 def _(key, db):
     logger.info('Interpreting key = %s as an integer' % key)
+    # Handle large values, such as numpy.int64
+    max_int_value = 2**31 - 1  ## 32-bit signed integer
+    if abs(key) <= max_int_value:
+        key = int(key)
+    else:
+        reason = " ".join(
+            f"Integer key must be less than +/-{max_int_value};",
+            f"cannot convert value {key} of type {type(key)}."
+        )
+        raise KeyError(reason)
     if key > -1:
         # Interpret key as a scan_id.
         gen = db.hs.find_run_starts(scan_id=key)
