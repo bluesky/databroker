@@ -4,11 +4,13 @@ import collections
 import tempfile
 import os
 import logging
+import numbers
 import packaging
 import sys
 import string
 import time as ttime
 import uuid
+from contextlib import nullcontext as does_not_raise
 from datetime import date, timedelta
 import itertools
 from databroker import (wrap_in_doct, wrap_in_deprecated_doct,
@@ -235,6 +237,27 @@ def test_indexing(db_empty, RE, hw):
     with pytest.raises(IndexError):
         # too far back
         db[-11]
+
+
+@pytest.mark.xfail(reason="Databroker catalog expects int not int64")
+def test_int64_indexing(db_empty, RE, hw):
+    db = db_empty
+    RE.subscribe(db.insert)
+
+    uids = []
+    for i in range(2):
+        uids.extend(get_uids(RE(count([hw.det]))))
+
+    integer_index = 1
+    assert isinstance(integer_index, int)
+    with does_not_raise():
+        db[integer_index]
+
+    integer64_index = np.int64(1)
+    assert not isinstance(integer64_index, int)
+    assert isinstance(integer64_index, numbers.Integral)
+    with does_not_raise():
+        db[integer64_index]
 
 
 def test_full_text_search(db_empty, RE, hw):
