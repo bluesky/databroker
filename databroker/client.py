@@ -1,6 +1,7 @@
 import collections.abc
 import json
 import keyword
+import numbers
 import warnings
 
 from tiled.adapters.utils import IndexCallable
@@ -251,7 +252,17 @@ class CatalogOfBlueskyRuns(CatalogOfBlueskyRunsMixin, Container):
                     # Fall back to partial uid lookup below.
                     pass
             return self._lookup_by_partial_uid(key)
-        elif isinstance(key, int):
+        elif isinstance(key, numbers.Integral):
+            # Handle large values, such as numpy.int64
+            max_int_value = 2**31 - 1  ## 32-bit signed integer
+            if abs(key) <= max_int_value:
+                key = int(key)
+            else:
+                reason = " ".join(
+                    f"Integer key must be less than +/-{max_int_value};",
+                    f"cannot convert value {key} of type {type(key)}."
+                )
+                raise KeyError(reason)
             if key > 0:
                 # CASE 2: Interpret key as a scan_id.
                 return self._lookup_by_scan_id(key)
