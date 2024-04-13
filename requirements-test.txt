@@ -3,6 +3,7 @@ bluesky
 codecov
 coverage
 flake8
+glue-core <1.18
 glueviz
 matplotlib
 mongomock
