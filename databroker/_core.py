@@ -24,7 +24,7 @@ import jinja2
 import time
 from .utils import (ALL, get_fields, wrap_in_deprecated_doct, wrap_in_doct,
                     DeprecatedDoct, DOCT_NAMES, lookup_config, list_configs,
-                    describe_configs, SPECIAL_NAME)
+                    describe_configs, SPECIAL_NAME, ensure_int_key)
 
 from databroker.assets.core import DatumNotFound, EventDatumNotFound
 
@@ -761,16 +761,7 @@ def _(key, db):
 @search.register(numbers.Integral)
 def _(key, db):
     logger.info('Interpreting key = %s as an integer' % key)
-    # Handle large values, such as numpy.int64
-    max_int_value = 2**31 - 1  ## 32-bit signed integer
-    if abs(key) <= max_int_value:
-        key = int(key)
-    else:
-        reason = " ".join((
-            f"Integer key must be less than +/-{max_int_value};",
-            f"cannot convert value {key} of type {type(key)}.",
-        ))
-        raise KeyError(reason)
+    key = ensure_int_key(key)
     if key > -1:
         # Interpret key as a scan_id.
         gen = db.hs.find_run_starts(scan_id=key)

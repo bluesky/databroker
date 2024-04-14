@@ -12,6 +12,7 @@ from tiled.utils import safe_json_dump
 from .common import BlueskyEventStreamMixin, BlueskyRunMixin, CatalogOfBlueskyRunsMixin
 from .queries import PartialUID, RawMongo, ScanID
 from .document import Start, Stop, Descriptor, EventPage, DatumPage, Resource
+from .utils import ensure_int_key
 
 
 _document_types = {
@@ -259,6 +260,7 @@ class CatalogOfBlueskyRuns(CatalogOfBlueskyRunsMixin, Container):
             else:
                 # CASE 3: Interpret key as a recently lookup, as in
                 # `catalog[-1]` is the latest entry.
+                key = ensure_int_key(key)
                 return self.values()[key]
         elif isinstance(key, slice):
             if (key.start is None) or (key.start >= 0):

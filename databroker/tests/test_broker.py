@@ -261,6 +261,13 @@ def test_int64_indexing(db_empty, RE, hw):
     with does_not_raise():
         db[integer64_key]
 
+    # Key is Nth-last scan
+    integer64_key = np.int64(-1)
+    assert not isinstance(integer64_key, int)
+    assert isinstance(integer64_key, numbers.Integral)
+    with does_not_raise():
+        db[integer64_key]
+
     # Key is too large
     integer64_key = np.int64(2**33)
     assert not isinstance(integer64_key, int)

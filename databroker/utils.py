@@ -2,6 +2,7 @@ from datetime import datetime
 import collections
 import doct
 import glob
+import numbers
 import numpy as np
 import os
 import pytz
@@ -431,3 +432,19 @@ class LazyMap(collections.abc.Mapping):
     def __setstate__(self, mapping):
         self.__mapping = mapping
         self.__lock = threading.Lock()
+
+
+MAX_INT_KEY_VALUE = 2**31 - 1  # 32-bit signed integer
+
+
+def ensure_int_key(key: numbers.Integral) -> int:
+    """Coerce key to int, or raise KeyError if value is too large"""
+    if abs(key) <= MAX_INT_KEY_VALUE:
+        key = int(key)
+    else:
+        reason = " ".join((
+            f"Integer key must be less than +/-{MAX_INT_KEY_VALUE};",
+            f"cannot convert value {key} of type {type(key)}.",
+        ))
+        raise KeyError(reason)
+    return key
