@@ -240,6 +240,7 @@ def test_indexing(db_empty, RE, hw):
 
 
 def test_int64_indexing(db_empty, RE, hw):
+    """numpy.int64 can be used as a catalog key, if it is int-convertable"""
     db = db_empty
     RE.subscribe(db.insert)
 
@@ -247,22 +248,25 @@ def test_int64_indexing(db_empty, RE, hw):
     for i in range(2):
         uids.extend(get_uids(RE(count([hw.det]))))
 
-    integer_index = 1
-    assert isinstance(integer_index, int)
+    # Key is a Scan ID
+    integer_key = 1
+    assert isinstance(integer_key, int)
     with does_not_raise():
-        db[integer_index]
+        db[integer_key]
 
-    integer64_index = np.int64(1)
-    assert not isinstance(integer64_index, int)
-    assert isinstance(integer64_index, numbers.Integral)
+    # Key is a Scan ID
+    integer64_key = np.int64(1)
+    assert not isinstance(integer64_key, int)
+    assert isinstance(integer64_key, numbers.Integral)
     with does_not_raise():
-        db[integer64_index]
+        db[integer64_key]
 
-    integer64_index = np.int64(2**33)
-    assert not isinstance(integer64_index, int)
-    assert isinstance(integer64_index, numbers.Integral)
+    # Key is too large
+    integer64_key = np.int64(2**33)
+    assert not isinstance(integer64_key, int)
+    assert isinstance(integer64_key, numbers.Integral)
     with pytest.raises(KeyError):
-        db[integer64_index]
+        db[integer64_key]
 
 
 def test_full_text_search(db_empty, RE, hw):

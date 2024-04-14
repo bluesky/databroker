@@ -768,7 +768,7 @@ def _(key, db):
     else:
         reason = " ".join((
             f"Integer key must be less than +/-{max_int_value};",
-            f"cannot convert value {key} of type {type(key)}."
+            f"cannot convert value {key} of type {type(key)}.",
         ))
         raise KeyError(reason)
     if key > -1:
