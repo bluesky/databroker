@@ -37,6 +37,9 @@ docs/_build
 pip-log.txt
 pip-delete-this-directory.txt
 
+# dotenv environment variables file
+.env*
+
 # Unit test / coverage reports
 htmlcov/
 .tox/
