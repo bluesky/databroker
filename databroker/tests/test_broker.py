@@ -245,6 +245,7 @@ def test_indexing(db_empty, RE, hw):
         (np.int64(1), does_not_raise()),  # Key is a Scan ID
         (np.int64(-1), does_not_raise()),  # Key is Nth-last scan
         (np.int64(2**33), pytest.raises(KeyError)),  # Key is too large
+        (-np.int64(2**33), pytest.raises(KeyError)),  # Abs(key) is too large
     ),
 )
 def test_int64_indexing(db_empty, RE, hw, key, expected):
