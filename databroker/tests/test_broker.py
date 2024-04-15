@@ -248,13 +248,10 @@ def test_indexing(db_empty, RE, hw):
         # These values are out of range...
         (np.int64(10), pytest.raises(KeyError)),  # Scan ID does not exist
         (-np.int64(10), pytest.raises(IndexError)),  # Abs(key) > number of scans
-        # >32-bit values are ok, but these are out of range for this test...
-        (np.int64(2**33), pytest.raises(KeyError)),  # Scan ID does not exist
-        (-np.int64(2**33), pytest.raises(IndexError)),  # Abs(key) > number of scans
     ),
 )
 def test_int64_indexing(db_empty, RE, hw, key, expected):
-    """numpy.int64 can be used as a catalog key, if it is int-convertable"""
+    """numpy.int64 can be used as a catalog key; it is treated as an int key"""
     db = db_empty
     RE.subscribe(db.insert)
 
@@ -264,6 +261,34 @@ def test_int64_indexing(db_empty, RE, hw, key, expected):
 
     assert not isinstance(key, int)
     assert isinstance(key, numbers.Integral)
+    assert key == int(key)
+    with expected:
+        db[key]
+
+
+@pytest.mark.parametrize(
+    "key, expected",
+    (
+        # >32-bit values are ok...
+        (np.int64(2**33), does_not_raise()),  # Scan ID exists
+        # But these values are out of range...
+        (np.int64(2**33 + 2), pytest.raises(KeyError)),  # Scan ID does not exist
+        (-np.int64(2**33), pytest.raises(IndexError)),  # Abs(key) > number of scans
+    ),
+)
+def test_large_int_indexing(db_empty, RE, hw, key, expected):
+    """Integer-valued catalog key can exceed 32-bit values"""
+    db = db_empty
+    RE.md["scan_id"] = 2*33
+    RE.subscribe(db.insert)
+
+    uids = []
+    for i in range(2):
+        uids.extend(get_uids(RE(count([hw.det]))))
+
+    assert not isinstance(key, int)
+    assert isinstance(key, numbers.Integral)
+    assert key == int(key)
     with expected:
         db[key]
 
