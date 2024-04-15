@@ -24,7 +24,7 @@ import jinja2
 import time
 from .utils import (ALL, get_fields, wrap_in_deprecated_doct, wrap_in_doct,
                     DeprecatedDoct, DOCT_NAMES, lookup_config, list_configs,
-                    describe_configs, SPECIAL_NAME, ensure_int_key)
+                    describe_configs, SPECIAL_NAME)
 
 from databroker.assets.core import DatumNotFound, EventDatumNotFound
 
@@ -761,7 +761,7 @@ def _(key, db):
 @search.register(numbers.Integral)
 def _(key, db):
     logger.info('Interpreting key = %s as an integer' % key)
-    key = ensure_int_key(key)
+    key = int(key)
     if key > -1:
         # Interpret key as a scan_id.
         gen = db.hs.find_run_starts(scan_id=key)
