@@ -279,7 +279,7 @@ def test_int64_indexing(db_empty, RE, hw, key, expected):
 def test_large_int_indexing(db_empty, RE, hw, key, expected):
     """Integer-valued catalog key can exceed 32-bit values"""
     db = db_empty
-    RE.md["scan_id"] = 2*33
+    RE.md["scan_id"] = 2**33 - 1
     RE.subscribe(db.insert)
 
     uids = []
