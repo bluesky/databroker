@@ -1,6 +1,7 @@
 import collections.abc
 import json
 import keyword
+import numbers
 import warnings
 
 from tiled.adapters.utils import IndexCallable
@@ -251,13 +252,14 @@ class CatalogOfBlueskyRuns(CatalogOfBlueskyRunsMixin, Container):
                     # Fall back to partial uid lookup below.
                     pass
             return self._lookup_by_partial_uid(key)
-        elif isinstance(key, int):
+        elif isinstance(key, numbers.Integral):
             if key > 0:
                 # CASE 2: Interpret key as a scan_id.
                 return self._lookup_by_scan_id(key)
             else:
                 # CASE 3: Interpret key as a recently lookup, as in
                 # `catalog[-1]` is the latest entry.
+                key = int(key)
                 return self.values()[key]
         elif isinstance(key, slice):
             if (key.start is None) or (key.start >= 0):

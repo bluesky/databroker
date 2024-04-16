@@ -761,6 +761,7 @@ def _(key, db):
 @search.register(numbers.Integral)
 def _(key, db):
     logger.info('Interpreting key = %s as an integer' % key)
+    key = int(key)
     if key > -1:
         # Interpret key as a scan_id.
         gen = db.hs.find_run_starts(scan_id=key)

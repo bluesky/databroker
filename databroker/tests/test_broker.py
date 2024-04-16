@@ -4,11 +4,13 @@ import collections
 import tempfile
 import os
 import logging
+import numbers
 import packaging
 import sys
 import string
 import time as ttime
 import uuid
+from contextlib import nullcontext as does_not_raise
 from datetime import date, timedelta
 import itertools
 from databroker import (wrap_in_doct, wrap_in_deprecated_doct,
@@ -235,6 +237,60 @@ def test_indexing(db_empty, RE, hw):
     with pytest.raises(IndexError):
         # too far back
         db[-11]
+
+
+@pytest.mark.parametrize(
+    "key, expected",
+    (
+        # These values are in range...
+        (np.int64(1), does_not_raise()),  # Key is a Scan ID
+        (np.int64(-1), does_not_raise()),  # Key is Nth-last scan
+        # These values are out of range...
+        (np.int64(10), pytest.raises(KeyError)),  # Scan ID does not exist
+        (-np.int64(10), pytest.raises(IndexError)),  # Abs(key) > number of scans
+    ),
+)
+def test_int64_indexing(db_empty, RE, hw, key, expected):
+    """numpy.int64 can be used as a catalog key; it is treated as an int key"""
+    db = db_empty
+    RE.subscribe(db.insert)
+
+    uids = []
+    for i in range(2):
+        uids.extend(get_uids(RE(count([hw.det]))))
+
+    assert not isinstance(key, int)
+    assert isinstance(key, numbers.Integral)
+    assert key == int(key)
+    with expected:
+        db[key]
+
+
+@pytest.mark.parametrize(
+    "key, expected",
+    (
+        # >32-bit values are ok...
+        (np.int64(2**33), does_not_raise()),  # Scan ID exists
+        # But these values are out of range...
+        (np.int64(2**33 + 2), pytest.raises(KeyError)),  # Scan ID does not exist
+        (-np.int64(2**33), pytest.raises(IndexError)),  # Abs(key) > number of scans
+    ),
+)
+def test_large_int_indexing(db_empty, RE, hw, key, expected):
+    """Integer-valued catalog key can exceed 32-bit values"""
+    db = db_empty
+    RE.md["scan_id"] = 2**33 - 1
+    RE.subscribe(db.insert)
+
+    uids = []
+    for i in range(2):
+        uids.extend(get_uids(RE(count([hw.det]))))
+
+    assert not isinstance(key, int)
+    assert isinstance(key, numbers.Integral)
+    assert key == int(key)
+    with expected:
+        db[key]
 
 
 def test_full_text_search(db_empty, RE, hw):
