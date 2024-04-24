@@ -14,7 +14,7 @@ version: "3.7"
 
 services:
   tiled:
-    image: ghcr.io/bluesky/databroker:v2.0.0b39
+    image: ghcr.io/bluesky/databroker:v2.0.0b40
     volumes:
       - type: bind
         source: ./example_config.yml
