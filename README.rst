@@ -102,7 +102,7 @@ See the tutorials for more.
 
 .. _MongoDB query language: https://docs.mongodb.com/manual/reference/operator/query/
 
-.. _Bluesky Data Model: https://blueskyproject.io/event-model/data-model.html
+.. _Bluesky Data Model: https://blueskyproject.io/event-model/main/user/explanations/data-model.html
 
 .. _Suitcase: https://blueskyproject.io/suitcase/
 
