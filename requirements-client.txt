@@ -1,4 +1,4 @@
 mongoquery
 msgpack >=1.0.0
 orjson
-tiled[client] >=0.1.0a120
+tiled[client] >=0.1.0b3

@@ -501,7 +501,7 @@ class BlueskyEventStream(MapAdapter, BlueskyEventStreamMixin):
     def key(self):
         return self._metadata["descriptors"][0]["name"]
 
-    async def update_metadata(self, metadata=None, specs=None):
+    async def replace_metadata(self, metadata=None, specs=None):
         if "descriptors" not in metadata:
             raise NotImplementedError("Update_metadata method requires descriptors.")
         # Update descriptors
