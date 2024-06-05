@@ -15,6 +15,8 @@ import cachetools
 import entrypoints
 import event_model
 from dask.array.core import cached_cumsum, normalize_chunks
+from jsonpatch import apply_patch as apply_json_patch
+from json_merge_patch import merge as apply_merge_patch
 import numpy
 import pymongo
 import pymongo.errors
@@ -272,7 +274,7 @@ class BlueskyRun(MapAdapter, BlueskyRunMixin):
         metadata = dict(collections.ChainMap(transformed, self._metadata))
         return metadata
 
-    async def update_metadata(self, metadata=None, specs=None):
+    async def replace_metadata(self, metadata=None, specs=None):
         if "start" not in metadata:
             raise NotImplementedError(
                 "A start document is required when updating metadata."
@@ -291,6 +293,18 @@ class BlueskyRun(MapAdapter, BlueskyRunMixin):
         if stop is not None:
             self._serializer.update("stop", metadata["stop"])
         self._clear_from_cache()
+
+    async def patch_metadata(self, patch=None, specs=None):
+        if patch is None:
+            patch = []
+        metadata = apply_json_patch(dict(self.metadata()), patch)
+        await self.replace_metadata(metadata=metadata, specs=specs)
+
+    async def merge_metadata(self, patch=None, specs=None):
+        if patch is None:
+            patch = {}
+        metadata = apply_merge_patch(dict(self.metadata()), patch)
+        await self.replace_metadata(metadata=metadata, specs=specs)
 
     @property
     def filler(self):
@@ -487,7 +501,7 @@ class BlueskyEventStream(MapAdapter, BlueskyEventStreamMixin):
     def key(self):
         return self._metadata["descriptors"][0]["name"]
 
-    async def update_metadata(self, metadata=None, specs=None):
+    async def replace_metadata(self, metadata=None, specs=None):
         if "descriptors" not in metadata:
             raise NotImplementedError("Update_metadata method requires descriptors.")
         # Update descriptors
