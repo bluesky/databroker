@@ -1,3 +1,5 @@
+import collections
+
 from tiled.adapters.mapping import MapAdapter, full_text_search
 from tiled.queries import (
     Contains,
