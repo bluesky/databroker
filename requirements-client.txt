@@ -1,4 +1,2 @@
-mongoquery
+bluesky-tiled-plugins
 msgpack >=1.0.0
-orjson
-tiled[client] >=0.1.0b4
