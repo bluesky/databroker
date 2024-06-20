@@ -956,7 +956,7 @@ class DatasetFromDocuments:
             else:
                 nonscalars.append(key)
                 estimated_nonscalar_row_bytesizes.append(
-                    numpy.product(data_key["shape"]) * 8
+                    numpy.prod(data_key["shape"]) * 8
                 )
 
         # Aim for 10 MB pages to stay safely clear the MongoDB's hard limit
