@@ -1,27 +1,25 @@
-import collections.abc
 from dataclasses import asdict, dataclass
 import enum
 import warnings
 from typing import List, Optional
 
-from tiled.queries import (
-    Contains,
+# Not all of these are used, but import them all
+# for user convenience so everything can be imported from bluesky_tiled_plugins.queries
+from tiled.queries import (  # noqa: F401
     Comparison,
+    Contains,
     Eq,
     FullText,
     In,
+    Key,
     NotEq,
     NotIn,
     Operator,
     QueryValueError,
     Regex,
 )
-
-# Import this for user convenience. It isn't used.
-from tiled.queries import Key
 from tiled.query_registration import register
 
-# Reimport generic queries for convenience so all can be imported from this module.
 
 class Duplicates(str, enum.Enum):
     latest = "latest"
