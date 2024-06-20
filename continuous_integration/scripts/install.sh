@@ -10,4 +10,5 @@ python -m pip install --upgrade pip setuptools wheel numpy
 # in the published documentation.
 git fetch --tags
 python -m pip install .[all]
+python -m pip install ./bluesky-tiled-plugins
 python -m pip list

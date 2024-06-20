@@ -1,2 +1,1 @@
-bluesky-tiled-plugins
 msgpack >=1.0.0
