@@ -6,7 +6,7 @@ from datetime import datetime
 from tiled.client.container import Container
 from tiled.client.utils import handle_error
 
-from .common import IPYTHON_METHODS
+from ._common import IPYTHON_METHODS
 from .document import Start, Stop, Descriptor, EventPage, DatumPage, Resource
 
 

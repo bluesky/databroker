@@ -3,7 +3,7 @@ import warnings
 
 from tiled.client.container import DEFAULT_STRUCTURE_CLIENT_DISPATCH, Container
 
-from .common import IPYTHON_METHODS
+from ._common import IPYTHON_METHODS
 
 
 class BlueskyEventStream(Container):
