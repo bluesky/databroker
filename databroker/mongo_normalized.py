@@ -258,6 +258,7 @@ class BlueskyRun(MapAdapter):
             f"{datetime_.isoformat(sep=' ', timespec='minutes')}"
             ">"
         )
+
     def must_revalidate(self):
         return self._metadata["stop"] is not None
 
@@ -1362,34 +1363,6 @@ class MongoAdapter(collections.abc.Mapping, IndexersMixin):
             validate_shape = import_object(validate_shape)
         self.validate_shape = validate_shape
         super().__init__()
-
-    def __repr__(self):
-        # This is a copy/paste of the general-purpose implementation
-        # tiled.adapters.utils.tree_repr
-        # with some modifications to extract scan_id from the metadata.
-        sample = self.items()[:10]
-        # Use scan_id (int) if defined; otherwise fall back to uid.
-        sample_reprs = [
-            repr(value.metadata["start"].get("scan_id", key)) for key, value in sample
-        ]
-        out = "<Catalog {"
-        # Always show at least one.
-        if sample_reprs:
-            out += sample_reprs[0]
-        # And then show as many more as we can fit on one line.
-        counter = 1
-        for sample_repr in sample_reprs[1:]:
-            if len(out) + len(sample_repr) > 60:  # character count
-                break
-            out += ", " + sample_repr
-            counter += 1
-        approx_len = operator.length_hint(self)  # cheaper to compute than len(node)
-        # Are there more in the node that what we displayed above?
-        if approx_len > counter:
-            out += f", ...}} ~{approx_len} entries>"
-        else:
-            out += "}>"
-        return out
 
     @property
     def database(self):
