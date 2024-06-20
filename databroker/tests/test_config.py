@@ -1,6 +1,5 @@
 import copy
 import databroker.databroker
-import imp
 import os
 import pytest
 import six

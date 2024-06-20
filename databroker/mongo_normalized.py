@@ -43,8 +43,7 @@ from tiled.adapters.utils import (
 from tiled.structures.core import Spec, StructureFamily
 from tiled.utils import import_object, OneShotCachedMap, UNCHANGED
 
-from .common import BlueskyEventStreamMixin, BlueskyRunMixin, CatalogOfBlueskyRunsMixin
-from .queries import (
+from .query_impl import (
     BlueskyMapAdapter,
     _PartialUID,
     _ScanID,
@@ -216,7 +215,7 @@ class DatasetMapAdapter(MapAdapter):
 BLUESKYRUN_SPEC = Spec("BlueskyRun", version="1")
 
 
-class BlueskyRun(MapAdapter, BlueskyRunMixin):
+class BlueskyRun(MapAdapter):
     def __init__(
         self,
         *args,
@@ -245,6 +244,18 @@ class BlueskyRun(MapAdapter, BlueskyRunMixin):
         self._serializer = serializer
         self._clear_from_cache = clear_from_cache
         self._filler_creation_lock = threading.RLock()
+
+    def __repr__(self):
+        metadata = self.metadata
+        datetime_ = datetime.fromtimestamp(metadata["start"]["time"])
+        return (
+            f"<{type(self).__name__} "
+            f"{set(self)!r} "
+            f"scan_id={metadata['start'].get('scan_id', 'UNSET')!s} "  # (scan_id is optional in the schema)
+            f"uid={metadata['start']['uid'][:8]!r} "  # truncated uid
+            f"{datetime_.isoformat(sep=' ', timespec='minutes')}"
+            ">"
+        )
 
     def must_revalidate(self):
         return self._metadata["stop"] is not None
@@ -446,7 +457,7 @@ class BlueskyRun(MapAdapter, BlueskyRunMixin):
         yield from batch_documents(self.single_documents(fill=fill), size)
 
 
-class BlueskyEventStream(MapAdapter, BlueskyEventStreamMixin):
+class BlueskyEventStream(MapAdapter):
     def __init__(
         self,
         *args,
@@ -468,6 +479,9 @@ class BlueskyEventStream(MapAdapter, BlueskyEventStreamMixin):
         self._event_collection = event_collection
         self._cutoff_seq_num = cutoff_seq_num
         self._run = run
+
+    def __repr__(self):
+        return f"<{type(self).__name__} {set(self)!r} stream_name={self.metadata['stream_name']!r}>"
 
     @property
     def must_revalidate(self):
@@ -1100,7 +1114,7 @@ def build_config_xarray(
     return DatasetAdapter.from_dataset(ds)
 
 
-class MongoAdapter(collections.abc.Mapping, CatalogOfBlueskyRunsMixin, IndexersMixin):
+class MongoAdapter(collections.abc.Mapping, IndexersMixin):
     structure_family = StructureFamily.container
     specs = [Spec("CatalogOfBlueskyRuns", version="1")]
 

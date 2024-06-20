@@ -3,16 +3,18 @@ import pickle
 from bluesky.plans import count
 import pytest
 
-from ..queries import (
+from tiled.queries import (
     Contains,
     FullText,
     In,
     Key,
     NotIn,
-    TimeRange,
     Regex,
+)
+from databroker.queries import (
     ScanID,
     ScanIDRange,
+    TimeRange,
 )
 from ..tests.utils import get_uids
 
