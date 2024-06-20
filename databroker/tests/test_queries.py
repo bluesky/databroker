@@ -11,7 +11,7 @@ from tiled.queries import (
     NotIn,
     Regex,
 )
-from bluesky_tiled_plugins.queries import (
+from databroker.queries import (
     ScanID,
     ScanIDRange,
     TimeRange,
