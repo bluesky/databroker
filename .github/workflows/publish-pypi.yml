@@ -23,10 +23,12 @@ jobs:
       - uses: hynek/build-and-inspect-python-package@v2
         with:
           path: .
+          upload-name-suffix: "-databroker"
 
       - uses: hynek/build-and-inspect-python-package@v2
         with:
           path: bluesky-tiled-plugins/
+          upload-name-suffix: "-bluesky-tiled-plugins"
 
   publish:
     needs: [dist]
