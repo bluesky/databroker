@@ -88,7 +88,7 @@ class EventCollection(object):
     def reconnect(self):
         for fn in os.listdir(self._dirpath):
             # Cache connections to every sqlite file.
-            match = re.match('([0-9a-z-]+)\.sqlite', fn)
+            match = re.match(r'([0-9a-z-]+)\.sqlite', fn)
             if match is None:
                 # skip unrecognized file
                 continue
