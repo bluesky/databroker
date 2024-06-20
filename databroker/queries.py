@@ -12,4 +12,4 @@ from tiled.queries import (  # noqa: F401
     QueryValueError,
     Regex,
 )
-from bluesky_tiled_plugins.queries import PartialUID, ScanID, TimeRange  # noqa: F401
+from bluesky_tiled_plugins.queries import PartialUID, ScanID, ScanIDRange, TimeRange  # noqa: F401
