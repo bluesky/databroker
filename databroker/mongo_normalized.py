@@ -44,8 +44,7 @@ from tiled.adapters.utils import (
 from tiled.structures.core import Spec, StructureFamily
 from tiled.utils import import_object, OneShotCachedMap, UNCHANGED
 
-from .common import BlueskyEventStreamMixin, BlueskyRunMixin, CatalogOfBlueskyRunsMixin
-from .queries import (
+from .query_impl import (
     BlueskyMapAdapter,
     _PartialUID,
     _ScanID,
@@ -218,7 +217,7 @@ class DatasetMapAdapter(MapAdapter):
 BLUESKYRUN_SPEC = Spec("BlueskyRun", version="1")
 
 
-class BlueskyRun(MapAdapter, BlueskyRunMixin):
+class BlueskyRun(MapAdapter):
     def __init__(
         self,
         *args,
@@ -248,6 +247,17 @@ class BlueskyRun(MapAdapter, BlueskyRunMixin):
         self._clear_from_cache = clear_from_cache
         self._filler_creation_lock = threading.RLock()
 
+    def __repr__(self):
+        metadata = self.metadata
+        datetime_ = datetime.fromtimestamp(metadata["start"]["time"])
+        return (
+            f"<{type(self).__name__} "
+            f"{set(self)!r} "
+            f"scan_id={metadata['start'].get('scan_id', 'UNSET')!s} "  # (scan_id is optional in the schema)
+            f"uid={metadata['start']['uid'][:8]!r} "  # truncated uid
+            f"{datetime_.isoformat(sep=' ', timespec='minutes')}"
+            ">"
+        )
     def must_revalidate(self):
         return self._metadata["stop"] is not None
 
@@ -448,7 +458,7 @@ class BlueskyRun(MapAdapter, BlueskyRunMixin):
         yield from batch_documents(self.single_documents(fill=fill), size)
 
 
-class BlueskyEventStream(MapAdapter, BlueskyEventStreamMixin):
+class BlueskyEventStream(MapAdapter):
     def __init__(
         self,
         *args,
@@ -470,6 +480,9 @@ class BlueskyEventStream(MapAdapter, BlueskyEventStreamMixin):
         self._event_collection = event_collection
         self._cutoff_seq_num = cutoff_seq_num
         self._run = run
+
+    def __repr__(self):
+        return f"<{type(self).__name__} {set(self)!r} stream_name={self.metadata['stream_name']!r}>"
 
     @property
     def must_revalidate(self):
@@ -1105,7 +1118,7 @@ def build_config_xarray(
     return DatasetAdapter.from_dataset(ds)
 
 
-class MongoAdapter(collections.abc.Mapping, CatalogOfBlueskyRunsMixin, IndexersMixin):
+class MongoAdapter(collections.abc.Mapping, IndexersMixin):
     structure_family = StructureFamily.container
     specs = [Spec("CatalogOfBlueskyRuns", version="1")]
 
@@ -1349,6 +1362,34 @@ class MongoAdapter(collections.abc.Mapping, CatalogOfBlueskyRunsMixin, IndexersM
             validate_shape = import_object(validate_shape)
         self.validate_shape = validate_shape
         super().__init__()
+
+    def __repr__(self):
+        # This is a copy/paste of the general-purpose implementation
+        # tiled.adapters.utils.tree_repr
+        # with some modifications to extract scan_id from the metadata.
+        sample = self.items()[:10]
+        # Use scan_id (int) if defined; otherwise fall back to uid.
+        sample_reprs = [
+            repr(value.metadata["start"].get("scan_id", key)) for key, value in sample
+        ]
+        out = "<Catalog {"
+        # Always show at least one.
+        if sample_reprs:
+            out += sample_reprs[0]
+        # And then show as many more as we can fit on one line.
+        counter = 1
+        for sample_repr in sample_reprs[1:]:
+            if len(out) + len(sample_repr) > 60:  # character count
+                break
+            out += ", " + sample_repr
+            counter += 1
+        approx_len = operator.length_hint(self)  # cheaper to compute than len(node)
+        # Are there more in the node that what we displayed above?
+        if approx_len > counter:
+            out += f", ...}} ~{approx_len} entries>"
+        else:
+            out += "}>"
+        return out
 
     @property
     def database(self):
