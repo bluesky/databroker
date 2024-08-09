@@ -135,15 +135,15 @@ def structure_from_descriptor(descriptor, sub_dict, max_seq_num, unicode_columns
             shape = tuple((max_seq_num - 1, *field_metadata["shape"]))
             # if we have a descr, then this is a
             dtype = _try_descr(field_metadata)
-            dt_str = field_metadata.get("dtype_str")
+            dt_np = field_metadata.get("dtype_numpy") or field_metadata.get("dtype_str")
             if dtype is not None:
                 if len(shape) > 2:
                     raise RuntimeError(
                         "We do not yet support general structured arrays, only 1D ones."
                     )
             # if we have a detailed string, trust that
-            elif dt_str is not None:
-                dtype = BuiltinDtype.from_numpy_dtype(numpy.dtype(dt_str))
+            elif dt_np is not None:
+                dtype = BuiltinDtype.from_numpy_dtype(numpy.dtype(dt_np))
             # otherwise guess!
             else:
                 dtype = JSON_DTYPE_TO_MACHINE_DATA_TYPE[field_metadata["dtype"]]
@@ -622,10 +622,10 @@ class DatasetFromDocuments:
             unicode_keys = []
             for key, field_metadata in descriptor["data_keys"].items():
                 if field_metadata["dtype"] == "string":
-                    # Skip this if it has a dtype_str with an itemsize.
-                    dtype_str = field_metadata.get("dtype_str")
-                    if dtype_str is not None:
-                        if numpy.dtype(dtype_str).itemsize != 0:
+                    # Skip this if it has a dtype_numpy with an itemsize.
+                    dt_np = field_metadata.get("dtype_numpy") or field_metadata.get("dtype_str")
+                    if dt_np is not None:
+                        if numpy.dtype(dt_np).itemsize != 0:
                             continue
                     unicode_keys.append(key)
             # Load the all the data for unicode columns to figure out the itemsize.
@@ -719,7 +719,7 @@ class DatasetFromDocuments:
                     f"{key!r} actually has dtype {raw_array.dtype.str!r} "
                     f"but was reported as having dtype {dtype.str!r}. "
                     "It will be converted to the reported type, "
-                    "but this should be fixed by setting 'dtype_str' "
+                    "but this should be fixed by setting 'dtype_numpy' "
                     "in the data_key of the EventDescriptor. "
                     f"RunStart UID: {self._run.metadata()['start']['uid']!r}"
                 )
@@ -765,7 +765,7 @@ class DatasetFromDocuments:
                 f"{variable!r} actually has dtype {raw_array.dtype.str!r} "
                 f"but was reported as having dtype {dtype.str!r}. "
                 "It will be converted to the reported type, "
-                "but this should be fixed by setting 'dtype_str' "
+                "but this should be fixed by setting 'dtype_numpy' "
                 "in the data_key of the EventDescriptor. "
                 f"RunStart UID: {self._run.metadata()['start']['uid']!r}"
             )
@@ -1057,7 +1057,7 @@ def build_config_xarray(
     for key, column in raw_columns.items():
         field_metadata = data_keys[key]
         dtype = _try_descr(field_metadata)
-        dt_str = field_metadata.get("dtype_str")
+        dt_np = field_metadata.get("dtype_numpy") or field_metadata.get("dtype_str")
         if dtype is not None:
             if len(getattr(column[0], "shape", ())) > 2:
                 raise RuntimeError(
@@ -1065,8 +1065,8 @@ def build_config_xarray(
                 )
             numpy_dtype = dtype.to_numpy_dtype()
         # if we have a detailed string, trust that
-        elif dt_str is not None:
-            numpy_dtype = numpy.dtype(dt_str)
+        elif dt_np is not None:
+            numpy_dtype = numpy.dtype(dt_np)
         # otherwise guess!
         else:
             numpy_dtype = JSON_DTYPE_TO_MACHINE_DATA_TYPE[
@@ -2056,7 +2056,7 @@ def parse_transforms(transforms):
 
 
 # These are fallback guesses when all we have is a general jsonschema "dtype"
-# like "array" no specific "dtype_str" like "<u2".
+# like "array" no specific "dtype_numpy" like "<u2".
 BOOLEAN_DTYPE = BuiltinDtype.from_numpy_dtype(numpy.dtype("bool"))
 FLOAT_DTYPE = BuiltinDtype.from_numpy_dtype(numpy.dtype("float64"))
 INT_DTYPE = BuiltinDtype.from_numpy_dtype(numpy.dtype("int64"))
@@ -2066,7 +2066,7 @@ JSON_DTYPE_TO_MACHINE_DATA_TYPE = {
     "number": FLOAT_DTYPE,
     "integer": INT_DTYPE,
     "string": STRING_DTYPE,
-    "array": FLOAT_DTYPE,  # If this is wrong, set 'dtype_str' in data_key to override.
+    "array": FLOAT_DTYPE,  # If this is wrong, set 'dtype_numpy' in data_key to override.
 }
 
 
