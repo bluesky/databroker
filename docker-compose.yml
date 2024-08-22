@@ -17,8 +17,11 @@ services:
     image: ghcr.io/bluesky/databroker:v2.0.0b47
     volumes:
       - type: bind
-        source: ./example_config.yml
-        target: /deploy/config.yml
+        source: ./example_config
+        target: /deploy/config
+      - type: bind
+        source: ./data
+        target: /deploy/data
     environment:
       - TILED_SINGLE_USER_API_KEY=$TILED_SINGLE_USER_API_KEY
     ports:
@@ -29,6 +32,10 @@ services:
       - mongo
   mongo:
     image: docker.io/mongo:6.0.4
+    # These ports should not be exposed in production, but direct access
+    # to the MongoDB may be useful for development and debugging.
+    ports:
+      - 27017:27017
     networks:
       - backend
 
