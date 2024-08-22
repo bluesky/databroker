@@ -12,7 +12,8 @@ c = from_uri('http://localhost:8000', api_key='secret')
 c['raw'].values().last()['primary']['data']['img'][:]  # ERROR!
 
 # The server logs should show:
-# databroker.mongo_normalized.BadShapeMetadata: For data key img shape (5, 7) does not match expected shape (1, 11, 3).
+# databroker.mongo_normalized.BadShapeMetadata:
+# For data key img shape (5, 7) does not match expected shape (1, 11, 3).
 
 # Run the shape-fixer CLI. Start with a dry run.
 # The `--strict` mode ensures that errors are raised, not skipped.
@@ -29,8 +30,6 @@ Migrating... ━━━━━━━━━━━━━━━━━━━━━━�
 # There is no need to reconnect; just run this line again:
 c['raw'].values().last()['primary']['data']['img'][:]  # Now it works!
 """
-
-
 
 import numpy
 from ophyd.sim import SynSignalWithRegistry
