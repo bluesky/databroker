@@ -2,6 +2,7 @@
 Given a Run, fill one Event from each stream, measure its shape, and patch the
 Descriptors in that stream.
 """
+
 from event_model import Filler
 
 
@@ -59,9 +60,35 @@ def measure(
 
 
 def fix(mds_database, descriptor, measured_shapes):
+    """
+    Patch shape via direct update in database.
+
+    DEPRECATED: Prefer the function patch below because it uses Tiled's
+    PATCH API which means:
+    - The database write is more constrained, reducing the possibility of
+      unexpected behavior and corruption.
+    - The change is logged in HTTP logs.
+    - The original value is retained the revisions collection.
+    """
     for key, measured_shape in measured_shapes.items():
         mds_database["event_descriptor"].update_one(
             {"uid": descriptor["uid"]},
             {"$set": {f"data_keys.{key}.shape": measured_shape}},
             upsert=False,
+        )
+
+
+def patch(tiled_client, measured_shapes):
+    "Patch shape using Tiled PATCH request."
+    for key, measured_shape in measured_shapes.items():
+        # Update shape in each descriptor for this stream.
+        tiled_client.patch_metadata(
+            [
+                {
+                    "op": "replace",
+                    "path": f"/descriptors/{index}/data_keys/{key}/shape",
+                    "value": measured_shape,
+                }
+                for index in range(len(tiled_client.metadata["descriptors"]))
+            ]
         )
