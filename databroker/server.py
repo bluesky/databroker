@@ -6,7 +6,7 @@ from jsonschema import ValidationError
 from event_model import DocumentNames, schema_validators
 from fastapi import APIRouter, HTTPException, Request
 import pydantic
-from tiled.server.core import PatchedStreamingResponse
+from starlette.responses import StreamingResponse
 from tiled.server.dependencies import SecureEntry
 
 
@@ -44,13 +44,13 @@ def get_documents(
                     yield packer.pack({"name": name, "doc": doc})
 
             generator = generator_func()
-            return PatchedStreamingResponse(
+            return StreamingResponse(
                 generator, media_type="application/x-msgpack"
             )
         if media_type == "application/json-seq":
             # (name, doc) pairs as newline-delimited JSON
             generator = (json.dumps({"name": name, "doc": doc}) + "\n" for name, doc in run.documents(fill=fill))
-            return PatchedStreamingResponse(
+            return StreamingResponse(
                 generator, media_type="application/json-seq"
             )
     else:
