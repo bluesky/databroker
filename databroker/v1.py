@@ -67,6 +67,7 @@ class Registry:
             "details are handled for you on the server side, so you should not worry "
             "about this message unless you encounter trouble loading large array data."
         )
+        return {}
 
     def register_handler(self, *args, **kwargs):
         warnings.warn(
