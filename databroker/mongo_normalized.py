@@ -828,9 +828,9 @@ class DatasetFromDocuments:
             (result,) = cursor
             column.extend(result["column"])
 
-        # Aim for 10 MB pages to stay safely clear the MongoDB's hard limit
+        # Aim for 8 MB pages to stay safely clear the MongoDB's hard limit
         # of 16 MB.
-        TARGET_PAGE_BYTESIZE = 10_000_000
+        TARGET_PAGE_BYTESIZE = 8_000_000
 
         page_size = TARGET_PAGE_BYTESIZE // 8  # estimated row byte size is 8
         boundaries = list(range(min_seq_num, 1 + max_seq_num, page_size))
@@ -959,9 +959,9 @@ class DatasetFromDocuments:
                     numpy.prod(data_key["shape"]) * 8
                 )
 
-        # Aim for 10 MB pages to stay safely clear the MongoDB's hard limit
+        # Aim for 8 MB pages to stay safely clear the MongoDB's hard limit
         # of 16 MB.
-        TARGET_PAGE_BYTESIZE = 10_000_000
+        TARGET_PAGE_BYTESIZE = 8_000_000
 
         # Fetch scalars all together.
         if scalars:
