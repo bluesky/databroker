@@ -2244,11 +2244,11 @@ def default_validate_shape(key, data, expected_shape):
         else:  # margin == 0
             padding.append((0, 0))
             trimming.append(slice(None, None))
-        # TODO Rethink this!
-        # We cannot do NaN because that does not work for integers
-        # and it is too late to change our mind about the data type.
-        padded = numpy.pad(data, padding, "edge")
-        padded_and_trimmed = padded[tuple(trimming)]
+    # TODO Rethink this!
+    # We cannot do NaN because that does not work for integers
+    # and it is too late to change our mind about the data type.
+    padded = numpy.pad(data, padding, "edge")
+    padded_and_trimmed = padded[tuple(trimming)]
     return padded_and_trimmed
 
 
