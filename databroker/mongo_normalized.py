@@ -160,7 +160,7 @@ def structure_from_descriptor(descriptor, sub_dict, max_seq_num, unicode_columns
         numpy_dtype = dtype.to_numpy_dtype()
         if "chunks" in field_metadata:
             # If the Event Descriptor tells us a preferred chunking, use that.
-            suggested_chunks = field_metadata["chunks"]
+            suggested_chunks = tuple(tuple(chunks) for chunks in field_metadata["chunks"])
         elif (0 in shape) or (numpy_dtype.itemsize == 0):
             # special case to avoid warning from dask
             suggested_chunks = shape

@@ -1308,3 +1308,50 @@ def test_direct_img_read(db, RE, hw):
     c = db.v2
     uid, = get_uids(RE(count([hw.direct_img], 5)))
     c[uid]["primary"]["data"]["img"][:]
+
+
+def test_img_explicit_chunks(db, RE, hw, tmpdir):
+    "Test using explicit chunk size"
+    from ophyd import sim
+
+    RE.subscribe(db.insert)
+    if not hasattr(db, "v2"):
+        raise pytest.skip("v0 has no v2 accessor")
+    c = db.v2
+
+
+    class Detector1(sim.SynSignalWithRegistry):
+        def describe(self):
+            res = super().describe()
+            (key,) = res
+            shape = res[key]["shape"]
+            assert len(shape) == 2
+            res[key]["chunks"] = [[5], [1] * shape[0], [shape[1]]]
+            return res
+
+    class Detector2(sim.SynSignalWithRegistry):
+        def describe(self):
+            res = super().describe()
+            (key,) = res
+            shape = res[key]["shape"]
+            res[key]["chunks"] = [[5], [2] * (shape[0] // 2), [shape[1]]]
+            return res
+
+    img1 = Detector2(
+        func=lambda: np.array(np.ones((10, 10))),
+        name="img",
+        labels={"detectors"},
+        save_path=str(tmpdir),
+    )
+    img2 = Detector2(
+        func=lambda: np.array(np.ones((10, 10))),
+        name="img",
+        labels={"detectors"},
+        save_path=str(tmpdir),
+    )
+    uid, = get_uids(RE(count([img1], 5)))
+    c[uid]["primary"]["data"]["img"][:]
+    assert c[uid]["primary"]["data"]["img"].chunks[1] == tuple([2] * 5)
+    uid, = get_uids(RE(count([img2], 5)))
+    c[uid]["primary"]["data"]["img"][:]
+    assert c[uid]["primary"]["data"]["img"].chunks[1] == tuple([2] * 5)
