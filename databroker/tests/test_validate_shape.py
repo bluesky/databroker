@@ -9,6 +9,7 @@ from ..mongo_normalized import MongoAdapter, BadShapeMetadata
 import numpy as np
 import pytest
 
+
 def test_validate_shape(tmpdir):
     # custom_validate_shape will mutate this to show it has been called
     shapes = []
@@ -33,13 +34,16 @@ def test_validate_shape(tmpdir):
         assert shapes
 
 
-@pytest.mark.parametrize("shape,expected_shape",[
-    ( (10,), (11,) ),
-    ( (10,20), (10,21) ),
-    ( (10,20,30), (10,21,30) ),
-    ( (10,20,30), (10,20,31) ),
-    ( (20,20,20,20), (20,21,20,22) ),
-])
+@pytest.mark.parametrize(
+    "shape,expected_shape",
+    [
+        ((10,), (11,)),
+        ((10, 20), (10, 21)),
+        ((10, 20, 30), (10, 21, 30)),
+        ((10, 20, 30), (10, 20, 31)),
+        ((20, 20, 20, 20), (20, 21, 20, 22)),
+    ],
+)
 def test_padding(tmpdir, shape, expected_shape):
     adapter = MongoAdapter.from_mongomock()
 
@@ -62,12 +66,16 @@ def test_padding(tmpdir, shape, expected_shape):
         (uid,) = RE(count([direct_img]))
         assert client[uid]["primary"]["data"]["img"][0].shape == expected_shape
 
-@pytest.mark.parametrize("shape,expected_shape",[
-    ( (10,), (11,12) ),
-    ( (10,20), (10,200) ),
-    #( (20,20,20,20), (20,21,20,200) ),  # range with page_size=0 because expected byte size is too large
-    #( (10,20), (9,20) ),  # docstring says this should raise BadShapeMetadata, but code doesn't
-])
+
+@pytest.mark.parametrize(
+    "shape,expected_shape",
+    [
+        ((10,), (11, 12)),
+        ((10, 20), (10, 200)),
+        # ( (20,20,20,20), (20,21,20,200) ),  # range with page_size=0 because expected byte size is too large
+        # ( (10,20), (9,20) ),  # docstring says this should raise BadShapeMetadata, but code doesn't
+    ],
+)
 def test_default_validate_shape(tmpdir, shape, expected_shape):
     adapter = MongoAdapter.from_mongomock()
 
@@ -90,4 +98,3 @@ def test_default_validate_shape(tmpdir, shape, expected_shape):
         (uid,) = RE(count([direct_img]))
         with pytest.raises(BadShapeMetadata):
             client[uid]["primary"]["data"]["img"][:]
-
