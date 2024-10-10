@@ -2225,7 +2225,6 @@ def default_validate_shape(key, data, expected_shape):
         )
     # Pad at the "end" along any dimension that is too short.
     padding = []
-    trimming = []
     for actual, expected in zip(data.shape, expected_shape):
         margin = expected - actual
         # Limit how much padding or trimming we are willing to do.

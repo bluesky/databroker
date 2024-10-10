@@ -73,8 +73,8 @@ def test_padding(tmpdir, shape, expected_shape):
     [
         ((10,), (11, 12)),
         ((10, 20), (10, 200)),
-        ( (20,20,20,20), (20,21,20,200) ),
-        ( (10,20), (5,20) ),
+        ((20, 20, 20, 20), (20, 21, 20, 200)),
+        ((10, 20), (5, 20)),
     ],
 )
 def test_default_validate_shape(tmpdir, shape, expected_shape):
