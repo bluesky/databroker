@@ -39,6 +39,7 @@ def test_validate_shape(tmpdir):
     [
         ((10,), (11,)),
         ((10, 20), (10, 21)),
+        ((10, 20), (10, 19)),
         ((10, 20, 30), (10, 21, 30)),
         ((10, 20, 30), (10, 20, 31)),
         ((20, 20, 20, 20), (20, 21, 20, 22)),
@@ -72,8 +73,8 @@ def test_padding(tmpdir, shape, expected_shape):
     [
         ((10,), (11, 12)),
         ((10, 20), (10, 200)),
-        # ( (20,20,20,20), (20,21,20,200) ),  # range with page_size=0 because expected byte size is too large
-        # ( (10,20), (9,20) ),  # docstring says this should raise BadShapeMetadata, but code doesn't
+        ( (20,20,20,20), (20,21,20,200) ),
+        ( (10,20), (5,20) ),
     ],
 )
 def test_default_validate_shape(tmpdir, shape, expected_shape):

@@ -977,7 +977,7 @@ class DatasetFromDocuments:
         # their size if we need to squeeze more performance out here. But maybe
         # we can get away with never adding that complexity.
         for key, est_row_bytesize in zip(nonscalars, estimated_nonscalar_row_bytesizes):
-            page_size = TARGET_PAGE_BYTESIZE // est_row_bytesize
+            page_size = max(1, TARGET_PAGE_BYTESIZE // est_row_bytesize)
             boundaries = list(range(min_seq_num, 1 + max_seq_num, page_size))
             if boundaries[-1] != max_seq_num:
                 boundaries.append(max_seq_num)
@@ -2209,10 +2209,11 @@ def default_validate_shape(key, data, expected_shape):
     Check that data.shape == expected.shape.
 
     * If number of dimensions differ, raise BadShapeMetadata
-    * If any dimension is larger than expected, raise BadShapeMetadata.
+    * If any dimension differs by more than MAX_SIZE_DIFF, raise BadShapeMetadata.
     * If some dimensions are smaller than expected,, pad "right" edge of each
       dimension that falls short with NaN.
     """
+    MAX_SIZE_DIFF = 2
     if data.shape == expected_shape:
         return data
     if len(data.shape) != len(expected_shape):
@@ -2228,8 +2229,7 @@ def default_validate_shape(key, data, expected_shape):
     for actual, expected in zip(data.shape, expected_shape):
         margin = expected - actual
         # Limit how much padding or trimming we are willing to do.
-        SOMEWHAT_ARBITRARY_LIMIT_OF_WHAT_IS_REASONABLE = 2
-        if abs(margin) > SOMEWHAT_ARBITRARY_LIMIT_OF_WHAT_IS_REASONABLE:
+        if abs(margin) > MAX_SIZE_DIFF:
             raise BadShapeMetadata(
                 f"For data key {key} "
                 f"shape {data.shape} does not "
@@ -2237,19 +2237,12 @@ def default_validate_shape(key, data, expected_shape):
             )
         if margin > 0:
             padding.append((0, margin))
-            trimming.append(slice(None, None))
         elif margin < 0:
             padding.append((0, 0))
-            trimming.append(slice(None))
         else:  # margin == 0
             padding.append((0, 0))
-            trimming.append(slice(None, None))
-    # TODO Rethink this!
-    # We cannot do NaN because that does not work for integers
-    # and it is too late to change our mind about the data type.
     padded = numpy.pad(data, padding, "edge")
-    padded_and_trimmed = padded[tuple(trimming)]
-    return padded_and_trimmed
+    return padded
 
 
 def build_summary(run_start_doc, run_stop_doc, stream_names):
