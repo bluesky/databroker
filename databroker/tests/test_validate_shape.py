@@ -6,7 +6,6 @@ from tiled.server.app import build_app
 
 from ..mongo_normalized import MongoAdapter, BadShapeMetadata
 
-import json
 import numpy as np
 import pytest
 
