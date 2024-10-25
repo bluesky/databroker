@@ -85,7 +85,6 @@ def test_custom_chunking(tmpdir, chunks, shape, expected_chunks):
         RE.subscribe(post_document)
         (uid,) = RE(count([direct_img]))
         assert client[uid]["primary"]["data"]["img"].chunks == expected_chunks
-        # assert client[uid]["primary"]["data"]["img"][0].shape == shape
 
 
 @pytest.mark.parametrize(
