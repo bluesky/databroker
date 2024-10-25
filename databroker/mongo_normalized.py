@@ -2212,7 +2212,7 @@ def default_validate_shape(key, data, expected_shape):
     * If number of dimensions differ, raise BadShapeMetadata
     * If any dimension differs by more than MAX_SIZE_DIFF, raise BadShapeMetadata.
     * If some dimensions are smaller than expected,, pad "right" edge of each
-      dimension that falls short with zeros..
+      dimension that falls short with zeros.
     """
     MAX_SIZE_DIFF = 2
     if data.shape == expected_shape:
