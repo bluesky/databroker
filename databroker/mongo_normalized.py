@@ -2245,7 +2245,7 @@ def default_validate_shape(key, data, expected_shape):
 
     logger.warning(f"The data.shape: {data.shape} did not match the expected_shape: "
                    f"{expected_shape} for key: '{key}'. This data has been zero-padded "
-                   "to match the expected shape!")
+                   "to match the expected_shape!")
 
     return padded
 
