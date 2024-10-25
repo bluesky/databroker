@@ -2212,7 +2212,7 @@ def default_validate_shape(key, data, expected_shape):
     * If number of dimensions differ, raise BadShapeMetadata
     * If any dimension differs by more than MAX_SIZE_DIFF, raise BadShapeMetadata.
     * If some dimensions are smaller than expected,, pad "right" edge of each
-      dimension that falls short with NaN.
+      dimension that falls short with zeros..
     """
     MAX_SIZE_DIFF = 2
     if data.shape == expected_shape:
@@ -2242,6 +2242,11 @@ def default_validate_shape(key, data, expected_shape):
         else:  # margin == 0
             padding.append((0, 0))
     padded = numpy.pad(data, padding, "edge")
+
+    logger.warning(f"The data.shape: {data.shape} did not match the expected_shape: "
+                   f"{expected_shape} for key: '{key}'. This data has been zero-padded "
+                   "to match the expected shape!")
+
     return padded
 
 
