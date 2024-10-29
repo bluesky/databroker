@@ -1,19 +1,15 @@
 area-detector-handlers
 bluesky
-boltons
 codecov
 coverage
-doct
 flake8
 glue-core <1.18
 glueviz
 matplotlib
 mongomock
-mongoquery
 msgpack >=1.0.0
 numpy >=1.16.0  # for astropy (via glueviz)
 ophyd
-pims
 pyqt5 !=5.14.1
 pytest >=4.4,!=5.4.0
 pytest-rerunfailures
@@ -22,6 +18,5 @@ suitcase-jsonl >=0.1.0b2
 suitcase-mongo >=0.5.0
 suitcase-msgpack >=0.2.2
 tiled[all] >=0.1.0b9
-tzlocal
 ujson
 vcrpy
