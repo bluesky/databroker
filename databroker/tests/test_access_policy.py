@@ -2,7 +2,7 @@ from bluesky import RunEngine
 from bluesky.plans import count
 from tiled.client import Context, from_context
 from tiled.server.app import build_app_from_config
-
+from tiled._tests.utils import enter_username_password
 from ..mongo_normalized import MongoAdapter, SimpleAccessPolicy
 
 
@@ -22,7 +22,7 @@ def test_access_policy_pass_through():
     InstrumentedMongoAdapter.from_mongomock(access_policy=access_policy)
 
 
-def test_access_policy_example(tmpdir, enter_password):
+def test_access_policy_example(tmpdir):
 
     config = {
         "authentication": {
@@ -52,8 +52,8 @@ def test_access_policy_example(tmpdir, enter_password):
         ],
     }
     with Context.from_app(build_app_from_config(config), token_cache=tmpdir) as context:
-        with enter_password("secret"):
-            client = from_context(context, username="alice", prompt_for_reauthentication=True)
+        with enter_username_password("alice", "secret"):
+            client = from_context(context, prompt_for_reauthentication=True)
 
         def post_document(name, doc):
             client.post_document(name, doc)

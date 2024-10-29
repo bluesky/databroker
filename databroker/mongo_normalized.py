@@ -4,6 +4,7 @@ import collections.abc
 import copy
 from datetime import datetime, timedelta
 import functools
+import inspect
 import itertools
 import logging
 import os
@@ -160,7 +161,8 @@ def structure_from_descriptor(descriptor, sub_dict, max_seq_num, unicode_columns
         numpy_dtype = dtype.to_numpy_dtype()
         if "chunks" in field_metadata:
             # If the Event Descriptor tells us a preferred chunking, use that.
-            suggested_chunks = tuple(tuple(chunks) for chunks in field_metadata["chunks"])
+            suggested_chunks = [tuple(chunk) if isinstance(chunk, list)
+                                else chunk for chunk in field_metadata['chunks']]
         elif (0 in shape) or (numpy_dtype.itemsize == 0):
             # special case to avoid warning from dask
             suggested_chunks = shape
@@ -931,6 +933,9 @@ class DatasetFromDocuments:
                         map(
                             lambda item: self.validate_shape(
                                 key, numpy.asarray(item), expected_shape
+                            ) if 'uid' in inspect.signature(self.validate_shape).parameters
+                            else self.validate_shape(
+                                key, numpy.asarray(item), expected_shape, uid=self._run.metadata()['start']['uid']
                             ),
                             result[key],
                         )
@@ -2204,14 +2209,14 @@ class BadShapeMetadata(Exception):
     pass
 
 
-def default_validate_shape(key, data, expected_shape):
+def default_validate_shape(key, data, expected_shape, uid=None):
     """
     Check that data.shape == expected.shape.
 
     * If number of dimensions differ, raise BadShapeMetadata
     * If any dimension differs by more than MAX_SIZE_DIFF, raise BadShapeMetadata.
     * If some dimensions are smaller than expected,, pad "right" edge of each
-      dimension that falls short with NaN.
+      dimension that falls short with zeros.
     """
     MAX_SIZE_DIFF = 2
     if data.shape == expected_shape:
@@ -2241,6 +2246,11 @@ def default_validate_shape(key, data, expected_shape):
         else:  # margin == 0
             padding.append((0, 0))
     padded = numpy.pad(data, padding, "edge")
+
+    logger.warning(f"The data.shape: {data.shape} did not match the expected_shape: "
+                   f"{expected_shape} for key: '{key}'. This data has been zero-padded "
+                   "to match the expected_shape! RunStart UID: {uid}")
+
     return padded
 
 
