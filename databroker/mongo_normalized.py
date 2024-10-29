@@ -4,6 +4,7 @@ import collections.abc
 import copy
 from datetime import datetime, timedelta
 import functools
+import inspect
 import itertools
 import logging
 import os
@@ -932,6 +933,9 @@ class DatasetFromDocuments:
                         map(
                             lambda item: self.validate_shape(
                                 key, numpy.asarray(item), expected_shape
+                            ) if 'uid' in inspect.signature(self.validate_shape).parameters
+                            else self.validate_shape(
+                                key, numpy.asarray(item), expected_shape, uid=self._run.metadata()['start']['uid']
                             ),
                             result[key],
                         )
@@ -2245,7 +2249,7 @@ def default_validate_shape(key, data, expected_shape, uid=None):
 
     logger.warning(f"The data.shape: {data.shape} did not match the expected_shape: "
                    f"{expected_shape} for key: '{key}'. This data has been zero-padded "
-                   "to match the expected_shape!")
+                   "to match the expected_shape! RunStart UID: {uid}")
 
     return padded
 
