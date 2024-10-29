@@ -1,5 +1,3 @@
-import contextlib
-import getpass
 import os
 import pytest
 import sys

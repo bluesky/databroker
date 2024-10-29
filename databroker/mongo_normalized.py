@@ -2205,7 +2205,7 @@ class BadShapeMetadata(Exception):
     pass
 
 
-def default_validate_shape(key, data, expected_shape):
+def default_validate_shape(key, data, expected_shape, uid=None):
     """
     Check that data.shape == expected.shape.
 
