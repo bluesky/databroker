@@ -112,3 +112,24 @@ SIM_DETECTORS = {'scalar': 'det',
 @pytest.fixture(params=['scalar', 'image', 'external_image'])
 def detector(request, hw):
     return getattr(hw, SIM_DETECTORS[request.param])
+
+
+@pytest.fixture(autouse=True)
+def set_tiled_cache_dir():
+    """
+    Use a tmpdir instead of ~/.cache/tiled/tokens
+    """
+    # Do not use tempdir pytest fixture because it would use the same tmpdir
+    # as the one used by the test, and mix the files up.
+    # Windows will not remove the directory while the http_response_cache.db
+    # is still open. It is closed by transport shutdown, but not all tests
+    # correctly shut down the transport. This is probably related to the
+    # thread-leaking issue.
+    # This option was added to TemporaryDirectory in Python 3.10
+    kwargs = {}
+    if sys.platform.startswith("win") and sys.version_info >= (3, 10):
+        kwargs["ignore_cleanup_errors"] = True
+    with tempfile.TemporaryDirectory(**kwargs) as tmpdir:
+        os.environ["TILED_CACHE_DIR"] = str(tmpdir)
+        yield
+        del os.environ["TILED_CACHE_DIR"]

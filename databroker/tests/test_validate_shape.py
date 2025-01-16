@@ -29,7 +29,7 @@ def test_padding(tmpdir, shape, expected_shape):
     )
     direct_img.img.name = "img"
 
-    with Context.from_app(build_app(adapter), token_cache=tmpdir) as context:
+    with Context.from_app(build_app(adapter)) as context:
         client = from_context(context)
 
         def post_document(name, doc):
@@ -72,7 +72,7 @@ def test_custom_chunking(tmpdir, chunks, shape, expected_chunks):
     )
     direct_img.img.name = "img"
 
-    with Context.from_app(build_app(adapter), token_cache=tmpdir) as context:
+    with Context.from_app(build_app(adapter)) as context:
         client = from_context(context, "dask")
 
         def post_document(name, doc):
@@ -104,7 +104,7 @@ def test_validate_shape_exceptions(tmpdir, shape, expected_shape):
     )
     direct_img.img.name = "img"
 
-    with Context.from_app(build_app(adapter), token_cache=tmpdir) as context:
+    with Context.from_app(build_app(adapter)) as context:
         client = from_context(context)
 
         def post_document(name, doc):
@@ -130,7 +130,7 @@ def test_custom_validate_shape(tmpdir):
 
     adapter = MongoAdapter.from_mongomock(validate_shape=custom_validate_shape)
 
-    with Context.from_app(build_app(adapter), token_cache=tmpdir) as context:
+    with Context.from_app(build_app(adapter)) as context:
         client = from_context(context)
 
         def post_document(name, doc):
