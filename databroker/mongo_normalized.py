@@ -1898,13 +1898,13 @@ class SimpleAccessPolicy:
             )
         return id
 
-    def allowed_scopes(self, node, principal):
+    def allowed_scopes(self, node, principal, path_parts):
         # The simple policy does not provide for different Principals to
         # have different scopes on different Nodes. If the Principal has access,
         # they have the same hard-coded access everywhere.
         return self.scopes
 
-    def filters(self, node, principal, scopes):
+    def filters(self, node, principal, scopes, path_parts):
         if not scopes.issubset(self.scopes):
             return NO_ACCESS
         id = self._get_id(principal)
