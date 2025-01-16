@@ -2,7 +2,7 @@
     "properties": {
         "point_number": {
             "type": "integer",
-            "description": "The data-point number"
+            "description": "The data-point number in AD_HDF5"
         }
     },
     "required": ["point_number"],

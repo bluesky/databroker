@@ -1,0 +1,50 @@
+[build-system]
+requires = ["hatchling", "hatch-vcs"]
+build-backend = "hatchling.build"
+
+[project]
+name = "bluesky-tiled-plugins"
+description = "Tiled client plugins to provide an customized user experience for Bluesky data in Tiled"
+readme = { file = "README.md", content-type = "text/markdown" }
+authors = [
+  { name = "Bluesky Project Contributors", email = "dallan@bnl.gov" },
+]
+maintainers = [
+  { name = "Brookhaven National Laboratory", email = "dallan@bnl.gov" },
+]
+requires-python = ">=3.7"
+
+dependencies = [
+  "dask",
+  "mongoquery",
+  "pytz",
+  "tiled[client] >=0.1.0b4",
+  "tzlocal",
+]
+
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "License :: OSI Approved :: BSD License",
+  "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Python :: 3.7",
+  "Programming Language :: Python :: 3.8",
+  "Programming Language :: Python :: 3.9",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Topic :: Scientific/Engineering :: Physics",
+]
+
+dynamic = ["version"]
+
+[project.entry-points."tiled.special_client"]
+CatalogOfBlueskyRuns = "bluesky_tiled_plugins.catalog_of_bluesky_runs:CatalogOfBlueskyRuns"
+BlueskyRun = "bluesky_tiled_plugins.bluesky_run:BlueskyRun"
+BlueskyEventStream = "bluesky_tiled_plugins.bluesky_event_stream:BlueskyEventStream"
+
+[tool.hatch]
+version.source = "vcs"
+version.raw-options = { root = ".." }
+version.fallback-version = "0.0.0"
+build.hooks.vcs.version-file = "bluesky_tiled_plugins/_version.py"
+
