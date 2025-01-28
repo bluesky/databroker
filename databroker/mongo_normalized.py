@@ -2,7 +2,7 @@ import builtins
 import collections
 import collections.abc
 import copy
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import functools
 import inspect
 import itertools
@@ -264,12 +264,12 @@ class BlueskyRun(MapAdapter):
 
     @property
     def metadata_stale_at(self):
-        return datetime.utcnow() + timedelta(hours=1)
+        return datetime.now(timezone.utc) + timedelta(hours=1)
 
     @property
     def entries_stale_at(self):
         if self._metadata["stop"] is not None:
-            return datetime.utcnow() + timedelta(hours=1)
+            return datetime.now(timezone.utc) + timedelta(hours=1)
 
     @property
     def key(self):
@@ -493,13 +493,13 @@ class BlueskyEventStream(MapAdapter):
     @property
     def metadata_stale_at(self):
         if self._run.metadata()["stop"] is not None:
-            return datetime.utcnow() + timedelta(hours=1)
-        return datetime.utcnow() + timedelta(hours=1)
+            return datetime.now(timezone.utc) + timedelta(hours=1)
+        return datetime.now(timezone.utc) + timedelta(hours=1)
 
     @property
     def entries_stale_at(self):
         if self._run.metadata()["stop"] is not None:
-            return datetime.utcnow() + timedelta(hours=1)
+            return datetime.now(timezone.utc) + timedelta(hours=1)
 
     def metadata(self):
         # If there are transforms configured, shadow the 'descriptor' documents
@@ -694,13 +694,13 @@ class DatasetFromDocuments:
     @property
     def metadata_stale_at(self):
         if self._run.metadata()["stop"] is not None:
-            return datetime.utcnow() + timedelta(hours=1)
-        return datetime.utcnow() + timedelta(hours=1)
+            return datetime.now(timezone.utc) + timedelta(hours=1)
+        return datetime.now(timezone.utc) + timedelta(hours=1)
 
     @property
     def content_stale_at(self):
         if self._run.metadata()["stop"] is not None:
-            return datetime.utcnow() + timedelta(hours=1)
+            return datetime.now(timezone.utc) + timedelta(hours=1)
 
     def inlined_contents_enabled(self, depth):
         # Tell the server to in-line the description of each array
@@ -1444,7 +1444,7 @@ class MongoAdapter(collections.abc.Mapping, IndexersMixin):
 
     @property
     def metadata_stale_at(self):
-        return datetime.utcnow() + timedelta(seconds=600)
+        return datetime.now(timezone.utc) + timedelta(seconds=600)
 
     @property
     def entries_stale_at(self):
