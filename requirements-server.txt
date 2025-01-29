@@ -1,4 +1,5 @@
 area-detector-handlers
+bluesky-tiled-plugins
 cachetools
 entrypoints
 event-model
