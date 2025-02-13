@@ -1857,7 +1857,7 @@ def full_text_search(query, catalog):
             return BlueskyMapAdapter(dict(catalog)).search(query)
 
     return catalog.apply_mongo_query(
-        {"$text": {"$search": query.text, "$caseSensitive": query.case_sensitive}},
+        {"$text": {"$search": query.text, "$caseSensitive": False}},
     )
 
 
