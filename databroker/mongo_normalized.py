@@ -1899,6 +1899,9 @@ class SimpleAccessPolicy:
             self.access_lists[key] = value
 
     def _get_id(self, principal):
+        # Services have no identities; just use the uuid.
+        if principal.type == "service":
+            return str(principal.uuid)
         # Get the id (i.e. username) of this Principal for the
         # associated authentication provider.
         for identity in principal.identities:
