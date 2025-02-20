@@ -147,7 +147,15 @@ class CatalogOfBlueskyRuns(Container):
 
     def post_document(self, name, doc):
         link = self.item["links"]["self"].replace("/metadata", "/documents", 1)
-        response = self.context.http_client.post(
-            link, content=safe_json_dump({"name": name, "doc": doc}, default=self._namedtuple_asdict_default)
-        )
+        try:
+            response = self.context.http_client.post(
+                link, content=safe_json_dump({"name": name, "doc": doc}, default=self._namedtuple_asdict_default)
+            )
+        except TypeError as e:
+            if "got an unexpected keyword argument" in str(e):
+                response = self.context.http_client.post(
+                    link, content=safe_json_dump({"name": name, "doc": doc})
+                )
+            else:
+                raise
         handle_error(response)
