@@ -1013,7 +1013,7 @@ class DatasetFromDocuments:
             keys, expected_shapes, is_externals
         ):
             column = columns[key]
-            if is_external:
+            if is_external and (self._sub_dict == "data"):
                 filled_column = []
                 for datum_id in column:
                     # HACK to adapt Filler which is designed to consume whole,
