@@ -325,7 +325,7 @@ class Test_ADTiff_files(_with_path):
         self.fn_list = []
         for j in range(self.n_frames * self.fpp):
             fn = self.template % (self.filepath, self.fname, j)
-            tifffile.imsave(fn, np.ones(self.fr_shape) * j)
+            tifffile.imwrite(fn, np.ones(self.fr_shape) * j)
             self.fn_list.append(fn)
 
     def test_read(self):
