@@ -138,9 +138,24 @@ class CatalogOfBlueskyRuns(Container):
             self._v1 = Broker(self)
         return self._v1
 
+    @staticmethod
+    def _namedtuple_asdict_default(obj):
+        """Convert NamedTuple to dict before serialization."""
+        if isinstance(obj, tuple) and hasattr(obj, "_asdict"):  # NamedTuple check
+            return obj._asdict()
+        raise TypeError(f"Type {type(obj)} is not JSON serializable")
+
     def post_document(self, name, doc):
         link = self.item["links"]["self"].replace("/metadata", "/documents", 1)
-        response = self.context.http_client.post(
-            link, content=safe_json_dump({"name": name, "doc": doc})
-        )
+        try:
+            response = self.context.http_client.post(
+                link, content=safe_json_dump({"name": name, "doc": doc}, default=self._namedtuple_asdict_default)
+            )
+        except TypeError as e:
+            if "got an unexpected keyword argument" in str(e):
+                response = self.context.http_client.post(
+                    link, content=safe_json_dump({"name": name, "doc": doc})
+                )
+            else:
+                raise
         handle_error(response)
