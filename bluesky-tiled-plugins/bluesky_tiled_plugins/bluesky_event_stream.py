@@ -14,7 +14,8 @@ class BlueskyEventStream(Container):
     """
 
     def __repr__(self):
-        return f"<{type(self).__name__} {set(self)!r} stream_name={self.metadata['stream_name']!r}>"
+        stream_name = self.metadata.get("stream_name") or self.item['id']
+        return f"<{type(self).__name__} {set(self)!r} stream_name={stream_name!r}>"
 
     @property
     def descriptors(self):
@@ -24,9 +25,9 @@ class BlueskyEventStream(Container):
     def _descriptors(self):
         # For backward-compatibility.
         # We do not normally worry about backward-compatibility of _ methods, but
-        # for a time databroker.v2 *only* have _descriptors and not descriptros,
+        # for a time databroker.v2 *only* have _descriptors and not descriptors,
         # and I know there is useer code that relies on that.
-        warnings.warn("Use .descriptors instead of ._descriptors.", stacklevel=2)
+        warnings.warn("Use `.descriptors` instead of `._descriptors`.", stacklevel=2)
         return self.descriptors
 
     def __getattr__(self, key):
