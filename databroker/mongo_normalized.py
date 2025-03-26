@@ -363,7 +363,13 @@ class BlueskyRun(MapAdapter):
         )
 
     def get_datum_for_resource(self, resource_uid):
-        return self._datum_collection.find({"resource": resource_uid}, {"_id": False})
+        cur = self._datum_collection.find({"resource": resource_uid}, {"_id": False})
+        if "datum" in self.transforms:
+            for doc in cur:
+                yield self.transforms["datum"](doc)
+        else:
+            return cur
+        
 
     def get_resource(self, uid):
         doc = self._resource_collection.find_one({"uid": uid}, {"_id": False})
@@ -2063,7 +2069,7 @@ def parse_transforms(transforms):
     if transforms is None:
         return
     elif isinstance(transforms, collections.abc.Mapping):
-        allowed_keys = {"start", "stop", "resource", "descriptor"}
+        allowed_keys = {"start", "stop", "resource", "descriptor", "datum"}
         if transforms.keys() - allowed_keys:
             raise NotImplementedError(
                 f"Transforms for {transforms.keys() - allowed_keys} "
