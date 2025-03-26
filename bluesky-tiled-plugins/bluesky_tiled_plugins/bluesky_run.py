@@ -20,6 +20,8 @@ _document_types = {
     "event_page": EventPage,
     "datum_page": DatumPage,
     "resource": Resource,
+    "stream_resource": None,
+    "stream_datum": None,
 }
 
 RESERVED_KEYS = {"streams", "views", "config", "auxiliary"}
@@ -366,7 +368,7 @@ class BlueskyStreamView(OneShotCachedMap):
         if 'internal' in stream_parts:
             data_keys += [col for col in internal_cols if col != 'seq_num' and not col.startswith('ts_')]
         data_keys = sorted(set(data_keys))
-        ts_keys = [col for col in internal_cols if col.startswith('ts_')]
+        ts_keys = ["time"] + [col for col in internal_cols if col.startswith('ts_')]
         internal_dict = {'data': lambda: stream_client.to_dataset(*data_keys),
                          'timestamps': lambda: stream_client.to_dataset(*ts_keys),
                          'config': lambda: cls.format_config(config_client),
