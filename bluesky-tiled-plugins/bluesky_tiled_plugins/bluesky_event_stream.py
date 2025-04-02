@@ -14,7 +14,7 @@ class BlueskyEventStream(Container):
     """
 
     def __repr__(self):
-        stream_name = self.metadata.get("stream_name") or self.item['id']
+        stream_name = self.metadata.get("stream_name") or self.item["id"]
         return f"<{type(self).__name__} {set(self)!r} stream_name={stream_name!r}>"
 
     @property
@@ -48,9 +48,7 @@ class BlueskyEventStream(Container):
         # Build a list of entries that are valid attribute names
         # and add them to __dir__ so that they tab-complete.
         tab_completable_entries = [
-            entry
-            for entry in self
-            if (entry.isidentifier() and (not keyword.iskeyword(entry)))
+            entry for entry in self if (entry.isidentifier() and (not keyword.iskeyword(entry)))
         ]
         return super().__dir__() + tab_completable_entries
 
@@ -79,6 +77,4 @@ and then read() will return dask objects.""",
             DeprecationWarning,
             stacklevel=2,
         )
-        return self.new_variation(
-            structure_clients=DEFAULT_STRUCTURE_CLIENT_DISPATCH["dask"]
-        ).read()
+        return self.new_variation(structure_clients=DEFAULT_STRUCTURE_CLIENT_DISPATCH["dask"]).read()

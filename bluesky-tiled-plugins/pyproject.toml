@@ -48,4 +48,3 @@ version.source = "vcs"
 version.raw-options = { root = ".." }
 version.fallback-version = "0.0.0"
 build.hooks.vcs.version-file = "bluesky_tiled_plugins/_version.py"
-

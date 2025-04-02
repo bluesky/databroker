@@ -1,19 +1,17 @@
-from curses.panel import new_panel
 import json
 import keyword
 import warnings
-from datetime import datetime
 from collections import defaultdict
+from datetime import datetime
 
+import numpy
+import xarray
 from tiled.client.container import Container
 from tiled.client.utils import handle_error
 from tiled.utils import DictView, OneShotCachedMap, node_repr
-import numpy
-import xarray
 
 from ._common import IPYTHON_METHODS
-from .document import Start, Stop, Descriptor, EventPage, DatumPage, Resource
-
+from .document import DatumPage, Descriptor, EventPage, Resource, Start, Stop
 
 _document_types = {
     "start": Start,
@@ -27,6 +25,7 @@ _document_types = {
 }
 
 RESERVED_KEYS = {"streams", "views", "config", "auxiliary"}
+
 
 class BlueskyRun(Container):
     """
@@ -122,9 +121,7 @@ class BlueskyRun(Container):
         # Build a list of entries that are valid attribute names
         # and add them to __dir__ so that they tab-complete.
         tab_completable_entries = [
-            entry
-            for entry in self
-            if (entry.isidentifier() and (not keyword.iskeyword(entry)))
+            entry for entry in self if (entry.isidentifier() and (not keyword.iskeyword(entry)))
         ]
         return super().__dir__() + tab_completable_entries
 
@@ -133,6 +130,7 @@ class BlueskyRun(Container):
         warnings.warn(
             "This will be removed. Use .metadata directly instead of describe()['metadata'].",
             DeprecationWarning,
+            stacklevel=2,
         )
         return {"metadata": self.metadata}
 
@@ -148,8 +146,7 @@ class BlueskyRun(Container):
 
     def read(self):
         raise NotImplementedError(
-            "Reading any entire run is not supported. "
-            "Access a stream in this run and read that."
+            "Reading any entire run is not supported. Access a stream in this run and read that."
         )
 
     to_dask = read
@@ -164,7 +161,7 @@ class BlueskyRunV2(Container):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self._stream_names = set(super().get('streams', ()))
+        self._stream_names = set(super().get("streams", ()))
 
     def __repr__(self):
         metadata = self.metadata
@@ -242,12 +239,12 @@ class BlueskyRunV2(Container):
             return super().__getitem__(key)
 
         if key in self._stream_names:
-            stream_container = super().get('streams', {}).get(key)
-            stream_config = super().get('config', {}).get(key)
+            stream_container = super().get("streams", {}).get(key)
+            stream_config = super().get("config", {}).get(key)
             return BlueskyStreamView.from_container_and_config(stream_container, stream_config)
-        
-        if '/' in key:
-            key, rest = key.split('/', 1)
+
+        if "/" in key:
+            key, rest = key.split("/", 1)
             return self[key][rest]
 
         return super().__getitem__(key)
@@ -270,9 +267,7 @@ class BlueskyRunV2(Container):
         # Build a list of entries that are valid attribute names
         # and add them to __dir__ so that they tab-complete.
         tab_completable_entries = [
-            entry
-            for entry in self
-            if (entry.isidentifier() and (not keyword.iskeyword(entry)))
+            entry for entry in self if (entry.isidentifier() and (not keyword.iskeyword(entry)))
         ]
         return super().__dir__() + tab_completable_entries
 
@@ -281,6 +276,7 @@ class BlueskyRunV2(Container):
         warnings.warn(
             "This will be removed. Use .metadata directly instead of describe()['metadata'].",
             DeprecationWarning,
+            stacklevel=2,
         )
         return {"metadata": self.metadata}
 
@@ -296,8 +292,7 @@ class BlueskyRunV2(Container):
 
     def read(self):
         raise NotImplementedError(
-            "Reading any entire run is not supported. "
-            "Access a stream in this run and read that."
+            "Reading any entire run is not supported. Access a stream in this run and read that."
         )
 
     to_dask = read
@@ -309,10 +304,10 @@ class VirtualContainer(DictView):
         return tiled_repr.replace(type(self).__name__, "ContainerClient")
 
     def __getitem__(self, key):
-        if '/' in key:
-            key, rest = key.split('/', 1)
+        if "/" in key:
+            key, rest = key.split("/", 1)
             return self[key][rest]
-        
+
         return super().__getitem__(key)
 
 
@@ -322,11 +317,11 @@ class VirtualDatasetClient(DictView):
         return tiled_repr.replace(type(self).__name__, "DatasetClient")
 
     def read(self):
-        d = {k :{"dims": "time", "data": v.read()} for k, v in self._internal_dict.items()}
+        d = {k: {"dims": "time", "data": v.read()} for k, v in self._internal_dict.items()}
         return xarray.Dataset.from_dict(d)
 
 
-class VirtualArrayClient():
+class VirtualArrayClient:
     def __init__(self, data, dims=None):
         # Ensure data is an array-like object
         if not hasattr(data, "__iter__") or isinstance(data, str):
@@ -341,17 +336,10 @@ class VirtualArrayClient():
         return self.read(slice)
 
     def __repr__(self):
-        attrs = {
-            "shape": self.shape,
-            "dtype": self.dtype
-        }
+        attrs = {"shape": self.shape, "dtype": self.dtype}
         if dims := self.dims:
             attrs["dims"] = dims
-        return (
-            f"<ArrayClient"
-            + "".join(f" {k}={v}" for k, v in attrs.items())
-            + ">"
-        )
+        return "<ArrayClient" + "".join(f" {k}={v}" for k, v in attrs.items()) + ">"
 
     def read(self, slice=None):
         return self._data if slice is None else self._data[slice]
@@ -363,7 +351,7 @@ class VirtualArrayClient():
     @property
     def shape(self):
         return self._data.shape
-    
+
     @property
     def dtype(self):
         return self._data.dtype
@@ -372,22 +360,21 @@ class VirtualArrayClient():
     def dims(self):
         return self._dims
 
-    
-class BlueskyStreamView(OneShotCachedMap):
 
-    def __init__(self, internal_dict, metadata={}):
+class BlueskyStreamView(OneShotCachedMap):
+    def __init__(self, internal_dict, metadata=None):
         super().__init__(internal_dict)
-        self.metadata = metadata
+        self.metadata = metadata or {}
 
     def __repr__(self):
         stream_name = self.metadata.get("stream_name")
         return f"<BlueskyEventStream {set(self)!r} stream_name={stream_name!r}>"
-    
+
     def __getitem__(self, key):
-        if '/' in key:
-            key, rest = key.split('/', 1)
+        if "/" in key:
+            key, rest = key.split("/", 1)
             return self[key][rest]
-        
+
         return super().__getitem__(key)
 
     @staticmethod
@@ -395,27 +382,30 @@ class BlueskyStreamView(OneShotCachedMap):
         records = config_client.read().to_list()
         values = defaultdict(dict)
         for rec in records:
-            if (rec.get('object_name') is not None) and (rec.get('value') is not None):
-                values[rec['object_name']][rec['data_key']] = VirtualArrayClient(rec['timestamp']) if timestamp else VirtualArrayClient(rec['value'])
-        result = {k : VirtualDatasetClient(v) for k, v in values.items()}
+            if (rec.get("object_name") is not None) and (rec.get("value") is not None):
+                values[rec["object_name"]][rec["data_key"]] = (
+                    VirtualArrayClient(rec["timestamp"]) if timestamp else VirtualArrayClient(rec["value"])
+                )
+        result = {k: VirtualDatasetClient(v) for k, v in values.items()}
         return VirtualContainer(result)
 
     @classmethod
     def from_container_and_config(cls, stream_client, config_client):
         stream_parts = set(stream_client.parts)
-        data_keys = [k for k in stream_parts if k != 'internal']
+        data_keys = [k for k in stream_parts if k != "internal"]
         ts_keys = ["time"]
-        if 'internal' in stream_parts:
-            internal_cols = stream_client.parts['internal'].columns
-            data_keys += [col for col in internal_cols if col != 'seq_num' and not col.startswith('ts_')]
-            ts_keys += [col for col in internal_cols if col.startswith('ts_')]
-        internal_dict = {'data': lambda: stream_client.to_dataset(*sorted(set(data_keys))),
-                         'timestamps': lambda: stream_client.to_dataset(*ts_keys),
-                         'config': lambda: cls.format_config(config_client),
-                         'config_timestamps': lambda: cls.format_config(config_client, timestamp=True),
-                        }
-        
+        if "internal" in stream_parts:
+            internal_cols = stream_client.parts["internal"].columns
+            data_keys += [col for col in internal_cols if col != "seq_num" and not col.startswith("ts_")]
+            ts_keys += [col for col in internal_cols if col.startswith("ts_")]
+        internal_dict = {
+            "data": lambda: stream_client.to_dataset(*sorted(set(data_keys))),
+            "timestamps": lambda: stream_client.to_dataset(*ts_keys),
+            "config": lambda: cls.format_config(config_client),
+            "config_timestamps": lambda: cls.format_config(config_client, timestamp=True),
+        }
+
         # Construct the metadata
-        metadata = {'descriptors': [], 'stream_name': stream_client.item['id'], **stream_client.metadata}
+        metadata = {"descriptors": [], "stream_name": stream_client.item["id"], **stream_client.metadata}
 
         return cls(internal_dict, metadata=metadata)

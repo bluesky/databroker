@@ -80,7 +80,7 @@ class Document(dict):
 
     def __setitem__(self, key, value):
         try:
-            self.__not_a_real_dict
+            self.__not_a_real_dict  # noqa: B018
         except AttributeError:
             # This path is necessary to support un-pickling.
             return dict.__setitem__(self, key, value)
