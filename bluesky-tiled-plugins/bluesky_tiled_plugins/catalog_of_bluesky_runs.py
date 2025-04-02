@@ -33,9 +33,7 @@ class CatalogOfBlueskyRuns(Container):
         # with some modifications to extract scan_id from the metadata.
         sample = self.items()[:10]
         # Use scan_id (int) if defined; otherwise fall back to uid.
-        sample_reprs = [
-            repr(value.metadata["start"].get("scan_id", key)) for key, value in sample
-        ]
+        sample_reprs = [repr(value.metadata["start"].get("scan_id", key)) for key, value in sample]
         out = "<Catalog {"
         # Always show at least one.
         if sample_reprs:
@@ -94,9 +92,7 @@ class CatalogOfBlueskyRuns(Container):
             # Recurse.
             return [self[item] for item in key]
         else:
-            raise ValueError(
-                "Indexing expects a string, an integer, or a collection of strings and/or integers."
-            )
+            raise ValueError("Indexing expects a string, an integer, or a collection of strings and/or integers.")
 
     def _lookup_by_scan_id(self, scan_id):
         results = self.search(ScanID(scan_id, duplicates="latest"))
@@ -140,7 +136,5 @@ class CatalogOfBlueskyRuns(Container):
 
     def post_document(self, name, doc):
         link = self.item["links"]["self"].replace("/metadata", "/documents", 1)
-        response = self.context.http_client.post(
-            link, content=safe_json_dump({"name": name, "doc": doc})
-        )
+        response = self.context.http_client.post(link, content=safe_json_dump({"name": name, "doc": doc}))
         handle_error(response)
