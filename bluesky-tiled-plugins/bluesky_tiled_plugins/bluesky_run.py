@@ -1,3 +1,4 @@
+from curses.panel import new_panel
 import json
 import keyword
 import warnings
@@ -7,6 +8,7 @@ from collections import defaultdict
 from tiled.client.container import Container
 from tiled.client.utils import handle_error
 from tiled.utils import DictView, OneShotCachedMap, node_repr
+import numpy
 import xarray
 
 from ._common import IPYTHON_METHODS
@@ -320,19 +322,57 @@ class VirtualDatasetClient(DictView):
         return tiled_repr.replace(type(self).__name__, "DatasetClient")
 
     def read(self):
-        d = {k :{"dims": "time", "data": [v]} for k, v in self._internal_dict.items()}
+        d = {k :{"dims": "time", "data": v.read()} for k, v in self._internal_dict.items()}
         return xarray.Dataset.from_dict(d)
 
 
 class VirtualArrayClient():
-    def __init__(self, data):
+    def __init__(self, data, dims=None):
+        # Ensure data is an array-like object
+        if not hasattr(data, "__iter__") or isinstance(data, str):
+            data = [data]
+        if not hasattr(data, "__array__"):
+            data = numpy.asanyarray(data)
+
         self._data = data
+        self._dims = dims
 
-    # def __repr__(self):
-    #     tiled_repr = node_repr(self, self._internal_dict.keys())
-    #     return tiled_repr.replace(type(self).__name__, "ArrayClient")
+    def __getitem__(self, slice):
+        return self.read(slice)
+
+    def __repr__(self):
+        attrs = {
+            "shape": self.shape,
+            "dtype": self.dtype
+        }
+        if dims := self.dims:
+            attrs["dims"] = dims
+        return (
+            f"<ArrayClient"
+            + "".join(f" {k}={v}" for k, v in attrs.items())
+            + ">"
+        )
+
+    def read(self, slice=None):
+        return self._data if slice is None else self._data[slice]
+
+    @property
+    def size(self):
+        return self._data.size
+
+    @property
+    def shape(self):
+        return self._data.shape
     
+    @property
+    def dtype(self):
+        return self._data.dtype
 
+    @property
+    def dims(self):
+        return self._dims
+
+    
 class BlueskyStreamView(OneShotCachedMap):
 
     def __init__(self, internal_dict, metadata={}):
@@ -355,21 +395,21 @@ class BlueskyStreamView(OneShotCachedMap):
         records = config_client.read().to_list()
         values = defaultdict(dict)
         for rec in records:
-            if (rec['object_name'] is not None) and (rec['value'] is not None):
-                values[rec['object_name']][rec['data_key']] = rec['timestamp'] if timestamp else rec['value']
+            if (rec.get('object_name') is not None) and (rec.get('value') is not None):
+                values[rec['object_name']][rec['data_key']] = VirtualArrayClient(rec['timestamp']) if timestamp else VirtualArrayClient(rec['value'])
         result = {k : VirtualDatasetClient(v) for k, v in values.items()}
         return VirtualContainer(result)
 
     @classmethod
     def from_container_and_config(cls, stream_client, config_client):
         stream_parts = set(stream_client.parts)
-        internal_cols = stream_client.parts['internal'].columns
         data_keys = [k for k in stream_parts if k != 'internal']
+        ts_keys = ["time"]
         if 'internal' in stream_parts:
+            internal_cols = stream_client.parts['internal'].columns
             data_keys += [col for col in internal_cols if col != 'seq_num' and not col.startswith('ts_')]
-        data_keys = sorted(set(data_keys))
-        ts_keys = ["time"] + [col for col in internal_cols if col.startswith('ts_')]
-        internal_dict = {'data': lambda: stream_client.to_dataset(*data_keys),
+            ts_keys += [col for col in internal_cols if col.startswith('ts_')]
+        internal_dict = {'data': lambda: stream_client.to_dataset(*sorted(set(data_keys))),
                          'timestamps': lambda: stream_client.to_dataset(*ts_keys),
                          'config': lambda: cls.format_config(config_client),
                          'config_timestamps': lambda: cls.format_config(config_client, timestamp=True),
