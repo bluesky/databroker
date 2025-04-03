@@ -42,8 +42,9 @@ def read_requirements(filename):
     return requirements
 
 
+suffixes = ["client", "server", "back-compat", "docs", "test"]
 extras_require = {
-    key: read_requirements(f"requirements-{key}.txt") for key in ["client", "server", "back-compat"]
+    suffix: read_requirements(f"requirements-{suffix}.txt") for suffix in suffixes
 }
 extras_require["complete"] = sorted(set(sum(extras_require.values(), [])))
 extras_require["all"] = extras_require["complete"]  # for back-compat
