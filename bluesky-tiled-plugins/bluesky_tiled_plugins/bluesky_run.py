@@ -3,6 +3,7 @@ import keyword
 import warnings
 from collections import defaultdict
 from datetime import datetime
+from typing import Optional
 
 import numpy
 import xarray
@@ -25,6 +26,14 @@ _document_types = {
 }
 
 RESERVED_KEYS = {"streams", "views", "config", "auxiliary"}
+
+
+def version_selector(version: Optional[str] = None):
+    """Select the appropriate class based on the version."""
+    if (version is None) or version.startswith("1."):
+        return BlueskyRun
+    elif version.startswith("2."):
+        return BlueskyRunV2
 
 
 class BlueskyRun(Container):
@@ -311,7 +320,7 @@ class VirtualContainer(DictView):
         return super().__getitem__(key)
 
 
-class VirtualDatasetClient(DictView):
+class ConfigDatasetClient(DictView):
     def __repr__(self):
         tiled_repr = node_repr(self, self._internal_dict.keys())
         return tiled_repr.replace(type(self).__name__, "DatasetClient")
@@ -319,6 +328,19 @@ class VirtualDatasetClient(DictView):
     def read(self):
         d = {k: {"dims": "time", "data": v.read()} for k, v in self._internal_dict.items()}
         return xarray.Dataset.from_dict(d)
+
+
+class CompositeDatasetClient(DictView):
+    def __init__(self, node, keys):
+        super().__init__({k: lambda _k=k: node[_k] for k in sorted(set(keys))})
+        self._node = node
+
+    def __repr__(self):
+        tiled_repr = node_repr(self, self._internal_dict.keys())
+        return tiled_repr.replace(type(self).__name__, "DatasetClient")
+
+    def read(self):
+        return self._node.read(variables=list(self.keys()))
 
 
 class VirtualArrayClient:
@@ -386,7 +408,7 @@ class BlueskyStreamView(OneShotCachedMap):
                 values[rec["object_name"]][rec["data_key"]] = (
                     VirtualArrayClient(rec["timestamp"]) if timestamp else VirtualArrayClient(rec["value"])
                 )
-        result = {k: VirtualDatasetClient(v) for k, v in values.items()}
+        result = {k: ConfigDatasetClient(v) for k, v in values.items()}
         return VirtualContainer(result)
 
     @classmethod
@@ -399,8 +421,10 @@ class BlueskyStreamView(OneShotCachedMap):
             data_keys += [col for col in internal_cols if col != "seq_num" and not col.startswith("ts_")]
             ts_keys += [col for col in internal_cols if col.startswith("ts_")]
         internal_dict = {
-            "data": lambda: stream_client.to_dataset(*sorted(set(data_keys))),
-            "timestamps": lambda: stream_client.to_dataset(*ts_keys),
+            # "data": lambda: stream_client.to_dataset(*sorted(set(data_keys))),
+            # "timestamps": lambda: stream_client.to_dataset(*ts_keys),
+            "data": lambda: CompositeDatasetClient(stream_client, data_keys),
+            "timestamps": lambda: CompositeDatasetClient(stream_client, ts_keys),
             "config": lambda: cls.format_config(config_client),
             "config_timestamps": lambda: cls.format_config(config_client, timestamp=True),
         }
