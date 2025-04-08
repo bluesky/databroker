@@ -39,8 +39,7 @@ dynamic = ["version"]
 
 [project.entry-points."tiled.special_client"]
 CatalogOfBlueskyRuns = "bluesky_tiled_plugins.catalog_of_bluesky_runs:CatalogOfBlueskyRuns"
-BlueskyRun = "bluesky_tiled_plugins.bluesky_run:BlueskyRun"
-BlueskyRunV2 = "bluesky_tiled_plugins.bluesky_run:BlueskyRunV2"
+BlueskyRun = "bluesky_tiled_plugins.bluesky_run:version_selector"
 BlueskyEventStream = "bluesky_tiled_plugins.bluesky_event_stream:BlueskyEventStream"
 
 [tool.hatch]
