@@ -12,7 +12,7 @@ class Document(dict):
     Document is an immutable dict subclass.
 
     It is immutable to help consumer code avoid accidentally corrupting data
-    that another part of the cosumer code was expected to use unchanged.
+    that another part of the consumer code was expected to use unchanged.
 
     Subclasses of Document must define __dask_tokenize__. The tokenization
     schemes typically uniquely identify the document based on only a subset of
