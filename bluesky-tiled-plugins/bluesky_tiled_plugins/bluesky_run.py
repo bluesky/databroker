@@ -1,3 +1,4 @@
+import functools
 import json
 import keyword
 import warnings
@@ -38,13 +39,25 @@ class BlueskyRun(Container):
         super().__init__(*args, **kwargs)
 
         # Set the version based on the specs
-        self._version = "1.0"  # default version
+        self._version = "3.0"  # default version
         for spec in self.item["attributes"]["specs"]:
             if spec["name"] == "BlueskyRun":
                 self._version = spec["version"]
                 break
 
-        self._stream_names = set(super().get("streams", ())) if self._version == "2.0" else set(self.keys())
+    @property
+    def v2(self):
+        self._version = "2.0"
+        return self
+
+    @property
+    def v3(self):
+        self._version = "3.0"
+        return self
+
+    @functools.cached_property
+    def _stream_names(self):
+        return set(super().get("streams", ())) if self._version.startswith("3.") else set(self.keys())
 
     def __repr__(self):
         metadata = self.metadata
@@ -78,18 +91,14 @@ class BlueskyRun(Container):
         """
         return self.metadata["stop"]
 
-    @property
-    def v2(self):
-        return self
-
     def documents(self, **kwargs):
-        if self._version.startswith("1."):
-            yield from self._documents_from_mongo(fill=kwargs.get("fill", False))
-        elif self._version.startswith("2."):
+        if self._version.startswith("3."):
             yield from self._documents_from_sql()
+        else:
+            yield from self._documents_from_mongo(fill=kwargs.get("fill", False))
 
     def _documents_from_mongo(self, fill=False):
-        # For back-compat with v2:
+        # For back-compat with v1 and v2:
         if fill == "yes":
             fill = True
         elif fill == "no":
@@ -236,10 +245,10 @@ class BlueskyRun(Container):
 
     def __getitem__(self, key):
         # For v1, return the item directly
-        if self._version.startswith("1."):
+        if not self._version.startswith("3."):
             return super().__getitem__(key)
 
-        # For v2, we need to handle the streams and config keys
+        # For v3, we need to handle the streams and config keys
         if key in RESERVED_KEYS:
             return super().__getitem__(key)
 
@@ -255,7 +264,7 @@ class BlueskyRun(Container):
         return super().__getitem__(key)
 
     def __iter__(self):
-        if self._version.startswith("1."):
+        if not self._version.startswith("3."):
             return super().__iter__()
 
         yield from self._stream_names
