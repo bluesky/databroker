@@ -12,7 +12,7 @@ mongoquery
 msgpack >=1.0.0
 pims
 pydantic
-pymongo
+pymongo <=4.11
 pytz
 rich
 starlette
