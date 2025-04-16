@@ -1,4 +1,3 @@
-import functools
 import json
 import keyword
 import warnings
@@ -29,42 +28,29 @@ RESERVED_KEYS = {"streams", "views", "config", "aux"}
 
 
 class BlueskyRun(Container):
-    """
-    This encapsulates the data and metadata for one Bluesky 'run'.
-
-    This adds for bluesky-specific conveniences to the standard client Container.
-    """
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __new__(cls, context, *, item, structure_clients, **kwargs):
+        # When inheriting from BlueskyRun, return the class itself
+        if cls is not BlueskyRun:
+            return super().__new__(cls)
 
         # Set the version based on the specs
-        self._version = "3.0"  # default version
-        for spec in self.item["attributes"]["specs"]:
+        _cls = BlueskyRunV3 if cls._is_sql(item) else BlueskyRunV2Mongo
+        return _cls(context, item=item, structure_clients=structure_clients, **kwargs)
+
+    @staticmethod
+    def _is_sql(item):
+        for spec in item["attributes"]["specs"]:
             if spec["name"] == "BlueskyRun":
-                self._version = spec["version"]
-                break
-
-    @property
-    def v2(self):
-        self._version = "2.0"
-        return self
-
-    @property
-    def v3(self):
-        self._version = "3.0"
-        return self
-
-    @functools.cached_property
-    def _stream_names(self):
-        return set(super().get("streams", ())) if self._version.startswith("3.") else set(self.keys())
+                if spec["version"].startswith("3."):
+                    return True
+                return False
 
     def __repr__(self):
         metadata = self.metadata
         datetime_ = datetime.fromtimestamp(metadata["start"]["time"])
         return (
-            f"<{type(self).__name__} v{self._version} "
-            f"{self._stream_names!r} "
+            f"<BlueskyRun v{self._version} "
+            f"{set(self)!r} "  # show the keys
             f"scan_id={metadata['start'].get('scan_id', 'UNSET')!s} "  # (scan_id is optional in the schema)
             f"uid={metadata['start']['uid'][:8]!r} "  # truncated uid
             f"{datetime_.isoformat(sep=' ', timespec='minutes')}"
@@ -91,14 +77,78 @@ class BlueskyRun(Container):
         """
         return self.metadata["stop"]
 
-    def documents(self, **kwargs):
-        if self._version.startswith("3."):
-            yield from self._documents_from_sql()
-        else:
-            yield from self._documents_from_mongo(fill=kwargs.get("fill", False))
+    def __getattr__(self, key):
+        """
+        Let run.X be a synonym for run['X'] unless run.X already exists.
 
-    def _documents_from_mongo(self, fill=False):
-        # For back-compat with v1 and v2:
+        This behavior is the same as with pandas.DataFrame.
+        """
+        # The wisdom of this kind of "magic" is arguable, but we
+        # need to support it for backward-compatibility reasons.
+        if key in IPYTHON_METHODS:
+            raise AttributeError(key)
+        if key in self:
+            return self[key]
+        raise AttributeError(key)
+
+    def __dir__(self):
+        # Build a list of entries that are valid attribute names
+        # and add them to __dir__ so that they tab-complete.
+        tab_completable_entries = [
+            entry for entry in self if (entry.isidentifier() and (not keyword.iskeyword(entry)))
+        ]
+        return super().__dir__() + tab_completable_entries
+
+    def describe(self):
+        "For back-compat with intake-based BlueskyRun"
+        warnings.warn(
+            "This will be removed. Use .metadata directly instead of describe()['metadata'].",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return {"metadata": self.metadata}
+
+    def __call__(self):
+        warnings.warn(
+            "Do not call a BlueskyRun. For now this returns self, for "
+            "backward-compatibility. but it will be removed in a future "
+            "release.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return self
+
+    def read(self):
+        raise NotImplementedError(
+            "Reading any entire run is not supported. Access a stream in this run and read that."
+        )
+
+    to_dask = read
+
+
+class BlueskyRunV2(BlueskyRun):
+    _version = "2.0"
+
+    def __new__(cls, context, *, item, structure_clients, **kwargs):
+        # When inheriting, return the class itself
+        if cls is not BlueskyRunV2:
+            return super().__new__(cls, context, item=item, structure_clients=structure_clients, **kwargs)
+
+        _cls = BlueskyRunV2SQL if cls._is_sql(item) else BlueskyRunV2Mongo
+        return _cls(context, item=item, structure_clients=structure_clients, **kwargs)
+
+    @property
+    def v2(self):
+        return self
+
+    @property
+    def v3(self):
+        self.structure_clients.set("BlueskyRun", lambda: BlueskyRunV3)
+        return BlueskyRunV3(self.context, item=self.item, structure_clients=self.structure_clients)
+
+
+class BlueskyRunV2Mongo(BlueskyRunV2):
+    def documents(self, fill=False):
         if fill == "yes":
             fill = True
         elif fill == "no":
@@ -130,7 +180,20 @@ class BlueskyRun(Container):
                 item = json.loads(tail)
                 yield (item["name"], _document_types[item["name"]](item["doc"]))
 
-    def _documents_from_sql(self):
+
+class BlueskyRunV2SQL(BlueskyRunV2):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._stream_names = sorted(set(super().get("streams", ())))
+
+    def _keys_slice(self, start, stop, direction, **kwargs):
+        keys = reversed(self._stream_names) if direction < 0 else self._stream_names
+        return (yield from keys[start:stop])
+
+    # def _items_slice(self, start, stop, direction, **kwargs):
+    #     pass
+
+    def documents(self):
         # TODO: Emmit in the right time order; Use event_model classes
 
         yield "start", self.start
@@ -244,10 +307,6 @@ class BlueskyRun(Container):
         yield "stop", self.stop
 
     def __getitem__(self, key):
-        # For v1, return the item directly
-        if not self._version.startswith("3."):
-            return super().__getitem__(key)
-
         # For v3, we need to handle the streams and config keys
         if key in RESERVED_KEYS:
             return super().__getitem__(key)
@@ -264,58 +323,27 @@ class BlueskyRun(Container):
         return super().__getitem__(key)
 
     def __iter__(self):
-        if not self._version.startswith("3."):
-            return super().__iter__()
-
         yield from self._stream_names
 
-    def __getattr__(self, key):
-        """
-        Let run.X be a synonym for run['X'] unless run.X already exists.
 
-        This behavior is the same as with pandas.DataFrame.
-        """
-        # The wisdom of this kind of "magic" is arguable, but we
-        # need to support it for backward-compatibility reasons.
-        if key in IPYTHON_METHODS:
-            raise AttributeError(key)
-        if key in self:
-            return self[key]
-        raise AttributeError(key)
+class BlueskyRunV3(BlueskyRun):
+    _version = "3.0"
 
-    def __dir__(self):
-        # Build a list of entries that are valid attribute names
-        # and add them to __dir__ so that they tab-complete.
-        tab_completable_entries = [
-            entry for entry in self if (entry.isidentifier() and (not keyword.iskeyword(entry)))
-        ]
-        return super().__dir__() + tab_completable_entries
+    def __new__(cls, context, *, item, structure_clients, **kwargs):
+        # When inheriting, return the class itself
+        if cls is not BlueskyRunV3 or cls._is_sql(item):
+            return super().__new__(cls, context, item=item, structure_clients=structure_clients, **kwargs)
+        else:
+            return BlueskyRunV2Mongo(context, item=item, structure_clients=structure_clients, **kwargs)
 
-    def describe(self):
-        "For back-compat with intake-based BlueskyRun"
-        warnings.warn(
-            "This will be removed. Use .metadata directly instead of describe()['metadata'].",
-            DeprecationWarning,
-            stacklevel=2,
-        )
-        return {"metadata": self.metadata}
+    @property
+    def v2(self):
+        self.structure_clients.set("BlueskyRun", lambda: BlueskyRunV2)
+        return BlueskyRunV2(self.context, item=self.item, structure_clients=self.structure_clients)
 
-    def __call__(self):
-        warnings.warn(
-            "Do not call a BlueskyRun. For now this returns self, for "
-            "backward-compatibility. but it will be removed in a future "
-            "release.",
-            DeprecationWarning,
-            stacklevel=2,
-        )
+    @property
+    def v3(self):
         return self
-
-    def read(self):
-        raise NotImplementedError(
-            "Reading any entire run is not supported. Access a stream in this run and read that."
-        )
-
-    to_dask = read
 
 
 class VirtualContainer(DictView):

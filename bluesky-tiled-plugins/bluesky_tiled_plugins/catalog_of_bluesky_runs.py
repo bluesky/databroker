@@ -7,6 +7,7 @@ from tiled.client.container import Container
 from tiled.client.utils import handle_error
 from tiled.utils import safe_json_dump
 
+from .bluesky_run import BlueskyRun, BlueskyRunV2
 from .queries import PartialUID, RawMongo, ScanID
 
 
@@ -26,7 +27,6 @@ class CatalogOfBlueskyRuns(Container):
         self.scan_id = IndexCallable(self._lookup_by_scan_id)
         self.uid = IndexCallable(self._lookup_by_partial_uid)
         self._v1 = None
-        self._version = "3.0"
 
     def __repr__(self):
         # This is a copy/paste of the general-purpose implementation
@@ -66,12 +66,12 @@ class CatalogOfBlueskyRuns(Container):
 
     @property
     def v2(self):
-        self._version = "2.0"
-        return self
+        self.structure_clients.set("BlueskyRun", lambda: BlueskyRunV2)
+        return CatalogOfBlueskyRuns(self.context, item=self.item, structure_clients=self.structure_clients)
 
     @property
     def v3(self):
-        self._version = "3.0"
+        self.structure_clients.set("BlueskyRun", lambda: BlueskyRun)
         return self
 
     def __getitem__(self, key):
@@ -82,20 +82,20 @@ class CatalogOfBlueskyRuns(Container):
             if len(key) == 36:
                 # This looks like a full uid. Try direct lookup first.
                 try:
-                    result = super().__getitem__(key)
+                    return super().__getitem__(key)
                 except KeyError:
                     # Fall back to partial uid lookup below.
                     pass
-            result = self._lookup_by_partial_uid(key)
+            return self._lookup_by_partial_uid(key)
         elif isinstance(key, numbers.Integral):
             if key > 0:
                 # CASE 2: Interpret key as a scan_id.
-                result = self._lookup_by_scan_id(key)
+                return self._lookup_by_scan_id(key)
             else:
                 # CASE 3: Interpret key as a recently lookup, as in
                 # `catalog[-1]` is the latest entry.
                 key = int(key)
-                result = self.values()[key]
+                return self.values()[key]
         elif isinstance(key, slice):
             if (key.start is None) or (key.start >= 0):
                 raise ValueError(
@@ -103,7 +103,7 @@ class CatalogOfBlueskyRuns(Container):
                     "is limited to negative indexes. "
                     "Use .values() to slice how you please."
                 )
-            result = self.values()[key]
+            return self.values()[key]
         elif isinstance(key, collections.abc.Iterable):
             # We know that isn't a str because we check that above.
             # Recurse.
@@ -111,18 +111,13 @@ class CatalogOfBlueskyRuns(Container):
         else:
             raise ValueError("Indexing expects a string, an integer, or a collection of strings and/or integers.")
 
-        result._version = self._version
-        return result
-
     def _lookup_by_scan_id(self, scan_id):
         results = self.search(ScanID(scan_id, duplicates="latest"))
         if not results:
             raise KeyError(f"No match for scan_id={scan_id}")
         else:
             # By construction there must be only one result. Return it.
-            result = results.values().first()
-            result._version = self._version
-            return result
+            return results.values().first()
 
     def _lookup_by_partial_uid(self, partial_uid):
         results = self.search(PartialUID(partial_uid))
@@ -130,9 +125,7 @@ class CatalogOfBlueskyRuns(Container):
             raise KeyError(f"No match for partial_uid {partial_uid}")
         else:
             # By construction there must be only one result. Return it.
-            result = results.values().first()
-            result._version = self._version
-            return result
+            return results.values().first()
 
     def get_serializer(self):
         from tiled.server.app import get_root_tree
