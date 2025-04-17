@@ -24,7 +24,7 @@ _document_types = {
     "stream_datum": None,
 }
 
-RESERVED_KEYS = {"streams", "views", "config", "aux"}
+RESERVED_KEYS = {"configs", "streams", "views", "aux"}
 
 
 class BlueskyRun(Container):
@@ -207,7 +207,7 @@ class BlueskyRunV2SQL(BlueskyRunV2):
             # Assemble dictionaries of data keys and configuration keys
             data_keys, conf_list = {}, [defaultdict(dict) for _ in range(desc_count)]
             object_keys = defaultdict(list)
-            conf_node = self["config"].get(desc_name)
+            conf_node = self["configs"].get(desc_name)
             for item in conf_node.read().to_list() if conf_node else []:
                 data_key = item.pop("data_key")  # Must be present
                 desc_indx = item.pop("desc_indx", 0)
@@ -307,13 +307,13 @@ class BlueskyRunV2SQL(BlueskyRunV2):
         yield "stop", self.stop
 
     def __getitem__(self, key):
-        # For v3, we need to handle the streams and config keys
+        # For v3, we need to handle the streams and configs keys
         if key in RESERVED_KEYS:
             return super().__getitem__(key)
 
         if key in self._stream_names:
             stream_container = super().get("streams", {}).get(key)
-            stream_config = super().get("config", {}).get(key)
+            stream_config = super().get("configs", {}).get(key)
             return BlueskyStreamView.from_container_and_config(stream_container, stream_config)
 
         if "/" in key:
