@@ -27,7 +27,7 @@ _document_types = {
     "stream_datum": StreamResource,
 }
 
-RESERVED_KEYS = {"configs", "streams", "views", "aux"}
+RESERVED_V3_KEYS = {"configs", "streams", "views", "aux"}
 
 
 class BlueskyRun(Container):
@@ -150,6 +150,27 @@ class BlueskyRunV2(BlueskyRun):
         return BlueskyRunV3(self.context, item=self.item, structure_clients=self.structure_clients)
 
 
+class _BlueskyRunSQL(BlueskyRun):
+    """A base class for a BlueskyRun that is backed by a SQL database.
+
+    This class implements the SQL-specific method for accessing the stream of
+    Bluesky documents. It is not intended to be used directly, but rather as a
+    base class for other classes (v2 and v3) that implement additional methods.
+    """
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._stream_names = sorted(self.get("streams", ()))
+
+    def documents(self):
+        buffer = io.BytesIO()
+        self.export(buffer, format="application/json-seq")
+        buffer.seek(0)
+        for line in buffer:
+            parsed = json.loads(line.decode().strip())
+            yield parsed["name"], _document_types[parsed["name"]](parsed["doc"])
+
+
 class BlueskyRunV2Mongo(BlueskyRunV2):
     def documents(self, fill=False):
         if fill == "yes":
@@ -184,11 +205,7 @@ class BlueskyRunV2Mongo(BlueskyRunV2):
                 yield (item["name"], _document_types[item["name"]](item["doc"]))
 
 
-class BlueskyRunV2SQL(BlueskyRunV2):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self._stream_names = sorted(set(super().get("streams", ())))
-
+class BlueskyRunV2SQL(BlueskyRunV2, _BlueskyRunSQL):
     def _keys_slice(self, start, stop, direction, **kwargs):
         keys = reversed(self._stream_names) if direction < 0 else self._stream_names
         return (yield from keys[start:stop])
@@ -199,17 +216,9 @@ class BlueskyRunV2SQL(BlueskyRunV2):
             yield key, _streams_node.get(key)
         return
 
-    def documents(self):
-        buffer = io.BytesIO()
-        self.export(buffer, format="application/json-seq")
-        buffer.seek(0)
-        for line in buffer:
-            parsed = json.loads(line.decode().strip())
-            yield parsed["name"], _document_types[parsed["name"]](parsed["doc"])
-
     def __getitem__(self, key):
         # For v3, we need to handle the streams and configs keys
-        if key in RESERVED_KEYS:
+        if key in RESERVED_V3_KEYS:
             return super().__getitem__(key)
 
         if key in self._stream_names:
@@ -227,7 +236,7 @@ class BlueskyRunV2SQL(BlueskyRunV2):
         yield from self._stream_names
 
 
-class BlueskyRunV3(BlueskyRun):
+class BlueskyRunV3(_BlueskyRunSQL):
     _version = "3.0"
 
     def __new__(cls, context, *, item, structure_clients, **kwargs):
@@ -236,6 +245,13 @@ class BlueskyRunV3(BlueskyRun):
             return super().__new__(cls, context, item=item, structure_clients=structure_clients, **kwargs)
         else:
             return BlueskyRunV2Mongo(context, item=item, structure_clients=structure_clients, **kwargs)
+
+    def __getattr__(self, key):
+        if key in self._stream_names:
+            # A shortcut to the stream data
+            return self["streams"][key]
+
+        return super().__getattr__(key)
 
     @property
     def v2(self):
