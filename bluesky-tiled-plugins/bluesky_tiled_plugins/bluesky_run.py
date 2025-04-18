@@ -150,27 +150,6 @@ class BlueskyRunV2(BlueskyRun):
         return BlueskyRunV3(self.context, item=self.item, structure_clients=self.structure_clients)
 
 
-class _BlueskyRunSQL(BlueskyRun):
-    """A base class for a BlueskyRun that is backed by a SQL database.
-
-    This class implements the SQL-specific method for accessing the stream of
-    Bluesky documents. It is not intended to be used directly, but rather as a
-    base class for other classes (v2 and v3) that implement additional methods.
-    """
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self._stream_names = sorted(self.get("streams", ()))
-
-    def documents(self):
-        buffer = io.BytesIO()
-        self.export(buffer, format="application/json-seq")
-        buffer.seek(0)
-        for line in buffer:
-            parsed = json.loads(line.decode().strip())
-            yield parsed["name"], _document_types[parsed["name"]](parsed["doc"])
-
-
 class BlueskyRunV2Mongo(BlueskyRunV2):
     def documents(self, fill=False):
         if fill == "yes":
@@ -203,6 +182,27 @@ class BlueskyRunV2Mongo(BlueskyRunV2):
             if tail:
                 item = json.loads(tail)
                 yield (item["name"], _document_types[item["name"]](item["doc"]))
+
+
+class _BlueskyRunSQL(BlueskyRun):
+    """A base class for a BlueskyRun that is backed by a SQL database.
+
+    This class implements the SQL-specific method for accessing the stream of
+    Bluesky documents. It is not intended to be used directly, but rather as a
+    base class for other classes (v2 and v3) that implement additional methods.
+    """
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._stream_names = sorted(self.get("streams", ()))
+
+    def documents(self):
+        with io.BytesIO() as buffer:
+            self.export(buffer, format="application/json-seq")
+            buffer.seek(0)
+            for line in buffer:
+                parsed = json.loads(line.decode().strip())
+                yield parsed["name"], _document_types[parsed["name"]](parsed["doc"])
 
 
 class BlueskyRunV2SQL(BlueskyRunV2, _BlueskyRunSQL):
