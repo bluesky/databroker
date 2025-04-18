@@ -1,3 +1,4 @@
+import io
 import json
 import keyword
 import warnings
@@ -6,22 +7,24 @@ from datetime import datetime
 
 import numpy
 import xarray
+from event_model import StreamDatum, StreamResource
 from tiled.client.container import Container
 from tiled.client.utils import handle_error
 from tiled.utils import DictView, OneShotCachedMap, node_repr
 
 from ._common import IPYTHON_METHODS
-from .document import DatumPage, Descriptor, EventPage, Resource, Start, Stop
+from .document import DatumPage, Descriptor, Event, EventPage, Resource, Start, Stop
 
 _document_types = {
     "start": Start,
     "stop": Stop,
+    "event": Event,
     "descriptor": Descriptor,
     "event_page": EventPage,
     "datum_page": DatumPage,
     "resource": Resource,
-    "stream_resource": None,
-    "stream_datum": None,
+    "stream_resource": StreamDatum,
+    "stream_datum": StreamResource,
 }
 
 RESERVED_KEYS = {"configs", "streams", "views", "aux"}
@@ -190,121 +193,19 @@ class BlueskyRunV2SQL(BlueskyRunV2):
         keys = reversed(self._stream_names) if direction < 0 else self._stream_names
         return (yield from keys[start:stop])
 
-    # def _items_slice(self, start, stop, direction, **kwargs):
-    #     pass
+    def _items_slice(self, start, stop, direction, **kwargs):
+        _streams_node = super().get("streams", {})
+        for key in reversed(self._stream_names) if direction < 0 else self._stream_names:
+            yield key, _streams_node.get(key)
+        return
 
     def documents(self):
-        # TODO: Emmit in the right time order; Use event_model classes
-
-        yield "start", self.start
-
-        # Generate descriptors
-        for desc_name in self._stream_names:
-            desc_node = self["streams"][desc_name]
-            desc_count = desc_node.metadata.get("desc_count", 1)
-            data_keys_names = set(desc_node.keys())
-
-            # Assemble dictionaries of data keys and configuration keys
-            data_keys, conf_list = {}, [defaultdict(dict) for _ in range(desc_count)]
-            object_keys = defaultdict(list)
-            conf_node = self["configs"].get(desc_name)
-            for item in conf_node.read().to_list() if conf_node else []:
-                data_key = item.pop("data_key")  # Must be present
-                desc_indx = item.pop("desc_indx", 0)
-                value = item.pop("value", None)
-                timestamp = item.pop("timestamp", None)
-                if data_key in data_keys_names:
-                    # This is a proper data_key for internal or external data
-                    data_keys[data_key] = {k: v for k, v in item.items() if v is not None}
-                    object_name = item.get("object_name")
-                    object_keys[object_name].append(data_key)
-                elif value is not None:
-                    # This is a configuration data_key
-                    object_name = item.pop("object_name")
-
-                    conf_data = conf_list[desc_indx][object_name].get("data", {})
-                    conf_timestamps = conf_list[desc_indx][object_name].get("timestamps", {})
-                    conf_data_keys = conf_list[desc_indx][object_name].get("data_keys", {})
-
-                    conf_data[data_key] = value
-                    conf_timestamps[data_key] = float(timestamp) if timestamp else None
-                    conf_data_keys[data_key] = {k: v for k, v in item.items() if v is not None}
-
-                    conf_list[desc_indx][object_name]["data"] = conf_data
-                    conf_list[desc_indx][object_name]["timestamps"] = conf_timestamps
-                    conf_list[desc_indx][object_name]["data_keys"] = conf_data_keys
-
-            # Fixed part of the descriptor
-            desc_doc = desc_node.metadata.get("extra", {})
-            desc_doc["name"] = desc_name
-            desc_doc["data_keys"] = data_keys
-            desc_doc["object_keys"] = object_keys
-
-            # Variable part of the descriptor
-            for desc_indx in range(desc_count):
-                desc_doc["uid"] = conf_node.metadata["descriptors"][desc_indx]["uid"]
-                desc_doc["time"] = float(conf_node.metadata["descriptors"][desc_indx]["time"])
-                desc_doc["configuration"] = conf_list[desc_indx]
-
-                yield "descriptor", desc_doc
-
-        # Generate events
-        for desc_name in self._stream_names:
-            desc_node = self["streams"][desc_name]
-            if "internal" in desc_node.parts:
-                df = desc_node.parts["internal"].read()
-                keys = [k for k in df.columns if k not in {"seq_num", "time"} and not k.startswith("ts_")]
-                for _, row in df.iterrows():
-                    event_doc = {"seq_num": row["seq_num"], "time": float(row["time"])}
-                    event_doc["descriptor"] = desc_node.metadata["uid"]
-                    event_doc["data"] = {k: row[k] for k in keys}
-                    event_doc["timestamps"] = {k: float(row[f"ts_{k}"]) for k in keys}
-                    yield "event", event_doc
-
-        # Generate Stream Resources and Datums
-        # TODO: needs thorough testing, incl. cases with multiple hdf5 files
-        for desc_name in self._stream_names:
-            desc_node = self["streams"][desc_name]
-            desc_uid = desc_node.metadata["uid"]
-            for data_key in desc_node.parts:
-                if data_key == "internal":
-                    continue
-                sres_uid = f"sr-{desc_uid}-{data_key}"  # can be anything (unique)
-                ds = desc_node[data_key].data_sources()[0]
-                uri = ds.assets[0].data_uri
-                for ast in ds.assets:
-                    if ast.parameter in {"data_uris", "data_uri"}:
-                        uri = ast.data_uri
-                        break
-                sres_doc = {
-                    "data_key": data_key,
-                    "uid": sres_uid,
-                    "run_start": self.start["uid"],
-                    "mimetype": ds.mimetype,
-                    "parameters:": ds.parameters,
-                    "uri": uri,
-                }
-                yield "stream_resource", sres_doc
-
-                sdat_uid = f"sd-{desc_uid}-{data_key}-0"  # can be anything (unique)
-                total_shape = ds.structure["shape"]
-                datum_shape = desc_node.metadata[data_key]["shape"]
-
-                max_indx = (
-                    total_shape[0] // datum_shape[0] - 1
-                    if len(total_shape) == len(datum_shape)
-                    else total_shape[0] - 1
-                )
-                sdat_doc = {
-                    "uid": sdat_uid,
-                    "stream_resource": sres_uid,
-                    "descriptor": desc_uid,
-                    "indices": {"start": 0, "stop": max_indx},
-                    "seq_num": {"start": 1, "stop": max_indx + 1},
-                }
-                yield "stream_datum", sdat_doc
-
-        yield "stop", self.stop
+        buffer = io.BytesIO()
+        self.export(buffer, format="application/json-seq")
+        buffer.seek(0)
+        for line in buffer:
+            parsed = json.loads(line.decode().strip())
+            yield parsed["name"], _document_types[parsed["name"]](parsed["doc"])
 
     def __getitem__(self, key):
         # For v3, we need to handle the streams and configs keys
