@@ -83,16 +83,6 @@ async def json_exporter(adapter, metadata, filter_for_access):
 
         # Generate events
         if internal_node:
-
-            def format_value(value, precision=6):
-                if hasattr(value, "__array__"):
-                    return [format_value(v) for v in value]
-                elif isinstance(value, float):
-                    if (precision is None) and (value % 1 > 1e-6) or (value != value):
-                        # Do not force "sizable" or NaN float to int
-                        return value
-                    return round(value, precision)
-
             df = await internal_node.read()
             keys = [k for k in df.columns if k not in {"seq_num", "time"} and not k.startswith("ts_")]
             for row in df.to_dict(orient="records"):
@@ -103,8 +93,8 @@ async def json_exporter(adapter, metadata, filter_for_access):
                 event_doc = {"seq_num": row["seq_num"], "time": row["time"]}
                 event_doc["uid"] = f"event-{desc_uid}-{row['seq_num']}"  # can be anything (unique)
                 event_doc["descriptor"] = desc_uid
-                event_doc["data"] = {k: format_value(row[k], data_keys[k].get("precision")) for k in keys}
-                event_doc["timestamps"] = {k: format_value(row[f"ts_{k}"], precision=6) for k in keys}
+                event_doc["data"] = {k: row[k].tolist() if hasattr(row[k], "__array__") else row[k] for k in keys}
+                event_doc["timestamps"] = {k: row[f"ts_{k}"] for k in keys}
                 result.append({"name": "event", "doc": event_doc})
 
         # Generate Stream Resources and Datums

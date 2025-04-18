@@ -1,3 +1,4 @@
+import functools
 import io
 import json
 import keyword
@@ -194,7 +195,10 @@ class _BlueskyRunSQL(BlueskyRun):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self._stream_names = sorted(self.get("streams", ()))
+
+    @functools.cached_property
+    def _stream_names(self):
+        return sorted(self.get("streams", ()))
 
     def documents(self):
         with io.BytesIO() as buffer:
