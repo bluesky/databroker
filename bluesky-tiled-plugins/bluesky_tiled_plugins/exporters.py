@@ -88,8 +88,8 @@ async def json_exporter(adapter, metadata, filter_for_access):
                 if hasattr(value, "__array__"):
                     return [format_value(v) for v in value]
                 elif isinstance(value, float):
-                    if (precision is None) and (value % 1 > 1e-6):
-                        # Do not force "sizable" float to int
+                    if (precision is None) and (value % 1 > 1e-6) or (value != value):
+                        # Do not force "sizable" or NaN float to int
                         return value
                     return round(value, precision)
 
