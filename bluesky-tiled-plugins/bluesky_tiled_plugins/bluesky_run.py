@@ -142,6 +142,15 @@ class BlueskyRunV2(BlueskyRun):
         return _cls(context, item=item, structure_clients=structure_clients, **kwargs)
 
     @property
+    def v1(self):
+        "Accessor to legacy interface."
+        from databroker.v1 import Broker, Header
+
+        db = Broker(self)
+        header = Header(self, db)
+        return header
+
+    @property
     def v2(self):
         return self
 
@@ -257,6 +266,11 @@ class BlueskyRunV3(_BlueskyRunSQL):
             return self["streams"][key]
 
         return super().__getattr__(key)
+
+    @property
+    def v1(self):
+        "Access to legacy interface"
+        return self.v2.v1
 
     @property
     def v2(self):
