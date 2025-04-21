@@ -5,7 +5,6 @@ import json
 import keyword
 import warnings
 from datetime import datetime
-from functools import cached_property
 
 from event_model import StreamDatum, StreamResource
 from tiled.client.container import Container
@@ -80,9 +79,11 @@ class BlueskyRun(Container):
         """
         return self.metadata["stop"]
 
-    @cached_property
+    @property
     def descriptors(self):
-        return [doc for name, doc in self.documents() if name == "descriptor"]
+        for name, doc in self.documents():
+            if name == "descriptor":
+                yield doc
 
     def __getattr__(self, key):
         """
@@ -241,7 +242,7 @@ class BlueskyRunV2SQL(BlueskyRunV2, _BlueskyRunSQL):
         if key in self._stream_names:
             stream_container = super().get("streams", {}).get(key)
             stream_config = super().get("configs", {}).get(key)
-            metadata = {"descriptors": self.descriptors}
+            metadata = {"descriptors": (doc for doc in self.descriptors if doc["name"] == key)}
             return BlueskyEventStreamV2SQL.from_container_and_config(stream_container, stream_config, metadata)
 
         if "/" in key:
