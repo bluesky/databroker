@@ -3,13 +3,13 @@ import warnings
 
 from tiled.client.container import DEFAULT_STRUCTURE_CLIENT_DISPATCH, Container
 from tiled.client.composite import Composite
-from tiled.client.utils import handle_error
 from tiled.utils import DictView, OneShotCachedMap, node_repr, Sentinel
 
 from ._common import IPYTHON_METHODS
 
 ONLY_DATA = Sentinel("ONLY_DATA")
 ONLY_TIMESTAMPS = Sentinel("ONLY_TIMESTAMPS")
+
 
 class BlueskyEventStream(Container):
     def __new__(cls, context, *, item, structure_clients, **kwargs):
