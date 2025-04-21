@@ -1,4 +1,5 @@
 import collections.abc
+import copy
 import numbers
 import operator
 
@@ -7,7 +8,7 @@ from tiled.client.container import Container
 from tiled.client.utils import handle_error
 from tiled.utils import safe_json_dump
 
-from .bluesky_run import BlueskyRun, BlueskyRunV2
+from .bluesky_run import BlueskyRunV2
 from .queries import PartialUID, RawMongo, ScanID
 
 
@@ -66,12 +67,12 @@ class CatalogOfBlueskyRuns(Container):
 
     @property
     def v2(self):
-        self.structure_clients.set("BlueskyRun", lambda: BlueskyRunV2)
-        return CatalogOfBlueskyRuns(self.context, item=self.item, structure_clients=self.structure_clients)
+        structure_clients = copy.copy(self.structure_clients)
+        structure_clients.set("BlueskyRun", lambda: BlueskyRunV2)
+        return CatalogOfBlueskyRuns(self.context, item=self.item, structure_clients=structure_clients)
 
     @property
     def v3(self):
-        self.structure_clients.set("BlueskyRun", lambda: BlueskyRun)
         return self
 
     def __getitem__(self, key):

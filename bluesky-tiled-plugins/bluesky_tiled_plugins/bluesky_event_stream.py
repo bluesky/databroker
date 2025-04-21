@@ -3,13 +3,13 @@ import warnings
 
 from tiled.client.container import DEFAULT_STRUCTURE_CLIENT_DISPATCH, Container
 from tiled.client.composite import Composite
-from tiled.client.utils import handle_error
 from tiled.utils import DictView, OneShotCachedMap, node_repr, Sentinel
 
 from ._common import IPYTHON_METHODS
 
 ONLY_DATA = Sentinel("ONLY_DATA")
 ONLY_TIMESTAMPS = Sentinel("ONLY_TIMESTAMPS")
+
 
 class BlueskyEventStream(Container):
     def __new__(cls, context, *, item, structure_clients, **kwargs):
@@ -162,6 +162,10 @@ class ConfigDatasetClient(DictView):
         return tiled_repr.replace(type(self).__name__, "DatasetClient")
 
     def read(self):
+        # Delay this import for fast startup. In some cases only metadata
+        # is handled, and we can avoid the xarray import altogether.
+        import xarray
+
         d = {k: {"dims": "time", "data": v.read()} for k, v in self._internal_dict.items()}
         return xarray.Dataset.from_dict(d)
 
@@ -194,6 +198,10 @@ class VirtualContainer(DictView):
 
 class VirtualArrayClient:
     def __init__(self, data, dims=None):
+        # Delay this import for fast startup. In some cases only metadata
+        # is handled, and we can avoid the numpy import altogether.
+        import numpy
+
         # Ensure data is an array-like object
         if not hasattr(data, "__iter__") or isinstance(data, str):
             data = [data]
