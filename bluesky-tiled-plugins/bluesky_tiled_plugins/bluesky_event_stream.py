@@ -1,14 +1,17 @@
 import keyword
 import warnings
+from collections import defaultdict
 
-from tiled.client.container import DEFAULT_STRUCTURE_CLIENT_DISPATCH, Container
+import numpy
+import xarray
 from tiled.client.composite import Composite
-from tiled.utils import DictView, OneShotCachedMap, node_repr, Sentinel
+from tiled.client.container import DEFAULT_STRUCTURE_CLIENT_DISPATCH, Container
+from tiled.utils import DictView, OneShotCachedMap, Sentinel, node_repr
 
 from ._common import IPYTHON_METHODS
 
-ONLY_DATA = Sentinel("ONLY_DATA")
-ONLY_TIMESTAMPS = Sentinel("ONLY_TIMESTAMPS")
+DATAVALUES = Sentinel("DATAVALUES")
+TIMESTAMPS = Sentinel("TIMESTAMPS")
 
 
 class BlueskyEventStream(Container):
@@ -39,7 +42,7 @@ class BlueskyEventStreamV2Mongo(BlueskyEventStream):
 
     def __repr__(self):
         stream_name = self.metadata.get("stream_name") or self.item["id"]
-        return f"<{type(self).__name__} {set(self)!r} stream_name={stream_name!r}>"
+        return f"<BlueskyEventStream {set(self)!r} stream_name={stream_name!r}>"
 
     @property
     def descriptors(self):
@@ -121,19 +124,19 @@ class BlueskyEventStreamV2SQL(OneShotCachedMap):
         return super().__getitem__(key)
 
     @staticmethod
-    def format_config(config_client, timestamp=False):
+    def format_config(config_client, timestamps=False):
         records = config_client.read().to_list()
         values = defaultdict(dict)
         for rec in records:
             if (rec.get("object_name") is not None) and (rec.get("value") is not None):
                 values[rec["object_name"]][rec["data_key"]] = (
-                    VirtualArrayClient(rec["timestamp"]) if timestamp else VirtualArrayClient(rec["value"])
+                    VirtualArrayClient(rec["timestamp"]) if timestamps else VirtualArrayClient(rec["value"])
                 )
         result = {k: ConfigDatasetClient(v) for k, v in values.items()}
         return VirtualContainer(result)
 
     @classmethod
-    def from_container_and_config(cls, stream_client, config_client):
+    def from_container_and_config(cls, stream_client, config_client, metadata=None):
         stream_parts = set(stream_client.parts)
         data_keys = [k for k in stream_parts if k != "internal"]
         ts_keys = ["time"]
@@ -142,18 +145,55 @@ class BlueskyEventStreamV2SQL(OneShotCachedMap):
             data_keys += [col for col in internal_cols if col != "seq_num" and not col.startswith("ts_")]
             ts_keys += [col for col in internal_cols if col.startswith("ts_")]
         internal_dict = {
-            # "data": lambda: stream_client.to_dataset(*sorted(set(data_keys))),
-            # "timestamps": lambda: stream_client.to_dataset(*ts_keys),
-            "data": lambda: CompositeDatasetClient(stream_client, data_keys),
-            "timestamps": lambda: CompositeDatasetClient(stream_client, ts_keys),
-            "config": lambda: cls.format_config(config_client),
-            "config_timestamps": lambda: cls.format_config(config_client, timestamp=True),
+            "data": lambda: CompositeSubsetClient(stream_client, data_keys),
+            "timestamps": lambda: CompositeSubsetClient(stream_client, ts_keys),
+            "config": lambda: cls.format_config(config_client, timestamps=False),
+            "config_timestamps": lambda: cls.format_config(config_client, timestamps=True),
         }
 
         # Construct the metadata
-        metadata = {"descriptors": [], "stream_name": stream_client.item["id"], **stream_client.metadata}
+        metadata = {
+            "descriptors": [],
+            "stream_name": stream_client.item["id"],
+            **stream_client.metadata,
+            **metadata,
+        }
 
         return cls(internal_dict, metadata=metadata)
+
+    @property
+    def descriptors(self):
+        return self.metadata["descriptors"]
+
+    @property
+    def _descriptors(self):
+        # For backward-compatibility.
+        # We do not normally worry about backward-compatibility of _ methods, but
+        # for a time databroker.v2 *only* have _descriptors and not descriptors,
+        # and I know there is useer code that relies on that.
+        warnings.warn("Use `.descriptors` instead of `._descriptors`.", stacklevel=2)
+        return self.descriptors
+
+    def __getattr__(self, key):
+        """
+        Let run.X be a synonym for run['X'] unless run.X already exists.
+
+        This behavior is the same as with pandas.DataFrame.
+        """
+        # The wisdom of this kind of "magic" is arguable, but we
+        # need to support it for backward-compatibility reasons.
+        if key in IPYTHON_METHODS:
+            raise AttributeError(key)
+        if key in self:
+            return self[key]
+        raise AttributeError(key)
+
+    def read(self, *args, **kwargs):
+        """Read the data from the stream.
+
+        This is a shortcut for reading the 'data' (as opposed to timestamps or config).
+        """
+        return self["data"].read(*args, **kwargs)
 
 
 class ConfigDatasetClient(DictView):
@@ -164,23 +204,46 @@ class ConfigDatasetClient(DictView):
     def read(self):
         # Delay this import for fast startup. In some cases only metadata
         # is handled, and we can avoid the xarray import altogether.
-        import xarray
 
         d = {k: {"dims": "time", "data": v.read()} for k, v in self._internal_dict.items()}
         return xarray.Dataset.from_dict(d)
 
 
-class CompositeDatasetClient(DictView):
-    def __init__(self, node, keys):
-        super().__init__({k: lambda _k=k: node[_k] for k in sorted(set(keys))})
-        self._node = node
+class CompositeSubsetClient(Composite):
+    """A composite client with only a subset of its keys exposed."""
+
+    def __init__(self, client, keys=None):
+        super().__init__(context=client.context, item=client.item, structure_clients=client.structure_clients)
+        self._keys = keys or list(client.keys())
 
     def __repr__(self):
-        tiled_repr = node_repr(self, self._internal_dict.keys())
-        return tiled_repr.replace(type(self).__name__, "DatasetClient")
+        return node_repr(self, self._keys).replace(type(self).__name__, "DatasetClient")
 
-    def read(self):
-        return self._node.read(variables=list(self.keys()))
+    def _keys_slice(self, start, stop, direction, _ignore_inlined_contents=False):
+        yield from self._keys[start : stop : -1 if direction < 0 else 1]
+
+    def _items_slice(self, start, stop, direction, _ignore_inlined_contents=False):
+        for key in self._keys[start : stop : -1 if direction < 0 else 1]:
+            yield key, self[key]
+
+    def __iter__(self):
+        yield from self._keys
+
+    def __getitem__(self, key):
+        if key in self._keys:
+            return super().__getitem__(key)
+        raise KeyError(key)
+
+    def __len__(self):
+        return len(self._keys)
+
+    def __contains__(self, key):
+        return key in self._keys
+
+    def read(self, variables=None, dim0=None):
+        variables = set(self._keys).intersection(variables or self._keys)
+
+        return super().read(variables, dim0=dim0)
 
 
 class VirtualContainer(DictView):
@@ -200,7 +263,6 @@ class VirtualArrayClient:
     def __init__(self, data, dims=None):
         # Delay this import for fast startup. In some cases only metadata
         # is handled, and we can avoid the numpy import altogether.
-        import numpy
 
         # Ensure data is an array-like object
         if not hasattr(data, "__iter__") or isinstance(data, str):
@@ -241,8 +303,22 @@ class VirtualArrayClient:
 
 
 class BlueskyEventStreamV3(BlueskyEventStream, Composite):
-
     def __repr__(self):
         stream_name = self.metadata.get("stream_name") or self.item["id"]
-        keys = (k for k in self if not k.startswith("ts_"))
-        return f"<BlueskyEventStream {set(keys)!r} stream_name={stream_name!r}>"
+        return f"<BlueskyEventStream {self._var_keys!r} stream_name={stream_name!r}>"
+
+    @property
+    def _var_keys(self):
+        return {k for k in self if not k.startswith("ts_") and k != "seq_num"}
+
+    @property
+    def _ts_keys(self):
+        return {k for k in self if k.startswith("ts_")}
+
+    def read(self, variables=(DATAVALUES,), dim0=None):
+        if DATAVALUES in variables:
+            variables = self._var_keys.union(variables) - {DATAVALUES}
+        if TIMESTAMPS in variables:
+            variables = self._ts_keys.union(variables) - {TIMESTAMPS}
+
+        return super().read(variables=variables, dim0=dim0)
