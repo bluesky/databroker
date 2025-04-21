@@ -1,3 +1,4 @@
+import functools
 import keyword
 import warnings
 from collections import defaultdict
@@ -44,7 +45,6 @@ class BlueskyEventStreamV2Mongo(BlueskyEventStream):
         stream_name = self.metadata.get("stream_name") or self.item["id"]
         return f"<BlueskyEventStream {set(self)!r} stream_name={stream_name!r}>"
 
-    @property
     def descriptors(self):
         return self.metadata["descriptors"]
 
@@ -161,9 +161,9 @@ class BlueskyEventStreamV2SQL(OneShotCachedMap):
 
         return cls(internal_dict, metadata=metadata)
 
-    @property
+    @functools.cached_property
     def descriptors(self):
-        return self.metadata["descriptors"]
+        return list(self.metadata["descriptors"])
 
     @property
     def _descriptors(self):
