@@ -1,3 +1,4 @@
+import copy
 import functools
 import io
 import json
@@ -146,8 +147,9 @@ class BlueskyRunV2(BlueskyRun):
 
     @property
     def v3(self):
-        self.structure_clients.set("BlueskyRun", lambda: BlueskyRunV3)
-        return BlueskyRunV3(self.context, item=self.item, structure_clients=self.structure_clients)
+        structure_clients = copy.copy(self.structure_clients)
+        structure_clients.set("BlueskyRun", lambda: BlueskyRunV3)
+        return BlueskyRunV3(self.context, item=self.item, structure_clients=structure_clients)
 
 
 class BlueskyRunV2Mongo(BlueskyRunV2):
@@ -258,8 +260,9 @@ class BlueskyRunV3(_BlueskyRunSQL):
 
     @property
     def v2(self):
-        self.structure_clients.set("BlueskyRun", lambda: BlueskyRunV2)
-        return BlueskyRunV2(self.context, item=self.item, structure_clients=self.structure_clients)
+        structure_clients = copy.copy(self.structure_clients)
+        structure_clients.set("BlueskyRun", lambda: BlueskyRunV2)
+        return BlueskyRunV2(self.context, item=self.item, structure_clients=structure_clients)
 
     @property
     def v3(self):
