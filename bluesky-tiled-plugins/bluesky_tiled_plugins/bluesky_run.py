@@ -81,9 +81,7 @@ class BlueskyRun(Container):
 
     @property
     def descriptors(self):
-        for name, doc in self.documents():
-            if name == "descriptor":
-                yield doc
+        return [doc for name, doc in self.documents() if name == "descriptor"]
 
     def __getattr__(self, key):
         """
@@ -242,7 +240,11 @@ class BlueskyRunV2SQL(BlueskyRunV2, _BlueskyRunSQL):
         if key in self._stream_names:
             stream_container = super().get("streams", {}).get(key)
             stream_config = super().get("configs", {}).get(key)
-            metadata = {"descriptors": (doc for doc in self.descriptors if doc["name"] == key)}
+            metadata = {
+                "descriptors": (
+                    doc for name, doc in self.documents() if name == "descriptor" and doc["name"] == key
+                )
+            }
             return BlueskyEventStreamV2SQL.from_container_and_config(stream_container, stream_config, metadata)
 
         if "/" in key:
