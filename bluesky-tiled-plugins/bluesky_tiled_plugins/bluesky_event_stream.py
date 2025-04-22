@@ -156,14 +156,19 @@ class BlueskyEventStreamV2SQL(OneShotCachedMap):
             "descriptors": [],
             "stream_name": stream_client.item["id"],
             **stream_client.metadata,
-            **metadata,
+            **(metadata or {}),
         }
 
         return cls(internal_dict, metadata=metadata)
 
     @functools.cached_property
     def descriptors(self):
-        return list(self.metadata["descriptors"])
+        # Go back to the BlueskyRun node and requests the documents
+        bs_run_node = self["data"].parent.parent  # the path is: bs_run_node/streams/current_stream
+        stream_name = self.metadata.get("stream_name") or self["data"].item["id"]
+        return [
+            doc for name, doc in bs_run_node.documents() if name == "descriptor" and doc["name"] == stream_name
+        ]
 
     @property
     def _descriptors(self):
