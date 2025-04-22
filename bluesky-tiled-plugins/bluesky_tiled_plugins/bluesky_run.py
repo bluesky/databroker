@@ -79,7 +79,7 @@ class BlueskyRun(Container):
         """
         return self.metadata["stop"]
 
-    @property
+    @functools.cached_property
     def descriptors(self):
         return [doc for name, doc in self.documents() if name == "descriptor"]
 
@@ -240,12 +240,7 @@ class BlueskyRunV2SQL(BlueskyRunV2, _BlueskyRunSQL):
         if key in self._stream_names:
             stream_container = super().get("streams", {}).get(key)
             stream_config = super().get("configs", {}).get(key)
-            metadata = {
-                "descriptors": (
-                    doc for name, doc in self.documents() if name == "descriptor" and doc["name"] == key
-                )
-            }
-            return BlueskyEventStreamV2SQL.from_container_and_config(stream_container, stream_config, metadata)
+            return BlueskyEventStreamV2SQL.from_container_and_config(stream_container, stream_config)
 
         if "/" in key:
             key, rest = key.split("/", 1)
