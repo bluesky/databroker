@@ -10,7 +10,7 @@ from tiled.queries import Comparison, Eq, Like
 from tiled.utils import safe_json_dump
 
 from .bluesky_run import BlueskyRunV2
-from .queries import PartialUID, RawMongo, ScanID, ScanIDRange, TimeRange
+from .queries import _PartialUID, RawMongo, _ScanID, ScanIDRange, TimeRange
 
 
 class CatalogOfBlueskyRuns(Container):
@@ -158,10 +158,10 @@ class CatalogOfBlueskyRuns(Container):
                 result = super().search(Comparison("lt", "start.time", query.until))
         # For backward-compatiblity, accept a dict and interpret it as a Mongo
         # query against the 'start' documents.
-        elif isinstance(query, ScanID):
+        elif isinstance(query, _ScanID):
             query = Eq("start.scan_id", query.scan_id)
             result = super().search(query)
-        elif isinstance(query, PartialUID):
+        elif isinstance(query, _PartialUID):
             query = Like("start.uid", f"{query.uid}%")
             result = super().search(query)
         elif isinstance(query, ScanIDRange):
