@@ -1,11 +1,17 @@
 """
-This module formerly held Tiled query objects, registered with the server,
-to extend the query types supported by the server to include bluesky-specific
-queries.
+This module defines objects designed to make queries on
+CatalogOfBlueskyRuns convenient.
 
-Now, these have been refactored by client client-side convenience objects,
-which are resolved inside the CatalogOfBlueskyRuns.search(...) method into
-standard Tiled queries. No server-side customization is now required.
+Older clients used these query object to issue custom query types.
+This requires servers to register custom implementations of those
+query types.
+
+Newer clients use these object as pure client-side conveniences. In
+`CatalogOfBlueskyRuns.search` method, they are decomposed into standard Tiled
+queries, requiring no custom counterpart on the server.
+
+The registration and serialization aspects are (temporarily) retained in order
+to support older clients querying against MongoDB-backed servers.
 """
 
 import enum

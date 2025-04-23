@@ -152,17 +152,28 @@ class CatalogOfBlueskyRuns(Container):
 
         # Some need to be expressed as a chain of queries.
         if isinstance(query, TimeRange):
+            result = self
             if query.since:
-                result = super().search(Comparison("ge", "start.time", query.since))
+                result = Container.search(result, Comparison("ge", "start.time", query.since))
             if query.until:
-                result = super().search(Comparison("lt", "start.time", query.until))
+                result = Container.search(result, Comparison("lt", "start.time", query.until))
         # For backward-compatiblity, accept a dict and interpret it as a Mongo
         # query against the 'start' documents.
         elif isinstance(query, _ScanID):
-            query = Eq("start.scan_id", query.scan_id)
+            if len(query.scan_ids) > 1:
+                raise ValueError(
+                    "Search on multiple ScanIDs in one query is no longer supported."
+                )
+            scan_id, = query.scan_ids
+            query = Eq("start.scan_id", scan_id)
             result = super().search(query)
         elif isinstance(query, _PartialUID):
-            query = Like("start.uid", f"{query.uid}%")
+            if len(query.partial_uids) > 1:
+                raise ValueError(
+                    "Search on multiple PartialUIDs in one query is no longer supported."
+                )
+            partial_uid, = query.partial_uids
+            query = Like("start.uid", f"{partial_uid}%")
             result = super().search(query)
         elif isinstance(query, ScanIDRange):
             ge = Comparison("ge", "start.scan_id", query.start_id)
