@@ -6,10 +6,11 @@ import operator
 from tiled.adapters.utils import IndexCallable
 from tiled.client.container import Container
 from tiled.client.utils import handle_error
+from tiled.queries import Comparison, Eq, Like
 from tiled.utils import safe_json_dump
 
 from .bluesky_run import BlueskyRunV2
-from .queries import PartialUID, RawMongo, ScanID
+from .queries import PartialUID, RawMongo, ScanID, ScanIDRange, TimeRange
 
 
 class CatalogOfBlueskyRuns(Container):
@@ -113,20 +114,28 @@ class CatalogOfBlueskyRuns(Container):
             raise ValueError("Indexing expects a string, an integer, or a collection of strings and/or integers.")
 
     def _lookup_by_scan_id(self, scan_id):
-        results = self.search(ScanID(scan_id, duplicates="latest"))
+        results = self.search(Eq("start.scan_id", scan_id))
         if not results:
             raise KeyError(f"No match for scan_id={scan_id}")
         else:
-            # By construction there must be only one result. Return it.
-            return results.values().first()
+            # Return latest match.
+            return results.values().last()
 
     def _lookup_by_partial_uid(self, partial_uid):
-        results = self.search(PartialUID(partial_uid))
+        if len(partial_uid) < 5:
+            raise ValueError(
+                f"Partial uid {partial_uid!r} is too short. " "It must include at least 5 characters."
+            )
+        results = self.search(Like("start.uid", f"{partial_uid}%")).values().head(2)
+        if len(results) > 1:
+            raise ValueError(
+                f"Partial uid {partial_uid} has multiple matches. "
+                "Include more characters to get a unique match."
+            )
         if not results:
             raise KeyError(f"No match for partial_uid {partial_uid}")
-        else:
-            # By construction there must be only one result. Return it.
-            return results.values().first()
+        # There is one unique result.
+        return results[0]
 
     def get_serializer(self):
         from tiled.server.app import get_root_tree
@@ -137,11 +146,34 @@ class CatalogOfBlueskyRuns(Container):
         return tree.get_serializer()
 
     def search(self, query):
+        # These query types were formerly handled server side by specially-registered
+        # queries. Now that are transformed client side into generic queries that
+        # come standard with the Tiled server.
+
+        # Some need to be expressed as a chain of queries.
+        if isinstance(query, TimeRange):
+            if query.since:
+                result = super().search(Comparison("ge", "start.time", query.since))
+            if query.until:
+                result = super().search(Comparison("lt", "start.time", query.until))
         # For backward-compatiblity, accept a dict and interpret it as a Mongo
         # query against the 'start' documents.
-        if isinstance(query, dict):
+        elif isinstance(query, ScanID):
+            query = Eq("start.scan_id", query.scan_id)
+            result = super().search(query)
+        elif isinstance(query, PartialUID):
+            query = Like("start.uid", f"{query.uid}%")
+            result = super().search(query)
+        elif isinstance(query, ScanIDRange):
+            ge = Comparison("ge", "start.scan_id", query.start_id)
+            lt = Comparison("lt", "start.scan_id", query.end_id)
+            result = super().search(ge).search(lt)
+        elif isinstance(query, dict):
             query = RawMongo(start=query)
-        return super().search(query)
+            result = super().search(query)
+        else:
+            result = super().search(query)
+        return result
 
     def post_document(self, name, doc):
         link = self.item["links"]["self"].replace("/metadata", "/documents", 1)
