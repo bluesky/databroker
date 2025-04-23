@@ -1,6 +1,16 @@
+"""
+This module formerly held Tiled query objects, registered with the server,
+to extend the query types supported by the server to include bluesky-specific
+queries.
+
+Now, these have been refactored by client client-side convenience objects,
+which are resolved inside the CatalogOfBlueskyRuns.search(...) method into
+standard Tiled queries. No server-side customization is now required.
+"""
+
 import enum
 import warnings
-from dataclasses import asdict, dataclass
+from dataclasses import dataclass
 from typing import Optional
 
 # Not all of these are used, but import them all
@@ -18,7 +28,6 @@ from tiled.queries import (  # noqa: F401
     QueryValueError,
     Regex,
 )
-from tiled.query_registration import register
 
 
 class Duplicates(str, enum.Enum):
@@ -27,45 +36,15 @@ class Duplicates(str, enum.Enum):
     error = "error"
 
 
-@register(name="scan_id")
 @dataclass
-class _ScanID:
+class ScanID:
     """
     Find matches to scan_id(s).
     """
 
-    scan_ids: list[int]
-    duplicates: Duplicates
-
-    def __init__(self, *, scan_ids, duplicates):
-        self.scan_ids = scan_ids
-        self.duplicates = Duplicates(duplicates)
-
-    def encode(self):
-        return {
-            "scan_ids": ",".join(str(scan_id) for scan_id in self.scan_ids),
-            "duplicates": self.duplicates.value,
-        }
-
-    @classmethod
-    def decode(cls, *, scan_ids, duplicates):
-        return cls(
-            scan_ids=[int(scan_id) for scan_id in scan_ids.split(",")],
-            duplicates=Duplicates(duplicates),
-        )
+    scan_id: int
 
 
-def ScanID(*scan_ids, duplicates="latest"):
-    # Wrap _ScanID to provide a nice usage for *one or more scan_ids*:
-    # >>> ScanID(5)
-    # >>> ScanID(5, 6, 7)
-    # Placing a varargs parameter (*scan_ids) in the dataclass constructor
-    # would cause trouble on the server side and generally feels "wrong"
-    # so we have this wrapper function instead.
-    return _ScanID(scan_ids=scan_ids, duplicates=duplicates)
-
-
-@register(name="scan_id_range")
 @dataclass
 class ScanIDRange:
     """
@@ -74,49 +53,15 @@ class ScanIDRange:
 
     start_id: int
     end_id: int
-    duplicates: Duplicates
-
-    def __init__(self, start_id, end_id, duplicates="latest"):
-        self.start_id = start_id
-        self.end_id = end_id
-        self.duplicates = Duplicates(duplicates)
-
-    def encode(self):
-        return {
-            "start_id": self.start_id,
-            "end_id": self.end_id,
-            "duplicates": self.duplicates.value,
-        }
-
-    @classmethod
-    def decode(cls, *, start_id, end_id, duplicates="latest"):
-        return cls(
-            start_id=int(start_id),
-            end_id=int(end_id),
-            duplicates=Duplicates(duplicates),
-        )
 
 
-@register(name="partial_uid")
 @dataclass
-class _PartialUID:
+class PartialUID:
     """
     Find matches to (partial) uid(s).
     """
 
-    partial_uids: list[str]
-
-    def encode(self):
-        return {"partial_uids": ",".join(str(uid) for uid in self.partial_uids)}
-
-    @classmethod
-    def decode(cls, *, partial_uids):
-        return cls(partial_uids=partial_uids.split(","))
-
-
-def PartialUID(*partial_uids):
-    # See comment above with ScanID and _ScanID. Same thinking here.
-    return _PartialUID(partial_uids)
+    partial_uid: str
 
 
 def RawMongo(start):
@@ -226,7 +171,6 @@ def _normalize_human_friendly_time(val, tz):
     return (val - epoch).total_seconds()
 
 
-@register(name="time_range")
 @dataclass
 class TimeRange:
     """
@@ -287,10 +231,3 @@ class TimeRange:
             f"{type(self).__name__!s}("
             f"timezone={self.timezone!r}, since={self._raw_since!r}, until={self._raw_until!r})"
         )
-
-    def encode(self):
-        return asdict(self)
-
-    @classmethod
-    def decode(cls, *, timezone, since=None, until=None):
-        return cls(timezone=timezone, since=since, until=until)
