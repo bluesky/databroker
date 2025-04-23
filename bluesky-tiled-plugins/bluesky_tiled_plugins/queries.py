@@ -119,17 +119,6 @@ def PartialUID(*partial_uids):
     return _PartialUID(partial_uids)
 
 
-@register(name="duration")
-@dataclass
-class Duration:
-    """
-    Run a MongoDB query against a given collection.
-    """
-
-    less_than: float
-    greater_than: float
-
-
 def RawMongo(start):
     """
     DEPRECATED
