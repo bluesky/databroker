@@ -101,7 +101,7 @@ class CatalogOfBlueskyRuns(Container):
         elif isinstance(key, numbers.Integral):
             if key > 0:
                 # CASE 2: Interpret key as a scan_id.
-                return self._lookup_by_scan_id(key)
+                return self._lookup_by_scan_id(int(key))
             else:
                 # CASE 3: Interpret key as a recently lookup, as in
                 # `catalog[-1]` is the latest entry.
@@ -178,7 +178,7 @@ class CatalogOfBlueskyRuns(Container):
                     "Search on multiple ScanIDs in one query is no longer supported."
                 )
             scan_id, = query.scan_ids
-            query = Eq("start.scan_id", scan_id)
+            query = Eq("start.scan_id", int(scan_id))
             result = super().search(query)
         elif isinstance(query, _PartialUID):
             if len(query.partial_uids) > 1:
