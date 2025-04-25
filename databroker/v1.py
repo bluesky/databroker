@@ -776,7 +776,7 @@ class Broker:
             self.v2.post_document(name, doc)
 
     @functools.cached_property
-    def  _tiled_writer(self):
+    def _tiled_writer(self):
         from bluesky.callbacks.tiled_writer import TiledWriter
 
         return TiledWriter(self.v2)
