@@ -78,7 +78,7 @@ class CatalogOfBlueskyRuns(Container):
         return self
 
     @functools.cached_property
-    def _is_sql(self):
+    def is_sql(self):
         for spec in self.specs:
             if spec.name == "CatalogOfBlueskyRuns":
                 if spec.version and spec.version.startswith("3."):
@@ -135,7 +135,7 @@ class CatalogOfBlueskyRuns(Container):
             raise ValueError(
                 f"Partial uid {partial_uid!r} is too short. " "It must include at least 5 characters."
             )
-        if self._is_sql:
+        if self.is_sql:
             query = Like("start.uid", f"{partial_uid}%")
         else:
             query = _PartialUID(partial_uids=[partial_uid])
@@ -186,7 +186,7 @@ class CatalogOfBlueskyRuns(Container):
                     "Search on multiple PartialUIDs in one query is no longer supported."
                 )
             partial_uid, = query.partial_uids
-            if self._is_sql:
+            if self.is_sql:
                 query = Like("start.uid", f"{partial_uid}%")
             else:
                 query = _PartialUID(partial_uids=[partial_uid])

@@ -17,12 +17,36 @@ import suitcase.mongo_normalized
 import suitcase.mongo_embedded
 from tiled.client import Context, from_context
 from tiled.server.app import build_app
+from tiled.catalog import from_uri
 
 def get_uids(result):
     if hasattr(result, "run_start_uids"):
         return result.run_start_uids
     else:
         return result
+
+
+def build_tiled_sqlite_backed_broker(request):
+    tmpdir = tempfile.TemporaryDirectory()
+    adapter = from_uri(
+        f"sqlite:///{tmpdir.name}/catalog.db",
+        specs=[{"name": "CatalogOfBlueskyRuns", "version": "3.0"}],
+        init_if_not_exists=True,
+        writable_storage={
+            "filesystem": "{tmpdir.name}/data_files",
+            "sql": "sqlite:///{tmpdir.name}/tabular_data.db",
+        },
+    )
+    context = Context.from_app(build_app(adapter))
+    client = from_context(context)
+
+    def teardown():
+        context.__exit__()
+        tmpdir.cleanup()
+
+    request.addfinalizer(teardown)
+
+    return client.v1
 
 
 def build_tiled_mongo_backed_broker(request):
