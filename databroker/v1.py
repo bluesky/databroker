@@ -808,7 +808,7 @@ class Header:
     """
 
     def __init__(self, run, db):
-        self._run = run
+        self._run = run.v2
         self.db = db
         self.ext = None  # TODO
         self._start = self._run.metadata["start"]

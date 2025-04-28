@@ -11,7 +11,7 @@ from tiled.queries import Comparison, Eq, Like
 from tiled.utils import safe_json_dump
 
 from .bluesky_run import BlueskyRunV2
-from .queries import _PartialUID, RawMongo, _ScanID, ScanIDRange, TimeRange
+from .queries import RawMongo, ScanIDRange, TimeRange, _PartialUID, _ScanID
 
 
 class CatalogOfBlueskyRuns(Container):
@@ -132,9 +132,7 @@ class CatalogOfBlueskyRuns(Container):
 
     def _lookup_by_partial_uid(self, partial_uid):
         if len(partial_uid) < 5:
-            raise ValueError(
-                f"Partial uid {partial_uid!r} is too short. " "It must include at least 5 characters."
-            )
+            raise ValueError(f"Partial uid {partial_uid!r} is too short. It must include at least 5 characters.")
         if self.is_sql:
             query = Like("start.uid", f"{partial_uid}%")
         else:
@@ -142,8 +140,7 @@ class CatalogOfBlueskyRuns(Container):
         results = self.search(query).values().head(2)
         if len(results) > 1:
             raise ValueError(
-                f"Partial uid {partial_uid} has multiple matches. "
-                "Include more characters to get a unique match."
+                f"Partial uid {partial_uid} has multiple matches. Include more characters to get a unique match."
             )
         if not results:
             raise KeyError(f"No match for partial_uid {partial_uid}")
@@ -174,18 +171,14 @@ class CatalogOfBlueskyRuns(Container):
         # query against the 'start' documents.
         elif isinstance(query, _ScanID):
             if len(query.scan_ids) > 1:
-                raise ValueError(
-                    "Search on multiple ScanIDs in one query is no longer supported."
-                )
-            scan_id, = query.scan_ids
+                raise ValueError("Search on multiple ScanIDs in one query is no longer supported.")
+            (scan_id,) = query.scan_ids
             query = Eq("start.scan_id", int(scan_id))
             result = super().search(query)
         elif isinstance(query, _PartialUID):
             if len(query.partial_uids) > 1:
-                raise ValueError(
-                    "Search on multiple PartialUIDs in one query is no longer supported."
-                )
-            partial_uid, = query.partial_uids
+                raise ValueError("Search on multiple PartialUIDs in one query is no longer supported.")
+            (partial_uid,) = query.partial_uids
             if self.is_sql:
                 query = Like("start.uid", f"{partial_uid}%")
             else:

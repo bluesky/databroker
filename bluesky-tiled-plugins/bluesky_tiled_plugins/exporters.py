@@ -6,7 +6,16 @@ import awkward
 from tiled.utils import modules_available
 
 
-async def json_exporter(adapter, metadata, filter_for_access):
+async def json_seq_exporter(adapter, metadata, filter_for_access):
+    """
+    Export BlueskyRun is newline-delimited sequence of JSON.
+
+    Format is like:
+
+    {"name": "start", "doc": {...}}
+    {"name": "descriptor", "doc": {...}}
+    ...
+    """
     for spec in adapter.specs:
         if spec.name == "BlueskyRun" and spec.version.startswith("3."):
             break
