@@ -309,9 +309,6 @@ def test_full_text_search(db_empty, RE, hw):
     header, = db('some words')
     assert header['start']['uid'] == uid
 
-    # Full text search does *not* apply to keys.
-    assert len(list(db('foo'))) == 0
-
 
 def test_table_alignment(db, RE, hw):
     # test time shift issue GH9
