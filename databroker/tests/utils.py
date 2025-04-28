@@ -1,3 +1,4 @@
+import copy
 import os
 from pathlib import Path
 from subprocess import Popen
@@ -17,7 +18,10 @@ import suitcase.mongo_normalized
 import suitcase.mongo_embedded
 from tiled.client import Context, from_context
 from tiled.server.app import build_app
+from tiled.media_type_registration import default_serialization_registry
+from bluesky_tiled_plugins.exporters import json_seq_exporter
 from tiled.catalog import from_uri
+
 
 def get_uids(result):
     if hasattr(result, "run_start_uids"):
@@ -27,6 +31,10 @@ def get_uids(result):
 
 
 def build_tiled_sqlite_backed_broker(request):
+    serialization_registry = copy.copy(default_serialization_registry)
+    serialization_registry.register(
+        "BlueskyRun", "application/json-seq", json_seq_exporter
+    )
     tmpdir = tempfile.TemporaryDirectory()
     adapter = from_uri(
         f"sqlite:///{tmpdir.name}/catalog.db",
@@ -37,7 +45,7 @@ def build_tiled_sqlite_backed_broker(request):
             "sql": "sqlite:///{tmpdir.name}/tabular_data.db",
         },
     )
-    context = Context.from_app(build_app(adapter))
+    context = Context.from_app(build_app(adapter, serialization_registry=serialization_registry))
     client = from_context(context)
 
     def teardown():

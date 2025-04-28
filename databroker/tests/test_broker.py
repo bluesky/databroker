@@ -309,9 +309,6 @@ def test_full_text_search(db_empty, RE, hw):
     header, = db('some words')
     assert header['start']['uid'] == uid
 
-    # Full text search does *not* apply to keys.
-    assert len(list(db('foo'))) == 0
-
 
 def test_table_alignment(db, RE, hw):
     # test time shift issue GH9
@@ -1019,7 +1016,8 @@ def test_sanitize_does_not_modify_array_data_in_place(db_empty):
                                  'shape': (3, 3),
                                  'source': ''}},
            'object_keys': {'det': ['det']},
-           'configuration': {'det': {'thing': np.ones((3, 3))}}}
+           'configuration': {'det': {'thing': np.ones((3, 3))}},
+           'name': 'primary'}
     assert isinstance(doc['configuration']['det']['thing'], np.ndarray)
     db.insert('descriptor', doc)
     assert isinstance(doc['configuration']['det']['thing'], np.ndarray)

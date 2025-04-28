@@ -808,11 +808,11 @@ class Header:
     """
 
     def __init__(self, run, db):
-        self._run = run
+        self._run = run.v2
         self.db = db
         self.ext = None  # TODO
         self._start = self._run.metadata["start"]
-        self._stop = self._run.metadata["stop"]
+        self._stop = self._run.metadata.get("stop", {})
         self.ext = SimpleNamespace()  # not implemented
 
     @property
@@ -829,8 +829,6 @@ class Header:
 
     @property
     def stop(self):
-        if self._stop is None:
-            self._stop = self._run.metadata["stop"] or {}
         return self.db.prepare_hook("stop", self._stop)
 
     def __eq__(self, other):
