@@ -1016,7 +1016,8 @@ def test_sanitize_does_not_modify_array_data_in_place(db_empty):
                                  'shape': (3, 3),
                                  'source': ''}},
            'object_keys': {'det': ['det']},
-           'configuration': {'det': {'thing': np.ones((3, 3))}}}
+           'configuration': {'det': {'thing': np.ones((3, 3))}},
+           'name': 'primary'}
     assert isinstance(doc['configuration']['det']['thing'], np.ndarray)
     db.insert('descriptor', doc)
     assert isinstance(doc['configuration']['det']['thing'], np.ndarray)
