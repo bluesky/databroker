@@ -1013,7 +1013,7 @@ class DatasetFromDocuments:
             keys, expected_shapes, is_externals
         ):
             column = columns[key]
-            if is_external:
+            if is_external and (self._sub_dict == "data"):
                 filled_column = []
                 for datum_id in column:
                     # HACK to adapt Filler which is designed to consume whole,
@@ -1857,7 +1857,7 @@ def full_text_search(query, catalog):
             return BlueskyMapAdapter(dict(catalog)).search(query)
 
     return catalog.apply_mongo_query(
-        {"$text": {"$search": query.text, "$caseSensitive": query.case_sensitive}},
+        {"$text": {"$search": query.text, "$caseSensitive": False}},
     )
 
 
@@ -1899,6 +1899,9 @@ class SimpleAccessPolicy:
             self.access_lists[key] = value
 
     def _get_id(self, principal):
+        # Services have no identities; just use the uuid.
+        if principal.type == "service":
+            return str(principal.uuid)
         # Get the id (i.e. username) of this Principal for the
         # associated authentication provider.
         for identity in principal.identities:

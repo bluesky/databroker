@@ -1,4 +1,4 @@
-FROM ghcr.io/bluesky/tiled:0.1.0-b17 as base
+FROM ghcr.io/bluesky/tiled:0.1.0-b23 as base
 
 FROM base as builder
 

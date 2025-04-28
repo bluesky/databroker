@@ -1,5 +1,6 @@
 import collections.abc
 import copy
+import functools
 import numbers
 import operator
 
@@ -76,6 +77,14 @@ class CatalogOfBlueskyRuns(Container):
     def v3(self):
         return self
 
+    @functools.cached_property
+    def is_sql(self):
+        for spec in self.specs:
+            if spec.name == "CatalogOfBlueskyRuns":
+                if spec.version and spec.version.startswith("3."):
+                    return True
+                return False
+
     def __getitem__(self, key):
         # For convenience and backward-compatiblity reasons, we support
         # some "magic" here that is helpful in an interactive setting.
@@ -92,7 +101,7 @@ class CatalogOfBlueskyRuns(Container):
         elif isinstance(key, numbers.Integral):
             if key > 0:
                 # CASE 2: Interpret key as a scan_id.
-                return self._lookup_by_scan_id(key)
+                return self._lookup_by_scan_id(int(key))
             else:
                 # CASE 3: Interpret key as a recently lookup, as in
                 # `catalog[-1]` is the latest entry.
@@ -126,7 +135,11 @@ class CatalogOfBlueskyRuns(Container):
             raise ValueError(
                 f"Partial uid {partial_uid!r} is too short. " "It must include at least 5 characters."
             )
-        results = self.search(Like("start.uid", f"{partial_uid}%")).values().head(2)
+        if self.is_sql:
+            query = Like("start.uid", f"{partial_uid}%")
+        else:
+            query = _PartialUID(partial_uids=[partial_uid])
+        results = self.search(query).values().head(2)
         if len(results) > 1:
             raise ValueError(
                 f"Partial uid {partial_uid} has multiple matches. "
@@ -165,7 +178,7 @@ class CatalogOfBlueskyRuns(Container):
                     "Search on multiple ScanIDs in one query is no longer supported."
                 )
             scan_id, = query.scan_ids
-            query = Eq("start.scan_id", scan_id)
+            query = Eq("start.scan_id", int(scan_id))
             result = super().search(query)
         elif isinstance(query, _PartialUID):
             if len(query.partial_uids) > 1:
@@ -173,7 +186,10 @@ class CatalogOfBlueskyRuns(Container):
                     "Search on multiple PartialUIDs in one query is no longer supported."
                 )
             partial_uid, = query.partial_uids
-            query = Like("start.uid", f"{partial_uid}%")
+            if self.is_sql:
+                query = Like("start.uid", f"{partial_uid}%")
+            else:
+                query = _PartialUID(partial_uids=[partial_uid])
             result = super().search(query)
         elif isinstance(query, ScanIDRange):
             ge = Comparison("ge", "start.scan_id", query.start_id)

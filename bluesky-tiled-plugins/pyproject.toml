@@ -18,7 +18,7 @@ dependencies = [
   "dask",
   "mongoquery",
   "pytz",
-  "tiled[client] >=0.1.0b4",
+  "tiled[client] >=0.1.0b23",
   "tzlocal",
 ]
 

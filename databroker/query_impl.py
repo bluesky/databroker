@@ -151,26 +151,31 @@ def time_range(query, catalog):
 
 
 def eq(query, catalog):
-    return catalog.apply_mongo_query({query.key: query.value})
+    key = query.key.removeprefix("start.")
+    return catalog.apply_mongo_query({key: query.value})
 
 
 def contains(query, catalog):
     # In MongoDB, checking that an item is in an array looks
     # just like equality.
     # https://www.mongodb.com/docs/manual/tutorial/query-arrays/
-    return catalog.apply_mongo_query({query.key: query.value})
+    key = query.key.removeprefix("start.")
+    return catalog.apply_mongo_query({key: query.value})
 
 
 def _in(query, catalog):
-    return catalog.apply_mongo_query({query.key: {"$in": query.value}})
+    key = query.key.removeprefix("start.")
+    return catalog.apply_mongo_query({key: {"$in": query.value}})
 
 
 def not_in(query, catalog):
-    return catalog.apply_mongo_query({query.key: {"$nin": query.value}})
+    key = query.key.removeprefix("start.")
+    return catalog.apply_mongo_query({key: {"$nin": query.value}})
 
 
 def not_eq(query, catalog):
-    return catalog.apply_mongo_query({query.key: {"$ne": query.value}})
+    key = query.key.removeprefix("start.")
+    return catalog.apply_mongo_query({key: {"$ne": query.value}})
 
 
 def comparison(query, catalog):
@@ -180,15 +185,17 @@ def comparison(query, catalog):
         Operator.gt: "$gt",
         Operator.ge: "$gte",
     }
+    key = query.key.removeprefix("start.")
     return catalog.apply_mongo_query(
-        {query.key: {OPERATORS[query.operator]: query.value}}
+        {key: {OPERATORS[query.operator]: query.value}}
     )
 
 
 def regex(query, catalog):
     options = "" if query.case_sensitive else "i"
+    key = query.key.removeprefix("start.")
     return catalog.apply_mongo_query(
-        {query.key: {"$regex": query.pattern, "$options": options}}
+        {key: {"$regex": query.pattern, "$options": options}}
     )
 
 

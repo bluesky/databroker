@@ -1,3 +1,4 @@
+import functools
 from collections import defaultdict
 from datetime import datetime
 import pandas
@@ -769,7 +770,16 @@ class Broker:
         return total_size * 1e-9
 
     def insert(self, name, doc):
-        self.v2.post_document(name, doc)
+        if getattr(self.v2, "is_sql"):
+            self._tiled_writer(name, doc)
+        else:
+            self.v2.post_document(name, doc)
+
+    @functools.cached_property
+    def _tiled_writer(self):
+        from bluesky.callbacks.tiled_writer import TiledWriter
+
+        return TiledWriter(self.v2)
 
     def fill_event(*args, **kwargs):
         raise NotImplementedError(

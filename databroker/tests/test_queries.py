@@ -53,10 +53,11 @@ def test_regex(c, RE, hw):
     (should_match2,) = get_uids(RE(count([hw.det]), foo="a2"))
     (should_not_match,) = get_uids(RE(count([hw.det]), foo="a3", bar="a1"))
 
-    results = c.search(Regex("foo", "a[1-2]"))
-    assert should_match1 in results
-    assert should_match2 in results
-    assert should_not_match not in results
+    for key in ["foo", "start.foo"]:
+        results = c.search(Regex(key, "a[1-2]"))
+        assert should_match1 in results
+        assert should_match2 in results
+        assert should_not_match not in results
 
 
 def test_eq(c, RE, hw):
@@ -65,9 +66,10 @@ def test_eq(c, RE, hw):
     (should_match,) = get_uids(RE(count([hw.det]), foo="a"))
     (should_not_match,) = get_uids(RE(count([hw.det]), foo="b"))
 
-    results = c.search(Key("foo") == "a")
-    assert should_match in results
-    assert should_not_match not in results
+    for key in ["foo", "start.foo"]:
+        results = c.search(Key(key) == "a")
+        assert should_match in results
+        assert should_not_match not in results
 
 
 def test_not_eq(c, RE, hw):
@@ -76,9 +78,10 @@ def test_not_eq(c, RE, hw):
     (should_match,) = get_uids(RE(count([hw.det]), foo="a"))
     (should_not_match,) = get_uids(RE(count([hw.det]), foo="b"))
 
-    results = c.search(Key("foo") != "b")
-    assert should_match in results
-    assert should_not_match not in results
+    for key in ["foo", "start.foo"]:
+        results = c.search(Key(key) != "b")
+        assert should_match in results
+        assert should_not_match not in results
 
 
 def test_scan_id(c, RE, hw):
@@ -115,9 +118,10 @@ def test_in(c, RE, hw):
     (should_match,) = get_uids(RE(count([hw.det]), foo="a"))
     (should_not_match,) = get_uids(RE(count([hw.det]), foo="b"))
 
-    results = c.search(In("foo", ["a", "z"]))
-    assert should_match in results
-    assert should_not_match not in results
+    for key in ["foo", "start.foo"]:
+        results = c.search(In(key, ["a", "z"]))
+        assert should_match in results
+        assert should_not_match not in results
 
 
 def test_not_in(c, RE, hw):
@@ -126,9 +130,10 @@ def test_not_in(c, RE, hw):
     (should_match,) = get_uids(RE(count([hw.det]), foo="a"))
     (should_not_match,) = get_uids(RE(count([hw.det]), foo="b"))
 
-    results = c.search(NotIn("foo", ["b", "z"]))
-    assert should_match in results
-    assert should_not_match not in results
+    for key in ["foo", "start.foo"]:
+        results = c.search(NotIn(key, ["b", "z"]))
+        assert should_match in results
+        assert should_not_match not in results
 
 
 def test_comparison(c, RE, hw):
@@ -137,9 +142,10 @@ def test_comparison(c, RE, hw):
     (should_match,) = get_uids(RE(count([hw.det]), foo=5))
     (should_not_match,) = get_uids(RE(count([hw.det]), foo=15))
 
-    results = c.search(Key("foo") < 10)
-    assert should_match in results
-    assert should_not_match not in results
+    for key in ["foo", "start.foo"]:
+        results = c.search(Key(key) < 10)
+        assert should_match in results
+        assert should_not_match not in results
 
 
 def test_contains(c, RE, hw):
@@ -148,9 +154,10 @@ def test_contains(c, RE, hw):
     (should_match,) = get_uids(RE(count([hw.det]), foo=[1, 3, 5, 7, 9]))
     (should_not_match,) = get_uids(RE(count([hw.det]), foo=[2, 4, 6, 8, 10]))
 
-    results = c.search(Contains("foo", 3))
-    assert should_match in results
-    assert should_not_match not in results
+    for key in ["foo", "start.foo"]:
+        results = c.search(Contains(key, 3))
+        assert should_match in results
+        assert should_not_match not in results
 
 
 def test_distinct(c, RE, hw):
