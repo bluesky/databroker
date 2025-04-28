@@ -212,7 +212,7 @@ class _BlueskyRunSQL(BlueskyRun):
     def _stream_names(self):
         return sorted(self.get("streams", ()))
 
-    def documents(self):
+    def documents(self, fill=False):
         with io.BytesIO() as buffer:
             self.export(buffer, format="application/json-seq")
             buffer.seek(0)
