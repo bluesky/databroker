@@ -1008,6 +1008,8 @@ def test_data_method(db, RE, hw):
 
 def test_sanitize_does_not_modify_array_data_in_place(db_empty):
     db = db_empty
+    if getattr(db.v2, "is_sql", False):
+        raise pytest.xfail("ADBC/SQL does not support storing ndarrays")
     doc = {'uid': '0', 'time': 0, 'stuff': np.ones((3, 3))}
     assert isinstance(doc['stuff'], np.ndarray)
     db.insert('start', doc)
