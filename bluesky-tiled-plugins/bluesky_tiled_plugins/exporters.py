@@ -157,13 +157,13 @@ async def json_seq_exporter(adapter, metadata, filter_for_access):
     )
 
     # Combine events into event_pages
-    if modules_available("databroker"):
-        from databroker.mongo_normalized import batch_documents
-
-        result = [
-            {"name": x[0], "doc": x[1]}
-            for x in batch_documents([(y["name"], y["doc"]) for y in result], size=1000)
-        ]
+#     if modules_available("databroker"):
+#         from databroker.mongo_normalized import batch_documents
+#
+#         result = [
+#             {"name": x[0], "doc": x[1]}
+#             for x in batch_documents([(y["name"], y["doc"]) for y in result], size=1000)
+#         ]
 
     for doc in result:
         yield "\n" + json.dumps(doc)
