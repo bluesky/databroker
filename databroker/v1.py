@@ -812,7 +812,7 @@ class Header:
         self.db = db
         self.ext = None  # TODO
         self._start = self._run.metadata["start"]
-        self._stop = self._run.metadata["stop"]
+        self._stop = self._run.metadata.get("stop", {})
         self.ext = SimpleNamespace()  # not implemented
 
     @property
@@ -829,8 +829,6 @@ class Header:
 
     @property
     def stop(self):
-        if self._stop is None:
-            self._stop = self._run.metadata["stop"] or {}
         return self.db.prepare_hook("stop", self._stop)
 
     def __eq__(self, other):
