@@ -1293,7 +1293,7 @@ def test_update(db, RE, hw):
     # I am not so convinced that this needs to be protected.
     # No internal referential integrity would be broken by
     # changing the start uid.
-    if getattr(db.v2, "is_sql", False):
+    if not getattr(db.v2, "is_sql", False):
         with pytest.raises(ValueError):
             c[uid].update_metadata({"start": {"uid": "not allowed to change this"}})
 
