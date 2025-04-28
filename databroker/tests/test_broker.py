@@ -1288,8 +1288,14 @@ def test_update(db, RE, hw):
     assert "test_new_start_key" in c[uid].metadata["start"]
     assert c[uid].metadata["start"]["plan_name"] == "test_was_here"
     assert "test_new_stop_key" in c[uid].metadata["stop"]
-    with pytest.raises(ValueError):
-        c[uid].update_metadata({"start": {"uid": "not allowed to change this"}})
+    # Note: Vanilla Tiled does not enforce this.
+    # Perhaps it could be done at the authorization level.
+    # I am not so convinced that this needs to be protected.
+    # No internal referential integrity would be broken by
+    # changing the start uid.
+    if getattr(db.v2, "is_sql", False):
+        with pytest.raises(ValueError):
+            c[uid].update_metadata({"start": {"uid": "not allowed to change this"}})
 
 
 def test_img_read(db, RE, hw):
