@@ -925,6 +925,8 @@ def test_deprecated_doct():
 
 def test_ingest_array_data(db_empty, RE):
     db = db_empty
+    if getattr(db.v2, "is_sql", False):
+        raise pytest.xfail("ADBC/SQL does not support storing ndarrays")
     RE.subscribe(db.insert)
     # These will blow up if the event source backing db cannot ingest numpy
     # arrays. (For example, the pymongo-backed db has to convert them to plain
@@ -1304,6 +1306,8 @@ def test_direct_img_read(db, RE, hw):
     RE.subscribe(db.insert)
     if not hasattr(db, "v2"):
         raise pytest.skip("v0 has no v2 accessor")
+    if getattr(db.v2, "is_sql", False):
+        raise pytest.xfail("ADBC/SQL does not support storing ndarrays")
     c = db.v2
     uid, = get_uids(RE(count([hw.direct_img], 5)))
     c[uid]["primary"]["data"]["img"][:]
