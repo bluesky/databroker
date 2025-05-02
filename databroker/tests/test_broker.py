@@ -1328,7 +1328,7 @@ def test_direct_img_read(db, RE, hw):
     c[uid]["primary"]["data"]["img"][:]
 
 
-@pytest.mark.xfail(reason="something is 'fixing' the shape and adding an extra dimension")
+@pytest.mark.xfail(reason="something is 'fixing' the shape and ignoring chunks")
 def test_img_explicit_chunks(db, RE, hw, tmpdir):
     "Test using explicit chunk size"
     from ophyd import sim
@@ -1344,8 +1344,8 @@ def test_img_explicit_chunks(db, RE, hw, tmpdir):
             res = super().describe()
             (key,) = res
             shape = res[key]["shape"]
-            assert len(shape) == 2
-            res[key]["chunks"] = [[5], [1] * shape[0], [shape[1]]]
+            assert len(shape) == 3
+            res[key]["chunks"] = [[1], [1] * shape[1], [shape[2]]]
             return res
 
     class Detector2(sim.SynSignalWithRegistry):
@@ -1353,24 +1353,26 @@ def test_img_explicit_chunks(db, RE, hw, tmpdir):
             res = super().describe()
             (key,) = res
             shape = res[key]["shape"]
-            res[key]["chunks"] = [[5], [2] * (shape[0] // 2), [shape[1]]]
+            res[key]["chunks"] = [[1], [2] * (shape[1] // 2), [shape[2]]]
             return res
 
-    img1 = Detector2(
-        func=lambda: np.array(np.ones((10, 10))),
+    img1 = Detector1(
+        func=lambda: np.array(np.ones((1, 10, 10))),
         name="img",
         labels={"detectors"},
         save_path=str(tmpdir),
     )
     img2 = Detector2(
-        func=lambda: np.array(np.ones((10, 10))),
+        func=lambda: np.array(np.ones((1, 10, 10))),
         name="img",
         labels={"detectors"},
         save_path=str(tmpdir),
     )
-    uid, = get_uids(RE(count([img1], 5)))
-    c[uid]["primary"]["data"]["img"][:]
-    assert c[uid]["primary"]["data"]["img"].chunks[1] == tuple([2] * 5)
-    uid, = get_uids(RE(count([img2], 5)))
-    c[uid]["primary"]["data"]["img"][:]
-    assert c[uid]["primary"]["data"]["img"].chunks[1] == tuple([2] * 5)
+    uid1, = get_uids(RE(count([img1], 5)))
+    c[uid1]['streams']["primary"]["img"][:]
+
+    uid2, = get_uids(RE(count([img2], 5)))
+    c[uid2]['streams']["primary"]["img"][:]
+
+    assert c[uid1]['streams']["primary"]["img"].chunks[1] == tuple([1] * 10)
+    assert c[uid2]['streams']["primary"]["img"].chunks[1] == tuple([2] * 5)
