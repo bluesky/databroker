@@ -339,4 +339,6 @@ class BlueskyEventStreamV3(BlueskyEventStream, Composite):
         # Go back to the BlueskyRun node and requests the documents
         stream_name = self.metadata.get("stream_name") or self.item["id"]
         bs_run_node = self.parent.parent  # the path is: bs_run_node/streams/current_stream
-        return [doc for doc in bs_run_node.descriptors if doc["name"] == stream_name]
+        return [
+            doc for name, doc in bs_run_node.documents() if name == "descriptor" and doc["name"] == stream_name
+        ]

@@ -82,7 +82,7 @@ async def json_seq_exporter(adapter, metadata, filter_for_access):
 
         # Generate Stream Resources and Datums
         desc_uid = desc_node.metadata()["uid"]
-        for data_key in data_key_names:
+        for data_key in part_names:
             # Loop over data_keys for external data only
             sres_uid = f"sr-{desc_uid}-{data_key}"  # can be anything (unique)
             ds = (await desc_node.lookup_adapter([data_key])).data_sources[0]
@@ -104,7 +104,7 @@ async def json_seq_exporter(adapter, metadata, filter_for_access):
             # Generate a single stream_datum document for the entire stream
             sdat_uid = f"sd-{desc_uid}-{data_key}-0"  # can be anything (unique)
             total_shape = ds.structure.shape
-            datum_shape = desc_node.metadata()[data_key]["shape"]
+            datum_shape = desc_node.metadata()["data_keys"][data_key]["shape"]
 
             max_indx = (
                 total_shape[0] // datum_shape[0] - 1
