@@ -9,6 +9,7 @@ import humanize
 import jinja2
 import os
 from types import SimpleNamespace
+import numpy as np
 
 import xarray
 import event_model
@@ -438,6 +439,9 @@ class Broker:
         ):
             if name == "event":
                 yield doc
+            if name == "event_page":
+                for _, ev in event_model.unpack_event_page(doc):
+                    yield ev
 
     def get_table(
         self,
