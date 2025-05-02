@@ -40,10 +40,10 @@ def build_tiled_sqlite_backed_broker(request):
         f"sqlite:///{tmpdir.name}/catalog.db",
         specs=[{"name": "CatalogOfBlueskyRuns", "version": "3.0"}],
         init_if_not_exists=True,
-        writable_storage={
-            "filesystem": f"{tmpdir.name}/data_files",
-            "sql": f"sqlite:///{tmpdir.name}/tabular_data.db",
-        },
+        writable_storage=[
+            f"{tmpdir.name}/data_files",
+            "sqlite:///{tmpdir.name}/tabular_data.db",
+        ],
     )
     context = Context.from_app(build_app(adapter, serialization_registry=serialization_registry))
     client = from_context(context)
