@@ -1305,8 +1305,8 @@ def test_img_read(db, RE, hw):
         raise pytest.skip("v0 has no v2 accessor")
     c = db.v2
     uid, = get_uids(RE(count([hw.img], 5)))
-    c[uid]["primary"]["data"]["img"][:]
-    c[uid]["primary"]["timestamps"]["img"][:]
+    c.v2[uid]["primary"]["data"]["img"][:]
+    c.v2[uid]["primary"]["timestamps"]["img"][:]
 
 
 def test_direct_img_read(db, RE, hw):
