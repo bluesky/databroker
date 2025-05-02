@@ -550,7 +550,10 @@ class Broker:
                 dict_of_arrays[var_name] = column
             df = pandas.DataFrame(dict_of_arrays)
             # if converting to datetime64 (in utc or 'local' tz)
-            times = dataset["time"][:].data
+            if len(dataset):
+                times = dataset["time"][:].data
+            else:
+                times = np.array([], dtype='datetime64[s]')
             if convert_times or localize_times:
                 times = pandas.to_datetime(times, unit="s")
             # make sure this is a series
