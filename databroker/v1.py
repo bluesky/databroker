@@ -1457,6 +1457,12 @@ class _GetDocumentsRouter:
     def resource(self, doc):
         yield "resource", doc
 
+    def stream_resource(self, doc):
+        yield "stream_resource", doc
+
+    def stream_datum(self, doc):
+        yield "stream_datum", doc
+
 
 _mongo_clients = {}  # cache of pymongo.MongoClient instances
 
