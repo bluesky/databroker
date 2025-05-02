@@ -39,29 +39,24 @@ async def json_seq_exporter(adapter, metadata, filter_for_access):
             data_key_names = part_names
 
         # First (or the only) descriptor
-        desc_doc = desc_meta.get("extra", {})
-        desc_doc["uid"] = desc_meta["uid"]
-        desc_doc["time"] = desc_meta["time"]
+        desc_doc = {k: v for k, v in desc_meta.items() if k not in {"_config_updates"}}
         desc_doc["run_start"] = metadata.get("start", {}).get("uid")
         desc_doc["name"] = desc_name
-        desc_doc["data_keys"] = {key: desc_meta[key] for key in data_key_names if key in desc_meta}
         desc_doc["object_keys"] = defaultdict(list)
         for key, val in desc_doc["data_keys"].items():
             if obj_name := val.get("object_name"):
                 desc_doc["object_keys"][obj_name].append(key)
-        if conf_dict := desc_meta.get("configuration", {}):
-            desc_doc["configuration"] = conf_dict
 
         result.append({"name": "descriptor", "doc": desc_doc})
 
         # Process subsequent descriptors, if any
         desc_time_uids = [{"uid": desc_doc["uid"], "time": desc_doc["time"]}]
-        for rev in desc_meta.get("revisions", []):
+        for upd in desc_meta.get("_config_updates", []):
             desc_doc = copy.deepcopy(desc_doc)
-            desc_doc["uid"] = rev["uid"]
-            desc_doc["time"] = rev["time"]
+            desc_doc["uid"] = upd["uid"]
+            desc_doc["time"] = upd["time"]
             desc_time_uids.append([{"uid": desc_doc["uid"], "time": desc_doc["time"]}])
-            for obj_name, obj in rev.get("configuration", {}).items():
+            for obj_name, obj in upd.get("configuration", {}).items():
                 # This assumes that that the full configuration was present in the first descriptor
                 for key in obj["data"].keys():
                     desc_doc["configuration"][obj_name]["data"][key] = obj["data"][key]
@@ -87,7 +82,7 @@ async def json_seq_exporter(adapter, metadata, filter_for_access):
 
         # Generate Stream Resources and Datums
         desc_uid = desc_node.metadata()["uid"]
-        for data_key in part_names:
+        for data_key in data_key_names:
             # Loop over data_keys for external data only
             sres_uid = f"sr-{desc_uid}-{data_key}"  # can be anything (unique)
             ds = (await desc_node.lookup_adapter([data_key])).data_sources[0]

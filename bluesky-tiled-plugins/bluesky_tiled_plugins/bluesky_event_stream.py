@@ -123,18 +123,6 @@ class BlueskyEventStreamV2SQL(OneShotCachedMap):
 
         return super().__getitem__(key)
 
-    # @staticmethod
-    # def format_config(config, revisions=None, timestamps=False):
-    #     records = config_client.read().to_list()
-    #     values = defaultdict(dict)
-    #     for rec in records:
-    #         if (rec.get("object_name") is not None) and (rec.get("value") is not None):
-    #             values[rec["object_name"]][rec["data_key"]] = (
-    #                 VirtualArrayClient(rec["timestamp"]) if timestamps else VirtualArrayClient(rec["value"])
-    #             )
-    #     result = {k: ConfigDatasetClient(v) for k, v in values.items()}
-    #     return VirtualContainer(result)
-
     @classmethod
     def from_stream_client(cls, stream_client, metadata=None):
         stream_parts = set(stream_client.parts)
@@ -148,16 +136,16 @@ class BlueskyEventStreamV2SQL(OneShotCachedMap):
         # Construct clients for the configuration data
         cf_vals, cf_time = defaultdict(dict), defaultdict(dict)
         if config := stream_client.metadata.get("configuration", {}):
-            revisions = stream_client.metadata.get("revisions", [])
+            updates = stream_client.metadata.get("_config_updates", [])
             for obj_name, obj in config.items():
                 for key in obj["data"].keys():
                     _vs, _ts = [obj["data"][key]], [obj["timestamps"][key]]
 
-                    # Add values and timestamps from revisions
-                    for rev in revisions:
-                        if rev_config := rev.get("configuration", {}):
-                            _vs.append(rev_config.get("data", {}).get(key))
-                            _ts.append(rev_config.get("timestamps", {}).get(key))
+                    # Add values and timestamps from config_updates
+                    for upd in updates:
+                        if upd_config := upd.get("configuration", {}):
+                            _vs.append(upd_config.get("data", {}).get(key))
+                            _ts.append(upd_config.get("timestamps", {}).get(key))
 
                     cf_vals[obj_name][key] = VirtualArrayClient(_vs)
                     cf_time[obj_name][key] = VirtualArrayClient(_ts)
