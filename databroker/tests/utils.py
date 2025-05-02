@@ -42,7 +42,7 @@ def build_tiled_sqlite_backed_broker(request):
         init_if_not_exists=True,
         writable_storage=[
             f"{tmpdir.name}/data_files",
-            "sqlite:///{tmpdir.name}/tabular_data.db",
+            f"sqlite:///{tmpdir.name}/tabular_data.db",
         ],
         # The ophyd.sim img device generates its own directory somewhere
         # in /tmp (or Windows equivalent) and we need that to be readable.
