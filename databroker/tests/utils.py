@@ -44,6 +44,11 @@ def build_tiled_sqlite_backed_broker(request):
             f"{tmpdir.name}/data_files",
             "sqlite:///{tmpdir.name}/tabular_data.db",
         ],
+        # The ophyd.sim img device generates its own directory somewhere
+        # in /tmp (or Windows equivalent) and we need that to be readable.
+        readable_storage=[
+            tempfile.gettempdir(),
+        ]
     )
     context = Context.from_app(build_app(adapter, serialization_registry=serialization_registry))
     client = from_context(context)
