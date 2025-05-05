@@ -1349,10 +1349,10 @@ def test_img_explicit_chunks(db, RE, hw, tmpdir):
             res = super().describe()
             (key,) = res
             shape = res[key]["shape"]
-            res[key]["chunks"] = [[5], [2] * (shape[0] // 2), [shape[1]]]
+            res[key]["chunks"] = [1, 2, shape[1]]
             return res
 
-    img1 = Detector2(
+    img1 = Detector1(
         func=lambda: np.array(np.ones((10, 10))),
         name="img",
         labels={"detectors"},
