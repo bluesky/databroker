@@ -29,14 +29,6 @@ async def json_seq_exporter(adapter, metadata, filter_for_access):
         desc_node = await adapter.lookup_adapter(["streams", desc_name])
         desc_meta = desc_node.metadata()
         part_names = set(await desc_node.keys_range(offset=0, limit=None))  # Composite parts
-        if "internal" in part_names:
-            part_names.remove("internal")
-            internal_node = await desc_node.lookup_adapter(["internal"])
-            columns = internal_node.structure().columns
-            data_key_names = part_names.union(columns).difference(("internal", "time", "seq_num"))
-        else:
-            internal_node = None
-            data_key_names = part_names
 
         # First (or the only) descriptor
         desc_doc = {k: v for k, v in desc_meta.items() if k not in {"_config_updates"}}
@@ -65,11 +57,12 @@ async def json_seq_exporter(adapter, metadata, filter_for_access):
             result.append({"name": "descriptor", "doc": desc_doc})
 
         # Generate events
-        if internal_node:
+        if "internal" in part_names:
+            internal_node = await desc_node.lookup_adapter(["internal"])
             df = await internal_node.read()
             keys = [k for k in df.columns if k not in {"seq_num", "time"} and not k.startswith("ts_")]
             for row in df.to_dict(orient="records"):
-                desc_uid = desc_time_uids[0]["uid"]  # same as desc_node.metadata()["uid"]
+                desc_uid = desc_time_uids[0]["uid"]  # same as desc_node.metadata()["uid"] if no updates
                 for _desc_uid_time in desc_time_uids[1:]:
                     if _desc_uid_time["time"] <= row["time"]:
                         desc_uid = _desc_uid_time["uid"]
@@ -82,7 +75,7 @@ async def json_seq_exporter(adapter, metadata, filter_for_access):
 
         # Generate Stream Resources and Datums
         desc_uid = desc_node.metadata()["uid"]
-        for data_key in part_names:
+        for data_key in part_names.difference(("internal",)):
             # Loop over data_keys for external data only
             sres_uid = f"sr-{desc_uid}-{data_key}"  # can be anything (unique)
             ds = (await desc_node.lookup_adapter([data_key])).data_sources[0]
