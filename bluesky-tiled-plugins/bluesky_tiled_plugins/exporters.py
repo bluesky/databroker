@@ -47,7 +47,7 @@ async def json_seq_exporter(adapter, metadata, filter_for_access):
             desc_doc = copy.deepcopy(desc_doc)
             desc_doc["uid"] = upd["uid"]
             desc_doc["time"] = upd["time"]
-            desc_time_uids.append([{"uid": desc_doc["uid"], "time": desc_doc["time"]}])
+            desc_time_uids.extend([{"uid": desc_doc["uid"], "time": desc_doc["time"]}])
             for obj_name, obj in upd.get("configuration", {}).items():
                 # This assumes that that the full configuration was present in the first descriptor
                 for key in obj["data"].keys():
