@@ -1055,7 +1055,6 @@ def test_sanitize_does_not_modify_array_data_in_place(db_empty):
     assert isinstance(doc['stuff'], np.ndarray)
 
 
-@pytest.mark.xfail(reason="same problem as other test, something is not failing on fill=True")
 def test_fill_and_multiple_streams(db, RE, tmpdir, hw):
     from ophyd import sim
     RE.subscribe(db.insert)

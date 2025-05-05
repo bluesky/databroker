@@ -1013,6 +1013,8 @@ class Header:
         >>> for name, doc in h.documents():
         ...     # do something
         """
+        if fill:
+            raise NotImplementedError("Only fill=False is implemented.")
         gen = self.db.get_documents(
             self, fields=fields, stream_name=stream_name, fill=fill
         )
