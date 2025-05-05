@@ -164,6 +164,11 @@ class Broker:
         "Accessor to the version 2 API."
         return self._catalog
 
+    @property
+    def v3(self):
+        "Accessor to the version 3 API."
+        return self._catalog.v3
+
     @classmethod
     def from_config(cls, config, auto_register=None, name=None):
         raise NotImplementedError(
