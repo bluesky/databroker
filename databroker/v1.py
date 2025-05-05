@@ -308,6 +308,8 @@ class Broker:
         ValueError if any key in `fields` is not in at least one descriptor
         pre header.
         """
+        if fill:
+            raise NotImplementedError("Only fill=False is implemented.")
         if handler_registry is not None:
             raise NotImplementedError(
                 "The handler_registry must be set when "
@@ -429,6 +431,8 @@ class Broker:
                 "the Broker is initialized, usually specified "
                 "in a configuration file."
             )
+        if fill:
+            raise NotImplementedError("Only fill=False is implemented.")
 
         for name, doc in self.get_documents(
             headers,
@@ -1217,6 +1221,8 @@ class Header:
 
         >>> events = list(h.events())
         """
+        if fill:
+            raise NotImplementedError("Only fill=False is implemented.")
         ev_gen = self.db.get_events(
             [self], stream_name=stream_name, fields=fields, fill=fill
         )

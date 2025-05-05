@@ -636,7 +636,7 @@ def test_external_access_without_handler(db, RE, hw):
                 handler_registry={'NPY_SEQ': NumpySeqHandler})
 
 
-@pytest.mark.xfail(reason="Multiple problems with test, see comments")
+@pytest.mark.xfail(reason="SQL storage replays with empty Events")
 def test_external_access_with_handler(db, RE, hw):
     from ophyd.sim import NumpySeqHandler
 
@@ -655,10 +655,7 @@ def test_external_access_with_handler(db, RE, hw):
     # Fetching filled events is no longer supported.
     if hasattr(db, 'v1') or hasattr(db, 'v2'):
         with pytest.raises(NotImplementedError):
-            # there are no events or event pages, which breaks this whole test
-            print(list(db.get_events(h, fields=['img'], fill=True)))
-            # some layer here is supposed to raise on fill=True that is not
-            next(db.get_events(h, fields=['img'], fill=True))
+            list(db.get_events(h, fields=['img'], fill=True))
 
     ev, ev2 = db.get_events(h, fields=['img'])
     assert ev is not ev2
