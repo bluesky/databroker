@@ -1341,7 +1341,7 @@ def test_img_explicit_chunks(db, RE, hw, tmpdir):
             (key,) = res
             shape = res[key]["shape"]
             assert len(shape) == 2
-            res[key]["chunks"] = [[5], [1] * shape[0], [shape[1]]]
+            res[key]["chunks"] = [1, 1, shape[1]]
             return res
 
     class Detector2(sim.SynSignalWithRegistry):
@@ -1365,8 +1365,8 @@ def test_img_explicit_chunks(db, RE, hw, tmpdir):
         save_path=str(tmpdir),
     )
     uid, = get_uids(RE(count([img1], 5)))
-    c[uid]["primary"]["data"]["img"][:]
-    assert c[uid]["primary"]["data"]["img"].chunks[1] == tuple([2] * 5)
+    c.v2[uid]["primary"]["data"]["img"][:]
+    assert c.v2[uid]["primary"]["data"]["img"].chunks[1] == tuple([1] * 10)
     uid, = get_uids(RE(count([img2], 5)))
-    c[uid]["primary"]["data"]["img"][:]
-    assert c[uid]["primary"]["data"]["img"].chunks[1] == tuple([2] * 5)
+    c.v2[uid]["primary"]["data"]["img"][:]
+    assert c.v2[uid]["primary"]["data"]["img"].chunks[1] == tuple([2] * 5)
