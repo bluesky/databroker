@@ -1300,7 +1300,6 @@ def test_update(db, RE, hw):
             c[uid].update_metadata({"start": {"uid": "not allowed to change this"}})
 
 
-@pytest.mark.xfail(reason="something is 'fixing' the shape and adding an extra dimension")
 def test_img_read(db, RE, hw):
     "Test reading 2D data referenced by Datum, Resource."
     RE.subscribe(db.insert)
@@ -1309,7 +1308,9 @@ def test_img_read(db, RE, hw):
     c = db.v2
     uid, = get_uids(RE(count([hw.img], 5)))
     c.v2[uid]["primary"]["data"]["img"][:]
-    c.v2[uid]["primary"]["timestamps"]["img"][:]
+    # External data has no place to put a timestamp.
+    # Timestamps must be provided as their own data_key.
+    # c.v2[uid]["primary"]["timestamps"]["img"][:]
 
 
 def test_direct_img_read(db, RE, hw):
