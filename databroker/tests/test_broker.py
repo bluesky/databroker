@@ -1325,7 +1325,6 @@ def test_direct_img_read(db, RE, hw):
     c[uid]["primary"]["data"]["img"][:]
 
 
-@pytest.mark.xfail(reason="something is 'fixing' the shape and adding an extra dimension")
 def test_img_explicit_chunks(db, RE, hw, tmpdir):
     "Test using explicit chunk size"
     from ophyd import sim
