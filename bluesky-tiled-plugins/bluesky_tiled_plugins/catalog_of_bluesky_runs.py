@@ -10,7 +10,7 @@ from tiled.client.utils import handle_error
 from tiled.queries import Comparison, Eq, Like
 from tiled.utils import safe_json_dump
 
-from .bluesky_run import BlueskyRunV2
+from .bluesky_run import BlueskyRunV2, BlueskyRunV3
 from .queries import RawMongo, ScanIDRange, TimeRange, _PartialUID, _ScanID
 
 
@@ -75,7 +75,9 @@ class CatalogOfBlueskyRuns(Container):
 
     @property
     def v3(self):
-        return self
+        structure_clients = copy.copy(self.structure_clients)
+        structure_clients.set("BlueskyRun", lambda: BlueskyRunV3)
+        return CatalogOfBlueskyRuns(self.context, item=self.item, structure_clients=structure_clients)
 
     @functools.cached_property
     def is_sql(self):
