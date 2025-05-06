@@ -353,8 +353,7 @@ class BlueskyRun(MapAdapter):
     def get_datum_for_resource(self, resource_uid):
         cur = self._datum_collection.find({"resource": resource_uid}, {"_id": False})
         if "datum" in self.transforms:
-            for doc in cur:
-                yield self.transforms["datum"](doc)
+            return (self.transforms["datum"](doc) for doc in cur)
         else:
             return cur
 
