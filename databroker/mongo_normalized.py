@@ -78,10 +78,7 @@ def _try_descr(field_metadata):
             return None
         dtype = StructDtype.from_numpy_dtype(numpy.dtype(descr))
         if dtype.max_depth() > 1:
-            raise RuntimeError(
-                "We can not yet cope with multiple nested structured dtypes.  "
-                f"{descr}"
-            )
+            raise RuntimeError(f"We can not yet cope with multiple nested structured dtypes.  {descr}")
         return dtype
     else:
         return None
@@ -138,9 +135,7 @@ def structure_from_descriptor(descriptor, sub_dict, max_seq_num, unicode_columns
             dt_np = field_metadata.get("dtype_numpy") or field_metadata.get("dtype_str")
             if dtype is not None:
                 if len(shape) > 2:
-                    raise RuntimeError(
-                        "We do not yet support general structured arrays, only 1D ones."
-                    )
+                    raise RuntimeError("We do not yet support general structured arrays, only 1D ones.")
             # if we have a detailed string, trust that
             elif dt_np is not None:
                 dtype = BuiltinDtype.from_numpy_dtype(numpy.dtype(dt_np))
@@ -149,9 +144,7 @@ def structure_from_descriptor(descriptor, sub_dict, max_seq_num, unicode_columns
                 dtype = JSON_DTYPE_TO_MACHINE_DATA_TYPE[field_metadata["dtype"]]
                 if dtype.kind == Kind.unicode:
                     array = unicode_columns[key]
-                    dtype = BuiltinDtype.from_numpy_dtype(
-                        numpy.dtype(f"<U{array.itemsize // 4}")
-                    )
+                    dtype = BuiltinDtype.from_numpy_dtype(numpy.dtype(f"<U{array.itemsize // 4}"))
         else:
             # assert sub_dict == "timestamps"
             shape = tuple((max_seq_num - 1,))
@@ -160,8 +153,9 @@ def structure_from_descriptor(descriptor, sub_dict, max_seq_num, unicode_columns
         numpy_dtype = dtype.to_numpy_dtype()
         if "chunks" in field_metadata:
             # If the Event Descriptor tells us a preferred chunking, use that.
-            suggested_chunks = [tuple(chunk) if isinstance(chunk, list)
-                                else chunk for chunk in field_metadata['chunks']]
+            suggested_chunks = [
+                tuple(chunk) if isinstance(chunk, list) else chunk for chunk in field_metadata["chunks"]
+            ]
         elif (0 in shape) or (numpy_dtype.itemsize == 0):
             # special case to avoid warning from dask
             suggested_chunks = shape
@@ -195,9 +189,7 @@ def structure_from_descriptor(descriptor, sub_dict, max_seq_num, unicode_columns
                 f"dtype={numpy_dtype}"
             ) from err
 
-        structures[key] = ArrayStructure(
-            shape=shape, chunks=chunks, dims=dims, data_type=dtype
-        )
+        structures[key] = ArrayStructure(shape=shape, chunks=chunks, dims=dims, data_type=dtype)
         metadata[key] = {"attrs": attrs}
 
     return structures, metadata
@@ -289,9 +281,7 @@ class BlueskyRun(MapAdapter):
 
     async def replace_metadata(self, metadata=None, specs=None):
         if "start" not in metadata:
-            raise NotImplementedError(
-                "A start document is required when updating metadata."
-            )
+            raise NotImplementedError("A start document is required when updating metadata.")
         elif specs is None:
             raise NotImplementedError("Updating of specs is not yet supported.")
         # Security : Key and relationship checks
@@ -330,9 +320,7 @@ class BlueskyRun(MapAdapter):
                     root_map=self.root_map,
                     inplace=False,
                 )
-                for descriptor in itertools.chain(
-                    *(stream.metadata()["descriptors"] for stream in self.values())
-                ):
+                for descriptor in itertools.chain(*(stream.metadata()["descriptors"] for stream in self.values())):
                     filler("descriptor", descriptor)
                 self._filler = filler
             return self._filler
@@ -363,7 +351,11 @@ class BlueskyRun(MapAdapter):
         )
 
     def get_datum_for_resource(self, resource_uid):
-        return self._datum_collection.find({"resource": resource_uid}, {"_id": False})
+        cur = self._datum_collection.find({"resource": resource_uid}, {"_id": False})
+        if "datum" in self.transforms:
+            return (self.transforms["datum"](doc) for doc in cur)
+        else:
+            return cur
 
     def get_resource(self, uid):
         doc = self._resource_collection.find_one({"uid": uid}, {"_id": False})
@@ -426,12 +418,7 @@ class BlueskyRun(MapAdapter):
                                 yield ("resource", resource)
                                 # Pre-fetch *all* the Datum documents for this resource in one query.
                                 datum_cache.update(
-                                    {
-                                        doc["datum_id"]: doc
-                                        for doc in self.get_datum_for_resource(
-                                            resource_uid
-                                        )
-                                    }
+                                    {doc["datum_id"]: doc for doc in self.get_datum_for_resource(resource_uid)}
                                 )
                                 # Now get the Datum we originally were looking for.
                                 datum = datum_cache.pop(datum_id)
@@ -440,9 +427,7 @@ class BlueskyRun(MapAdapter):
             elif name == "descriptor":
                 # Track which fields ("data keys") hold references to external data.
                 external_fields[doc["uid"]] = {
-                    key
-                    for key, value in doc["data_keys"].items()
-                    if value.get("external")
+                    key for key, value in doc["data_keys"].items() if value.get("external")
                 }
             yield name, doc
         stop_doc = self.metadata()["stop"]
@@ -507,9 +492,7 @@ class BlueskyEventStream(MapAdapter):
         transformed = {}
         transforms = self._run.transforms
         if "descriptor" in transforms:
-            transformed["descriptors"] = [
-                transforms["descriptor"](d) for d in self._metadata["descriptors"]
-            ]
+            transformed["descriptors"] = [transforms["descriptor"](d) for d in self._metadata["descriptors"]]
         metadata = dict(collections.ChainMap(transformed, self._metadata))
         return metadata
 
@@ -537,9 +520,7 @@ class BlueskyEventStream(MapAdapter):
         )
 
     def iter_descriptors_and_events(self):
-        for descriptor in sorted(
-            self.metadata()["descriptors"], key=lambda d: d["time"]
-        ):
+        for descriptor in sorted(self.metadata()["descriptors"], key=lambda d: d["time"]):
             yield ("descriptor", descriptor)
             # TODO Grab paginated chunks.
             events = list(
@@ -661,9 +642,7 @@ class DatasetFromDocuments:
                         ArrayFromDocuments,
                         self,
                         field,
-                        specs=[Spec("xarray_coord")]
-                        if field == "time"
-                        else [Spec("xarray_data_var")],
+                        specs=[Spec("xarray_coord")] if field == "time" else [Spec("xarray_data_var")],
                     )
                     for field in self.array_structures
                 }
@@ -742,9 +721,7 @@ class DatasetFromDocuments:
                 array = raw_array.astype(dtype)
             else:
                 array = raw_array
-            specs = (
-                [Spec("xarray_coord")] if key == "time" else [Spec("xarray_data_var")]
-            )
+            specs = [Spec("xarray_coord")] if key == "time" else [Spec("xarray_data_var")]
             mapping[key] = ArrayAdapter(
                 array,
                 metadata=self.array_metadata[key],
@@ -930,26 +907,20 @@ class DatasetFromDocuments:
                     {
                         "$group": {
                             "_id": "$descriptor",
-                            **{
-                                key: {"$push": f"$doc.{self._sub_dict}.{key}"}
-                                for key in keys
-                            },
+                            **{key: {"$push": f"$doc.{self._sub_dict}.{key}"} for key in keys},
                         },
                     },
                 ]
             )
             (result,) = cursor
-            for key, expected_shape, is_external in zip(
-                keys, expected_shapes, is_externals
-            ):
+            for key, expected_shape, is_external in zip(keys, expected_shapes, is_externals):
                 if expected_shape and (not is_external):
                     validated_column = list(
                         map(
-                            lambda item: self.validate_shape(
-                                key, numpy.asarray(item), expected_shape
-                            ) if 'uid' in inspect.signature(self.validate_shape).parameters
+                            lambda item: self.validate_shape(key, numpy.asarray(item), expected_shape)
+                            if "uid" in inspect.signature(self.validate_shape).parameters
                             else self.validate_shape(
-                                key, numpy.asarray(item), expected_shape, uid=self._run.metadata()['start']['uid']
+                                key, numpy.asarray(item), expected_shape, uid=self._run.metadata()["start"]["uid"]
                             ),
                             result[key],
                         )
@@ -974,9 +945,7 @@ class DatasetFromDocuments:
                     estimated_scalar_row_bytesize += 8
             else:
                 nonscalars.append(key)
-                estimated_nonscalar_row_bytesizes.append(
-                    numpy.prod(data_key["shape"]) * 8
-                )
+                estimated_nonscalar_row_bytesizes.append(numpy.prod(data_key["shape"]) * 8)
 
         # Aim for 8 MB pages to stay safely clear the MongoDB's hard limit
         # of 16 MB.
@@ -1009,9 +978,7 @@ class DatasetFromDocuments:
         # Any arbitrary valid descriptor uid will work; we just need to satisfy
         # the Filler with our mocked Event below. So we pick the first one.
         descriptor_uid = descriptor_uids[0]
-        for key, expected_shape, is_external in zip(
-            keys, expected_shapes, is_externals
-        ):
+        for key, expected_shape, is_external in zip(keys, expected_shapes, is_externals):
             column = columns[key]
             if is_external and (self._sub_dict == "data"):
                 filled_column = []
@@ -1033,9 +1000,7 @@ class DatasetFromDocuments:
                         last_datum_id=None,
                     )
                     filled_data = filled_mock_event["data"][key]
-                    validated_filled_data = self.validate_shape(
-                        key, filled_data, expected_shape
-                    )
+                    validated_filled_data = self.validate_shape(key, filled_data, expected_shape)
                     filled_column.append(validated_filled_data)
                 to_stack[key].extend(filled_column)
             else:
@@ -1068,9 +1033,7 @@ def build_config_xarray(
     raw_columns = {key: [] for key in data_keys}
     for descriptor in event_descriptors:
         for key in data_keys:
-            raw_columns[key].append(
-                descriptor["configuration"][object_name][sub_dict][key]
-            )
+            raw_columns[key].append(descriptor["configuration"][object_name][sub_dict][key])
     # Enforce dtype.
     columns = {}
     for key, column in raw_columns.items():
@@ -1079,18 +1042,14 @@ def build_config_xarray(
         dt_np = field_metadata.get("dtype_numpy") or field_metadata.get("dtype_str")
         if dtype is not None:
             if len(getattr(column[0], "shape", ())) > 2:
-                raise RuntimeError(
-                    "We do not yet support general structured arrays, only 1D ones."
-                )
+                raise RuntimeError("We do not yet support general structured arrays, only 1D ones.")
             numpy_dtype = dtype.to_numpy_dtype()
         # if we have a detailed string, trust that
         elif dt_np is not None:
             numpy_dtype = numpy.dtype(dt_np)
         # otherwise guess!
         else:
-            numpy_dtype = JSON_DTYPE_TO_MACHINE_DATA_TYPE[
-                field_metadata["dtype"]
-            ].to_numpy_dtype()
+            numpy_dtype = JSON_DTYPE_TO_MACHINE_DATA_TYPE[field_metadata["dtype"]].to_numpy_dtype()
         columns[key] = numpy.array(column, dtype=numpy_dtype)
     data_arrays = {}
     dim_counter = itertools.count()
@@ -1207,12 +1166,8 @@ class MongoAdapter(collections.abc.Mapping, IndexersMixin):
             handler_registry = discover_handlers()
         handler_registry = parse_handler_registry(handler_registry)
         # Two different caches with different eviction rules.
-        cache_of_complete_bluesky_runs = cachetools.TTLCache(
-            ttl=cache_ttl_complete, maxsize=100
-        )
-        cache_of_partial_bluesky_runs = cachetools.TTLCache(
-            ttl=cache_ttl_partial, maxsize=100
-        )
+        cache_of_complete_bluesky_runs = cachetools.TTLCache(ttl=cache_ttl_complete, maxsize=100)
+        cache_of_partial_bluesky_runs = cachetools.TTLCache(ttl=cache_ttl_partial, maxsize=100)
         return cls(
             metadatastore_db=metadatastore_db,
             asset_registry_db=asset_registry_db,
@@ -1295,12 +1250,8 @@ class MongoAdapter(collections.abc.Mapping, IndexersMixin):
             handler_registry = discover_handlers()
         handler_registry = parse_handler_registry(handler_registry)
         # Two different caches with different eviction rules.
-        cache_of_complete_bluesky_runs = cachetools.TTLCache(
-            ttl=cache_ttl_complete, maxsize=100
-        )
-        cache_of_partial_bluesky_runs = cachetools.TTLCache(
-            ttl=cache_ttl_partial, maxsize=100
-        )
+        cache_of_complete_bluesky_runs = cachetools.TTLCache(ttl=cache_ttl_complete, maxsize=100)
+        cache_of_partial_bluesky_runs = cachetools.TTLCache(ttl=cache_ttl_partial, maxsize=100)
         return cls(
             metadatastore_db=metadatastore_db,
             asset_registry_db=asset_registry_db,
@@ -1332,9 +1283,7 @@ class MongoAdapter(collections.abc.Mapping, IndexersMixin):
         "This is not user-facing. Use MongoAdapter.from_uri."
         self._run_start_collection = metadatastore_db.get_collection("run_start")
         self._run_stop_collection = metadatastore_db.get_collection("run_stop")
-        self._event_descriptor_collection = metadatastore_db.get_collection(
-            "event_descriptor"
-        )
+        self._event_descriptor_collection = metadatastore_db.get_collection("event_descriptor")
         self._event_collection = metadatastore_db.get_collection("event")
         self._resource_collection = asset_registry_db.get_collection("resource")
         self._datum_collection = asset_registry_db.get_collection("datum")
@@ -1390,9 +1339,7 @@ class MongoAdapter(collections.abc.Mapping, IndexersMixin):
         from suitcase.mongo_normalized import Serializer
 
         if self._serializer is None:
-            self._serializer = Serializer(
-                self._metadatastore_db, self._asset_registry_db
-            )
+            self._serializer = Serializer(self._metadatastore_db, self._asset_registry_db)
 
         return self._serializer
 
@@ -1548,9 +1495,7 @@ class MongoAdapter(collections.abc.Mapping, IndexersMixin):
         results = list(cursor)
         if results:
             (result,) = results
-            cutoff_seq_num = (
-                1 + result["highest_seq_num"]
-            )  # `1 +` because we use a half-open interval
+            cutoff_seq_num = 1 + result["highest_seq_num"]  # `1 +` because we use a half-open interval
         else:
             cutoff_seq_num = 1
         object_names = event_descriptors[0]["object_keys"]
@@ -1664,13 +1609,7 @@ class MongoAdapter(collections.abc.Mapping, IndexersMixin):
                 page_cutoff_query = [
                     {
                         "$or": [
-                            {
-                                name: {
-                                    (
-                                        "$gt" if direction > 0 else "$lt"
-                                    ): last_sorted_values[name]
-                                }
-                            },
+                            {name: {("$gt" if direction > 0 else "$lt"): last_sorted_values[name]}},
                             {
                                 name: last_sorted_values[name],
                                 "_id": {"$gt": last_object_id},
@@ -1697,11 +1636,7 @@ class MongoAdapter(collections.abc.Mapping, IndexersMixin):
             else:
                 this_limit = CURSOR_LIMIT
             # Get another batch and go round again.
-            cursor = (
-                collection.find(query, *args, **kwargs)
-                .sort(self._sorting + [("_id", 1)])
-                .limit(this_limit)
-            )
+            cursor = collection.find(query, *args, **kwargs).sort(self._sorting + [("_id", 1)]).limit(this_limit)
             items.clear()
 
     def _build_mongo_query(self, *queries):
@@ -1713,14 +1648,10 @@ class MongoAdapter(collections.abc.Mapping, IndexersMixin):
 
     def _get_stop_doc(self, run_start_uid):
         "This may return None."
-        return self._run_stop_collection.find_one(
-            {"run_start": run_start_uid}, {"_id": False}
-        )
+        return self._run_stop_collection.find_one({"run_start": run_start_uid}, {"_id": False})
 
     def __iter__(self):
-        for run_start_doc in self._chunked_find(
-            self._run_start_collection, self._build_mongo_query()
-        ):
+        for run_start_doc in self._chunked_find(self._run_start_collection, self._build_mongo_query()):
             yield run_start_doc["uid"]
 
     def __len__(self):
@@ -1758,18 +1689,14 @@ class MongoAdapter(collections.abc.Mapping, IndexersMixin):
             for metadata_key in metadata:
                 group = {"$group": {"_id": f"${metadata_key}", "count": {"$sum": 1}}}
 
-                start_list = list(
-                    self._run_start_collection.aggregate([select, group, project])
-                )
+                start_list = list(self._run_start_collection.aggregate([select, group, project]))
                 for item in start_list:
                     if item["value"] is None:
                         start_list.remove(item)
                 if len(start_list) > 0:
                     data["metadata"][f"start.{metadata_key}"] = start_list
 
-                stop_list = list(
-                    self._run_stop_collection.aggregate([select, group, project])
-                )
+                stop_list = list(self._run_stop_collection.aggregate([select, group, project]))
                 for item in stop_list:
                     if item["value"] is None:
                         stop_list.remove(item)
@@ -1788,9 +1715,7 @@ class MongoAdapter(collections.abc.Mapping, IndexersMixin):
 
         if specs:
             distinct_specs = {
-                "value": [
-                    {"name": BLUESKYRUN_SPEC.name, "version": BLUESKYRUN_SPEC.version}
-                ],
+                "value": [{"name": BLUESKYRUN_SPEC.name, "version": BLUESKYRUN_SPEC.version}],
                 "count": node_size,
             }
             data["specs"] = [distinct_specs]
@@ -1943,9 +1868,7 @@ class SimpleAccessPolicy:
 
 def _get_database(uri):
     if not pymongo.uri_parser.parse_uri(uri)["database"]:
-        raise ValueError(
-            f"Invalid URI: {uri!r} " f"Did you forget to include a database?"
-        )
+        raise ValueError(f"Invalid URI: {uri!r} Did you forget to include a database?")
     else:
         client = pymongo.MongoClient(uri)
         return client.get_database()
@@ -1988,10 +1911,7 @@ def discover_handlers(entrypoint_group_name="databroker.handlers", skip_failures
             handler_class = entrypoint.load()
         except Exception as exc:
             if skip_failures:
-                logger.warning(
-                    f"Skipping {entrypoint!r} which failed to load. "
-                    f"Exception: {exc!r}"
-                )
+                logger.warning(f"Skipping {entrypoint!r} which failed to load. Exception: {exc!r}")
                 continue
             else:
                 raise
@@ -2063,17 +1983,11 @@ def parse_transforms(transforms):
     if transforms is None:
         return
     elif isinstance(transforms, collections.abc.Mapping):
-        allowed_keys = {"start", "stop", "resource", "descriptor"}
+        allowed_keys = {"start", "stop", "resource", "descriptor", "datum"}
         if transforms.keys() - allowed_keys:
-            raise NotImplementedError(
-                f"Transforms for {transforms.keys() - allowed_keys} "
-                f"are not supported."
-            )
+            raise NotImplementedError(f"Transforms for {transforms.keys() - allowed_keys} are not supported.")
     else:
-        raise ValueError(
-            f"Invalid transforms argument {transforms}. "
-            f"transforms must be None or a dictionary."
-        )
+        raise ValueError(f"Invalid transforms argument {transforms}. transforms must be None or a dictionary.")
     return _parse_dict_of_objs_or_importable_strings(transforms)
 
 
@@ -2163,11 +2077,7 @@ def batch_documents(singles, size):
         nonlocal current_uid
         nonlocal current_type
         if name == "event":
-            if (
-                (current_type == "event_page")
-                and (current_uid == doc["descriptor"])
-                and len(cache) < size
-            ):
+            if (current_type == "event_page") and (current_uid == doc["descriptor"]) and len(cache) < size:
                 cache.append(doc)
             elif current_type is None:
                 current_type = "event_page"
@@ -2184,11 +2094,7 @@ def batch_documents(singles, size):
                 current_type = None
                 yield from handle_item(name, doc)
         elif name == "datum":
-            if (
-                (current_type == "datum_page")
-                and (current_uid == doc["resource"])
-                and len(cache) < size
-            ):
+            if (current_type == "datum_page") and (current_uid == doc["resource"]) and len(cache) < size:
                 cache.append(doc)
             elif current_type is None:
                 current_type = "datum_page"
@@ -2241,9 +2147,7 @@ def default_validate_shape(key, data, expected_shape, uid=None):
     if len(data.shape) != len(expected_shape):
         # The number of dimensions are different; padding can't fix this.
         raise BadShapeMetadata(
-            f"For data key {key} "
-            f"shape {data.shape} does not "
-            f"match expected shape {expected_shape}."
+            f"For data key {key} shape {data.shape} does not match expected shape {expected_shape}."
         )
     # Pad at the "end" along any dimension that is too short.
     padding = []
@@ -2252,9 +2156,7 @@ def default_validate_shape(key, data, expected_shape, uid=None):
         # Limit how much padding or trimming we are willing to do.
         if abs(margin) > MAX_SIZE_DIFF:
             raise BadShapeMetadata(
-                f"For data key {key} "
-                f"shape {data.shape} does not "
-                f"match expected shape {expected_shape}."
+                f"For data key {key} shape {data.shape} does not match expected shape {expected_shape}."
             )
         if margin > 0:
             padding.append((0, margin))
@@ -2264,9 +2166,11 @@ def default_validate_shape(key, data, expected_shape, uid=None):
             padding.append((0, 0))
     padded = numpy.pad(data, padding, "edge")
 
-    logger.warning(f"The data.shape: {data.shape} did not match the expected_shape: "
-                   f"{expected_shape} for key: '{key}'. This data has been zero-padded "
-                   "to match the expected_shape! RunStart UID: {uid}")
+    logger.warning(
+        f"The data.shape: {data.shape} did not match the expected_shape: "
+        f"{expected_shape} for key: '{key}'. This data has been zero-padded "
+        "to match the expected_shape! RunStart UID: {uid}"
+    )
 
     return padded
 
