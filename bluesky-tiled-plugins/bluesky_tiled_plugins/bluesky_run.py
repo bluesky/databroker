@@ -268,6 +268,18 @@ class BlueskyRunV3(_BlueskyRunSQL):
 
         return super().__getattr__(key)
 
+    def __repr__(self):
+        metadata = self.metadata
+        datetime_ = datetime.fromtimestamp(metadata["start"]["time"])
+        return (
+            f"<BlueskyRun v{self._version} "
+            f"streams: {set(self._stream_names) or 'NONE'} "
+            f"scan_id={metadata['start'].get('scan_id', 'UNSET')!s} "  # (scan_id is optional in the schema)
+            f"uid={metadata['start']['uid'][:8]!r} "  # truncated uid
+            f"{datetime_.isoformat(sep=' ', timespec='minutes')}"
+            ">"
+        )
+
     @property
     def v1(self):
         "Access to legacy interface"
