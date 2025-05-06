@@ -170,6 +170,8 @@ def get_fields(header, name=None):
 
 DOCT_NAMES = {'resource': 'Resource',
               'datum': 'Datum',
+              'stream_resource': 'StreamResource',
+              'stream_datum': 'StreamDatum',
               'descriptor': 'Event Descriptor',
               'event': 'Event',
               'start': 'Run Start',

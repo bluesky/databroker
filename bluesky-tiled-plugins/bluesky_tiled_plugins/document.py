@@ -12,7 +12,7 @@ class Document(dict):
     Document is an immutable dict subclass.
 
     It is immutable to help consumer code avoid accidentally corrupting data
-    that another part of the cosumer code was expected to use unchanged.
+    that another part of the consumer code was expected to use unchanged.
 
     Subclasses of Document must define __dask_tokenize__. The tokenization
     schemes typically uniquely identify the document based on only a subset of
@@ -80,7 +80,7 @@ class Document(dict):
 
     def __setitem__(self, key, value):
         try:
-            self.__not_a_real_dict
+            self.__not_a_real_dict  # noqa: B018
         except AttributeError:
             # This path is necessary to support un-pickling.
             return dict.__setitem__(self, key, value)

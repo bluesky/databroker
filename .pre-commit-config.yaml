@@ -1,0 +1,24 @@
+files: ^bluesky-tiled-plugins/
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: check-added-large-files
+      - id: check-yaml
+      - id: check-merge-conflict
+
+  - repo: local
+    hooks:
+      - id: ruff
+        name: lint with ruff
+        language: system
+        entry: ruff check --force-exclude --fix
+        types: [python]
+        require_serial: true
+
+      - id: ruff-format
+        name: format with ruff
+        language: system
+        entry: ruff format --force-exclude
+        types: [python]
+        require_serial: true

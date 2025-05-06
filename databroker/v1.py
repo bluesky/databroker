@@ -1,3 +1,4 @@
+import functools
 from collections import defaultdict
 from datetime import datetime
 import pandas
@@ -8,6 +9,7 @@ import humanize
 import jinja2
 import os
 from types import SimpleNamespace
+import numpy as np
 
 import xarray
 import event_model
@@ -162,6 +164,11 @@ class Broker:
         "Accessor to the version 2 API."
         return self._catalog
 
+    @property
+    def v3(self):
+        "Accessor to the version 3 API."
+        return self._catalog.v3
+
     @classmethod
     def from_config(cls, config, auto_register=None, name=None):
         raise NotImplementedError(
@@ -306,6 +313,8 @@ class Broker:
         ValueError if any key in `fields` is not in at least one descriptor
         pre header.
         """
+        if fill:
+            raise NotImplementedError("Only fill=False is implemented.")
         if handler_registry is not None:
             raise NotImplementedError(
                 "The handler_registry must be set when "
@@ -427,6 +436,8 @@ class Broker:
                 "the Broker is initialized, usually specified "
                 "in a configuration file."
             )
+        if fill:
+            raise NotImplementedError("Only fill=False is implemented.")
 
         for name, doc in self.get_documents(
             headers,
@@ -437,6 +448,9 @@ class Broker:
         ):
             if name == "event":
                 yield doc
+            if name == "event_page":
+                for _, ev in event_model.unpack_event_page(doc):
+                    yield ev
 
     def get_table(
         self,
@@ -549,7 +563,10 @@ class Broker:
                 dict_of_arrays[var_name] = column
             df = pandas.DataFrame(dict_of_arrays)
             # if converting to datetime64 (in utc or 'local' tz)
-            times = dataset["time"][:].data
+            if len(dataset):
+                times = dataset["time"][:].data
+            else:
+                times = np.array([], dtype='datetime64[s]')
             if convert_times or localize_times:
                 times = pandas.to_datetime(times, unit="s")
             # make sure this is a series
@@ -769,7 +786,16 @@ class Broker:
         return total_size * 1e-9
 
     def insert(self, name, doc):
-        self.v2.post_document(name, doc)
+        if getattr(self.v2, "is_sql"):
+            self._tiled_writer(name, doc)
+        else:
+            self.v2.post_document(name, doc)
+
+    @functools.cached_property
+    def _tiled_writer(self):
+        from bluesky.callbacks.tiled_writer import TiledWriter
+
+        return TiledWriter(self.v2)
 
     def fill_event(*args, **kwargs):
         raise NotImplementedError(
@@ -798,11 +824,11 @@ class Header:
     """
 
     def __init__(self, run, db):
-        self._run = run
+        self._run = run.v2
         self.db = db
         self.ext = None  # TODO
         self._start = self._run.metadata["start"]
-        self._stop = self._run.metadata["stop"]
+        self._stop = self._run.metadata.get("stop", {})
         self.ext = SimpleNamespace()  # not implemented
 
     @property
@@ -819,8 +845,6 @@ class Header:
 
     @property
     def stop(self):
-        if self._stop is None:
-            self._stop = self._run.metadata["stop"] or {}
         return self.db.prepare_hook("stop", self._stop)
 
     def __eq__(self, other):
@@ -998,6 +1022,8 @@ class Header:
         >>> for name, doc in h.documents():
         ...     # do something
         """
+        if fill:
+            raise NotImplementedError("Only fill=False is implemented.")
         gen = self.db.get_documents(
             self, fields=fields, stream_name=stream_name, fill=fill
         )
@@ -1200,6 +1226,8 @@ class Header:
 
         >>> events = list(h.events())
         """
+        if fill:
+            raise NotImplementedError("Only fill=False is implemented.")
         ev_gen = self.db.get_events(
             [self], stream_name=stream_name, fields=fields, fill=fill
         )
@@ -1448,6 +1476,12 @@ class _GetDocumentsRouter:
 
     def resource(self, doc):
         yield "resource", doc
+
+    def stream_resource(self, doc):
+        yield "stream_resource", doc
+
+    def stream_datum(self, doc):
+        yield "stream_datum", doc
 
 
 _mongo_clients = {}  # cache of pymongo.MongoClient instances

@@ -18,7 +18,7 @@ dependencies = [
   "dask",
   "mongoquery",
   "pytz",
-  "tiled[client] >=0.1.0b4",
+  "tiled[client] >=0.1.0b23",
   "tzlocal",
 ]
 
@@ -47,4 +47,3 @@ version.source = "vcs"
 version.raw-options = { root = ".." }
 version.fallback-version = "0.0.0"
 build.hooks.vcs.version-file = "bluesky_tiled_plugins/_version.py"
-

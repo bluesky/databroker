@@ -12,12 +12,12 @@ mongoquery
 msgpack >=1.0.0
 pims
 pydantic
-pymongo
+pymongo <=4.11
 pytz
 rich
 starlette
 suitcase-mongo >=0.5.0
-tiled[server] >=0.1.0-b13
+tiled[server] >=0.1.0b23
 toolz
 typer
 tzlocal

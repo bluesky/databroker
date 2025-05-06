@@ -1,7 +1,23 @@
-from dataclasses import asdict, dataclass
+"""
+This module defines objects designed to make queries on
+CatalogOfBlueskyRuns convenient.
+
+Older clients used these query object to issue custom query types.
+This requires servers to register custom implementations of those
+query types.
+
+Newer clients use these object as pure client-side conveniences. In
+`CatalogOfBlueskyRuns.search` method, they are decomposed into standard Tiled
+queries, requiring no custom counterpart on the server.
+
+The registration and serialization aspects are (temporarily) retained in order
+to support older clients querying against MongoDB-backed servers.
+"""
+
 import enum
 import warnings
-from typing import List, Optional
+from dataclasses import asdict, dataclass
+from typing import Optional
 
 # Not all of these are used, but import them all
 # for user convenience so everything can be imported from bluesky_tiled_plugins.queries
@@ -34,7 +50,7 @@ class _ScanID:
     Find matches to scan_id(s).
     """
 
-    scan_ids: List[int]
+    scan_ids: list[int]
     duplicates: Duplicates
 
     def __init__(self, *, scan_ids, duplicates):
@@ -104,7 +120,7 @@ class _PartialUID:
     Find matches to (partial) uid(s).
     """
 
-    partial_uids: List[str]
+    partial_uids: list[str]
 
     def encode(self):
         return {"partial_uids": ",".join(str(uid) for uid in self.partial_uids)}
@@ -117,17 +133,6 @@ class _PartialUID:
 def PartialUID(*partial_uids):
     # See comment above with ScanID and _ScanID. Same thinking here.
     return _PartialUID(partial_uids)
-
-
-@register(name="duration")
-@dataclass
-class Duration:
-    """
-    Run a MongoDB query against a given collection.
-    """
-
-    less_than: float
-    greater_than: float
 
 
 def RawMongo(start):
@@ -149,7 +154,8 @@ in a future release of databroker, and its functionality has been limited.
 Instead, use:
 
     Key("{key}") == {value!r}
-"""
+""",
+                stacklevel=2,
             )
             return Key(key) == value
     raise ValueError(
@@ -188,8 +194,9 @@ def _normalize_human_friendly_time(val, tz):
     """
     # {} is placeholder for formats; filled in after def...
 
-    import pytz
     from datetime import datetime
+
+    import pytz
 
     zone = pytz.timezone(tz)  # tz as datetime.tzinfo object
     epoch = pytz.UTC.localize(datetime(1970, 1, 1))
@@ -219,10 +226,10 @@ def _normalize_human_friendly_time(val, tz):
                 check = False
             else:
                 # what else could the type be here?
-                raise TypeError("expected datetime," " got {:r}".format(ts))
+                raise TypeError(f"expected datetime, got {ts:r}")
 
         except NameError:
-            raise ValueError("failed to parse time: " + repr(val))
+            raise ValueError("failed to parse time: " + repr(val)) from None
 
     if check and not isinstance(val, datetime):
         return val

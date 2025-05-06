@@ -1,3 +1,4 @@
+import copy
 import os
 from pathlib import Path
 from subprocess import Popen
@@ -17,12 +18,48 @@ import suitcase.mongo_normalized
 import suitcase.mongo_embedded
 from tiled.client import Context, from_context
 from tiled.server.app import build_app
+from tiled.media_type_registration import default_serialization_registry
+from bluesky_tiled_plugins.exporters import json_seq_exporter
+from tiled.catalog import from_uri
+
 
 def get_uids(result):
     if hasattr(result, "run_start_uids"):
         return result.run_start_uids
     else:
         return result
+
+
+def build_tiled_sqlite_backed_broker(request):
+    serialization_registry = copy.copy(default_serialization_registry)
+    serialization_registry.register(
+        "BlueskyRun", "application/json-seq", json_seq_exporter
+    )
+    tmpdir = tempfile.TemporaryDirectory()
+    adapter = from_uri(
+        f"sqlite:///{tmpdir.name}/catalog.db",
+        specs=[{"name": "CatalogOfBlueskyRuns", "version": "3.0"}],
+        init_if_not_exists=True,
+        writable_storage=[
+            f"{tmpdir.name}/data_files",
+            f"sqlite:///{tmpdir.name}/tabular_data.db",
+        ],
+        # The ophyd.sim img device generates its own directory somewhere
+        # in /tmp (or Windows equivalent) and we need that to be readable.
+        readable_storage=[
+            tempfile.gettempdir(),
+        ]
+    )
+    context = Context.from_app(build_app(adapter, serialization_registry=serialization_registry))
+    client = from_context(context)
+
+    def teardown():
+        context.__exit__()
+        tmpdir.cleanup()
+
+    request.addfinalizer(teardown)
+
+    return client.v1
 
 
 def build_tiled_mongo_backed_broker(request):

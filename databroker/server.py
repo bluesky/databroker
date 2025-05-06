@@ -4,10 +4,10 @@ from typing import Optional
 from jsonschema import ValidationError
 
 from event_model import DocumentNames, schema_validators
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, HTTPException, Request, Security
 import pydantic
 from starlette.responses import StreamingResponse
-from tiled.server.dependencies import SecureEntry
+from tiled.server.dependencies import get_entry
 
 
 class NamedDocument(pydantic.BaseModel):
@@ -23,7 +23,7 @@ router = APIRouter()
 def get_documents(
     request: Request,
     fill: Optional[bool] = False,
-    run=SecureEntry(scopes=["read:data", "read:metadata"]),
+    run=Security(get_entry(), scopes=["read:data", "read:metadata"])
 ):
 
     from .mongo_normalized import BlueskyRun
@@ -65,7 +65,7 @@ def get_documents(
 def post_documents(
     request: Request,
     named_doc: NamedDocument,
-    catalog=SecureEntry(scopes=["write:data", "write:metadata"]),
+    catalog=Security(get_entry(), scopes=["write:data", "write:metadata"]),
 ):
     from .mongo_normalized import MongoAdapter
 

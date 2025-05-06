@@ -4,6 +4,7 @@ import sys
 from databroker.tests.utils import (build_sqlite_backed_broker,
                                     build_legacy_mongo_backed_broker,
                                     build_tiled_mongo_backed_broker,
+                                    build_tiled_sqlite_backed_broker,
                                     )
 import tempfile
 import shutil
@@ -24,6 +25,7 @@ if sys.version_info >= (3, 5):
 param_map = {'sqlite-legacy': build_sqlite_backed_broker,
              'mongo-legacy': build_legacy_mongo_backed_broker,
              'mongo-tiled': build_tiled_mongo_backed_broker,
+             'sqlite-tiled': build_tiled_sqlite_backed_broker,
              }
 params = [
     # Apply the mark pytest.mark.flaky to a *fixture* as shown in
@@ -32,6 +34,7 @@ params = [
     'mongo-legacy',
     'mongo-tiled',
     'sqlite-legacy',
+    'sqlite-tiled',
     # 'jsonl',
 ]
 
