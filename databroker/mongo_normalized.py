@@ -281,7 +281,7 @@ class BlueskyRun(MapAdapter):
 
     async def replace_metadata(self, metadata=None, specs=None, drop_revision=False):
         if drop_revision:
-            raies NotImplementedError("Must use drop_revision=False with databroker.mongo_normalized")
+            raise NotImplementedError("Must use drop_revision=False with databroker.mongo_normalized")
         if "start" not in metadata:
             raise NotImplementedError("A start document is required when updating metadata.")
         elif specs is None:
