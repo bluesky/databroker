@@ -133,6 +133,11 @@ class BlueskyRun(Container):
 
 
 class BlueskyRunV2(BlueskyRun):
+    """A MongoDB-native layout of BlueskyRuns
+
+    This layout has been in use prior to the introduction of SQL backend in May 2025.
+    """
+
     _version = "2.0"
 
     def __new__(cls, context, *, item, structure_clients, **kwargs):
@@ -158,6 +163,9 @@ class BlueskyRunV2(BlueskyRun):
 
     @property
     def v3(self):
+        if not self._is_sql(self.item):
+            raise NotImplementedError("v3 is not available for MongoDB-based BlueskyRun")
+
         structure_clients = copy.copy(self.structure_clients)
         structure_clients.set("BlueskyRun", lambda: BlueskyRunV3)
         return BlueskyRunV3(self.context, item=self.item, structure_clients=structure_clients)
@@ -252,6 +260,8 @@ class BlueskyRunV2SQL(BlueskyRunV2, _BlueskyRunSQL):
 
 
 class BlueskyRunV3(_BlueskyRunSQL):
+    """A BlueskyRun that is backed by a SQL database."""
+
     _version = "3.0"
 
     def __new__(cls, context, *, item, structure_clients, **kwargs):
