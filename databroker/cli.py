@@ -1,4 +1,4 @@
-import ast
+import json
 from typing import List, Optional
 
 import tiled.client
@@ -27,12 +27,14 @@ def parse_dict_arg(arg):
     if arg is None or arg.strip() == '':
         return {}
 
-    result = ast.literal_eval(arg)
-    if isinstance(result, dict):
-        return result
-    else:
-        raise ValueError("Parsed value is not a dictionary.")
-
+    try:
+        result = json.loads(arg)
+        if isinstance(result, dict):
+            return result
+        else:
+            raise ValueError("Parsed value is not a dictionary.")
+    except json.JSONDecodeError as e:
+        raise ValueError(f"Invalid JSON string: {arg}") from e
 
 @admin_app.command("shape-fixer")
 def shape_fix(
