@@ -279,7 +279,9 @@ class BlueskyRun(MapAdapter):
         metadata = dict(collections.ChainMap(transformed, self._metadata))
         return metadata
 
-    async def replace_metadata(self, metadata=None, specs=None):
+    async def replace_metadata(self, metadata=None, specs=None, drop_revision=False):
+        if drop_revision:
+            raise NotImplementedError("Must use drop_revision=False with databroker.mongo_normalized")
         if "start" not in metadata:
             raise NotImplementedError("A start document is required when updating metadata.")
         elif specs is None:
