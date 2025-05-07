@@ -36,6 +36,7 @@ def parse_dict_arg(arg):
     except json.JSONDecodeError as e:
         raise ValueError(f"Invalid JSON string: {arg}") from e
 
+
 @admin_app.command("shape-fixer")
 def shape_fix(
     uri: str,
