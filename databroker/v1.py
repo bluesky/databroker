@@ -223,7 +223,7 @@ class Broker:
         if try_raw:
             try:
                 client = client["raw"]
-            except (ClientError, KeyError):
+            except (ClientError, ValueError, KeyError):
                 pass
         return Broker(client)
 
