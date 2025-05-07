@@ -75,6 +75,9 @@ class CatalogOfBlueskyRuns(Container):
 
     @property
     def v3(self):
+        if not self.is_sql:
+            raise NotImplementedError("v3 is only available for SQL-based catalogs.")
+
         structure_clients = copy.copy(self.structure_clients)
         structure_clients.set("BlueskyRun", lambda: BlueskyRunV3)
         return CatalogOfBlueskyRuns(self.context, item=self.item, structure_clients=structure_clients)

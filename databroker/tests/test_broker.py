@@ -1209,6 +1209,14 @@ def test_run_read_not_implemented(db, RE, hw):
     with pytest.raises(NotImplementedError):
         h.v2.to_dask()
 
+def test_v3_not_implemented(c, RE, hw):
+    RE.subscribe(c.v1.insert)
+    (uid,) = get_uids(RE(count([hw.det], 5)))
+    with pytest.raises(NotImplementedError):
+        c.v3
+    with pytest.raises(NotImplementedError):
+        c[uid].v3
+
 
 def test_run_metadata(db, RE, hw):
     "Find 'start' and 'stop' in the Entry metadata."
