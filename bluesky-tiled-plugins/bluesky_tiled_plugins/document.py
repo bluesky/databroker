@@ -140,6 +140,11 @@ class Resource(Document):
         return ("resource", self["uid"])
 
 
+class StreamResource(Document):
+    def __dask_tokenize__(self):
+        return ("stream_resource", self["uid"])
+
+
 class Descriptor(Document):
     def __dask_tokenize__(self):
         return ("descriptor", self["uid"])
@@ -158,6 +163,11 @@ class EventPage(Document):
 class Datum(Document):
     def __dask_tokenize__(self):
         return ("datum", self["datum_id"])
+
+
+class StreamDatum(Document):
+    def __dask_tokenize__(self):
+        return ("stream_datum", self["uid"])
 
 
 class DatumPage(Document):

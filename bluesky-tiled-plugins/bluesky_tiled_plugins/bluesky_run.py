@@ -6,13 +6,12 @@ import keyword
 import warnings
 from datetime import datetime
 
-from event_model import StreamDatum, StreamResource
 from tiled.client.container import Container
 from tiled.client.utils import handle_error
 
 from ._common import IPYTHON_METHODS
 from .bluesky_event_stream import BlueskyEventStreamV2SQL
-from .document import DatumPage, Descriptor, Event, EventPage, Resource, Start, Stop
+from .document import DatumPage, Descriptor, Event, EventPage, Resource, Start, Stop, StreamDatum, StreamResource
 
 _document_types = {
     "start": Start,
