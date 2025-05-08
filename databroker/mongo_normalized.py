@@ -36,7 +36,7 @@ from tiled.structures.array import (
 from tiled.adapters.mapping import MapAdapter
 from tiled.iterviews import KeysView, ItemsView, ValuesView
 from tiled.query_registration import QueryTranslationRegistry
-from tiled.queries import Contains, Comparison, Eq, FullText, In, NotEq, NotIn, Regex
+from tiled.queries import AccessBlobFilter, Contains, Comparison, Eq, FullText, In, NotEq, NotIn, Regex
 from tiled.adapters.utils import (
     tree_repr,
     IndexersMixin,
@@ -221,6 +221,7 @@ class BlueskyRun(MapAdapter):
         datum_collection,
         resource_collection,
         specs=None,
+        authz_shim=None,
         **kwargs,
     ):
         if specs is None:
@@ -238,6 +239,11 @@ class BlueskyRun(MapAdapter):
         self._serializer = serializer
         self._clear_from_cache = clear_from_cache
         self._filler_creation_lock = threading.RLock()
+        self.authz_shim = authz_shim
+
+    @property
+    def access_blob(self):
+        return self.authz_shim.access_blob_from_metadata(self.metadata())
 
     def __repr__(self):
         metadata = self.metadata
@@ -349,6 +355,7 @@ class BlueskyRun(MapAdapter):
             root_map=self.root_map,
             datum_collection=self._datum_collection,
             resource_collection=self._resource_collection,
+            authz_shim=self.authz_shim,
             **kwargs,
         )
 
@@ -1106,6 +1113,7 @@ class MongoAdapter(collections.abc.Mapping, IndexersMixin):
         cache_ttl_complete=60,  # seconds
         cache_ttl_partial=2,  # seconds
         validate_shape=None,
+        authz_shim=None,
     ):
         """
         Create a MongoAdapter from MongoDB with the "normalized" (original) layout.
@@ -1181,6 +1189,7 @@ class MongoAdapter(collections.abc.Mapping, IndexersMixin):
             metadata=metadata,
             access_policy=access_policy,
             validate_shape=validate_shape,
+            authz_shim=authz_shim,
         )
 
     @classmethod
@@ -1195,6 +1204,7 @@ class MongoAdapter(collections.abc.Mapping, IndexersMixin):
         cache_ttl_complete=60,  # seconds
         cache_ttl_partial=2,  # seconds
         validate_shape=None,
+        authz_shim=None,
     ):
         """
         Create a transient MongoAdapter from backed by "mongomock".
@@ -1265,6 +1275,7 @@ class MongoAdapter(collections.abc.Mapping, IndexersMixin):
             metadata=metadata,
             access_policy=access_policy,
             validate_shape=validate_shape,
+            authz_shim=authz_shim,
         )
 
     def __init__(
@@ -1281,6 +1292,7 @@ class MongoAdapter(collections.abc.Mapping, IndexersMixin):
         sorting=None,
         access_policy=None,
         validate_shape=None,
+        authz_shim=None,
     ):
         "This is not user-facing. Use MongoAdapter.from_uri."
         self._run_start_collection = metadatastore_db.get_collection("run_start")
@@ -1313,6 +1325,14 @@ class MongoAdapter(collections.abc.Mapping, IndexersMixin):
         elif isinstance(validate_shape, str):
             validate_shape = import_object(validate_shape)
         self.validate_shape = validate_shape
+
+        # Patch in compat with the Tiled AuthZ rewrite
+        # https://github.com/bluesky/tiled/pull/963
+        # to tide us over through the migration to SQL.
+        self.authz_shim = import_object(authz_shim)
+        # Make a unique query registry per instance.
+        self.query_registry = copy.deepcopy(MongoAdapter.query_registry)
+        self.query_registry.register(AccessBlobFilter, self.authz_shim.query_impl)
         super().__init__()
 
     @property
@@ -1388,6 +1408,7 @@ class MongoAdapter(collections.abc.Mapping, IndexersMixin):
             sorting=sorting,
             access_policy=self.access_policy,
             validate_shape=self.validate_shape,
+            authz_shim=self.authz_shim,
             **kwargs,
         )
 
@@ -1469,6 +1490,7 @@ class MongoAdapter(collections.abc.Mapping, IndexersMixin):
             root_map=copy.copy(self.root_map),
             datum_collection=self._datum_collection,
             resource_collection=self._resource_collection,
+            authz_shim=self.authz_shim,
         )
 
     def _build_event_stream(self, *, run_start_uid, stream_name, is_complete):
