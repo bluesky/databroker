@@ -250,6 +250,7 @@ class BlueskyRun(MapAdapter):
     def access_blob(self):
         if self.authz_shim:
             return self.authz_shim.bluesky_run_access_blob_from_metadata(self.metadata())
+        return {}
 
     def search(self, query):
         if isinstance(query, AccessBlobFilter):
@@ -297,7 +298,9 @@ class BlueskyRun(MapAdapter):
         metadata = dict(collections.ChainMap(transformed, self._metadata))
         return metadata
 
-    async def replace_metadata(self, metadata=None, specs=None, drop_revision=False):
+    async def replace_metadata(self, metadata=None, specs=None, access_blob=None, drop_revision=False):
+        if access_blob:
+            raise NotImplementedError("Updating access_blob on MongoDB-backed data is not supported.")
         if drop_revision:
             raise NotImplementedError("Must use drop_revision=False with databroker.mongo_normalized")
         if "start" not in metadata:
@@ -531,7 +534,9 @@ class BlueskyEventStream(MapAdapter):
     def key(self):
         return self._metadata["descriptors"][0]["name"]
 
-    async def replace_metadata(self, metadata=None, specs=None, drop_revision=False):
+    async def replace_metadata(self, metadata=None, specs=None, access_blob=None, drop_revision=False):
+        if access_blob:
+            raise NotImplementedError("Updating access_blob on MongoDB-backed data is not supported.")
         if drop_revision:
             raise NotImplementedError("Must use drop_revision=False with databroker.mongo_normalized")
         if "descriptors" not in metadata:
@@ -1374,6 +1379,7 @@ class MongoAdapter(collections.abc.Mapping, IndexersMixin):
     def access_blob(self):
         if self.authz_shim:
             return self.authz_shim.catalog_access_blob
+        return {}
 
     @property
     def database(self):
