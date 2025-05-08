@@ -1064,7 +1064,6 @@ class Config(MapAdapter):
         return super().search(query)
 
 
-
 def build_config_xarray(
     *,
     event_descriptors,
