@@ -320,18 +320,6 @@ class BlueskyRun(MapAdapter):
             self._serializer.update("stop", metadata["stop"])
         self._clear_from_cache()
 
-    async def patch_metadata(self, patch=None, specs=None):
-        if patch is None:
-            patch = []
-        metadata = apply_json_patch(dict(self.metadata()), patch)
-        await self.replace_metadata(metadata=metadata, specs=specs)
-
-    async def merge_metadata(self, patch=None, specs=None):
-        if patch is None:
-            patch = {}
-        metadata = apply_merge_patch(dict(self.metadata()), patch)
-        await self.replace_metadata(metadata=metadata, specs=specs)
-
     @property
     def filler(self):
         # Often multiple requests prompt this to be created in parallel.
