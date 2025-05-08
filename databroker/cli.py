@@ -1,12 +1,12 @@
+import json
 from typing import List, Optional
 
 import tiled.client
 import tiled.server.app
 import typer
-
-from tiled.utils import import_object
 from rich.progress import Progress
-
+from tiled.utils import import_object
+from typing_extensions import Annotated
 
 cli_app = typer.Typer()
 admin_app = typer.Typer()
@@ -15,6 +15,26 @@ cli_app.add_typer(
     name="admin",
     help="Administrative utilities for managing databroker.",
 )
+
+
+def parse_dict_arg(arg):
+    """
+    Parse a string like '{"key1": "value1", "key2": 2}' into a dictionary.
+
+    Returns:
+        dict: The parsed dictionary or an empty dict if arg is None or empty.
+    """
+    if arg is None or arg.strip() == '':
+        return {}
+
+    try:
+        result = json.loads(arg)
+        if isinstance(result, dict):
+            return result
+        else:
+            raise ValueError("Parsed value is not a dictionary.")
+    except json.JSONDecodeError as e:
+        raise ValueError(f"Invalid JSON string: {arg}") from e
 
 
 @admin_app.command("shape-fixer")
@@ -29,6 +49,7 @@ def shape_fix(
     handler: Optional[List[str]] = typer.Option(
         None, help="Handler given as 'SPEC = import_path'"
     ),
+    root_map: Annotated[Optional[dict], typer.Option(parser=parse_dict_arg)] = None,
 ):
     """
     Fix shape metadata in Event Descriptors.
@@ -67,6 +88,10 @@ def shape_fix(
         typer.echo(f"Limited to first {limit} BlueskyRuns only")
         items = items[:limit]
 
+    root_map = root_map if root_map is not None else {}
+    root_map = getattr(adapter, "root_map", {}) | root_map
+    typer.echo(f"Using root map: {root_map}")
+
     app = tiled.server.app.build_app(adapter)
     with tiled.client.Context.from_app(app) as context:
         tiled_client = tiled.client.from_context(context)
@@ -81,7 +106,7 @@ def shape_fix(
                             mds_database,
                             asset_database,
                             descriptor,
-                            adapter.root_map,
+                            root_map,
                             handler_registry,
                             patch_resource=patch_resource,
                         )
