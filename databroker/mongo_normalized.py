@@ -24,7 +24,6 @@ import pymongo.errors
 import toolz.itertoolz
 import xarray
 from event_model import DocumentNames, schema_validators
-from tiled.access_policies import ALL_ACCESS, ALL_SCOPES, NO_ACCESS, SpecialUsers
 from tiled.adapters.array import ArrayAdapter
 from tiled.adapters.xarray import DatasetAdapter
 from tiled.structures.array import (
@@ -249,7 +248,8 @@ class BlueskyRun(MapAdapter):
 
     @functools.cached_property
     def access_blob(self):
-        return self.authz_shim.bluesky_run_access_blob_from_metadata(self.metadata())
+        if self.authz_shim:
+            return self.authz_shim.bluesky_run_access_blob_from_metadata(self.metadata())
 
     def search(self, query):
         if isinstance(query, AccessBlobFilter):
@@ -1147,7 +1147,6 @@ class MongoAdapter(collections.abc.Mapping, IndexersMixin):
         root_map=None,
         transforms=None,
         metadata=None,
-        access_policy=None,
         cache_ttl_complete=60,  # seconds
         cache_ttl_partial=2,  # seconds
         validate_shape=None,
@@ -1225,7 +1224,6 @@ class MongoAdapter(collections.abc.Mapping, IndexersMixin):
             cache_of_complete_bluesky_runs=cache_of_complete_bluesky_runs,
             cache_of_partial_bluesky_runs=cache_of_partial_bluesky_runs,
             metadata=metadata,
-            access_policy=access_policy,
             validate_shape=validate_shape,
             authz_shim=authz_shim,
         )
@@ -1238,7 +1236,6 @@ class MongoAdapter(collections.abc.Mapping, IndexersMixin):
         root_map=None,
         transforms=None,
         metadata=None,
-        access_policy=None,
         cache_ttl_complete=60,  # seconds
         cache_ttl_partial=2,  # seconds
         validate_shape=None,
@@ -1311,7 +1308,6 @@ class MongoAdapter(collections.abc.Mapping, IndexersMixin):
             cache_of_complete_bluesky_runs=cache_of_complete_bluesky_runs,
             cache_of_partial_bluesky_runs=cache_of_partial_bluesky_runs,
             metadata=metadata,
-            access_policy=access_policy,
             validate_shape=validate_shape,
             authz_shim=authz_shim,
         )
@@ -1328,7 +1324,6 @@ class MongoAdapter(collections.abc.Mapping, IndexersMixin):
         metadata=None,
         queries=None,
         sorting=None,
-        access_policy=None,
         validate_shape=None,
         authz_shim=None,
     ):
@@ -1356,7 +1351,6 @@ class MongoAdapter(collections.abc.Mapping, IndexersMixin):
         if sorting is None:
             sorting = [("time", 1)]
         self._sorting = sorting
-        self.access_policy = access_policy
         self._serializer = None
         if validate_shape is None:
             validate_shape = default_validate_shape
@@ -1368,14 +1362,16 @@ class MongoAdapter(collections.abc.Mapping, IndexersMixin):
         # https://github.com/bluesky/tiled/pull/963
         # to tide us over through the migration to SQL.
         self.authz_shim = import_object(authz_shim)
-        # Make a unique query registry per instance.
-        self.query_registry = copy.deepcopy(MongoAdapter.query_registry)
-        self.query_registry.register(AccessBlobFilter, self.authz_shim.query_impl)
-        super().__init__()
+        if self.authz_shim:
+            # Make a unique query registry per instance.
+            self.query_registry = copy.deepcopy(MongoAdapter.query_registry)
+            self.query_registry.register(AccessBlobFilter, self.authz_shim.query_impl)
+            super().__init__()
 
     @property
     def access_blob(self):
-        return self.authz_shim.catalog_access_blob
+        if self.authz_shim:
+            return self.authz_shim.catalog_access_blob
 
     @property
     def database(self):
@@ -1448,7 +1444,6 @@ class MongoAdapter(collections.abc.Mapping, IndexersMixin):
             cache_of_partial_bluesky_runs=self._cache_of_partial_bluesky_runs,
             queries=queries,
             sorting=sorting,
-            access_policy=self.access_policy,
             validate_shape=self.validate_shape,
             authz_shim=self.authz_shim,
             **kwargs,
@@ -1864,72 +1859,6 @@ MongoAdapter.register_query(NotEq, not_eq)
 MongoAdapter.register_query(NotIn, not_in)
 MongoAdapter.register_query(Regex, regex)
 MongoAdapter.register_query(TimeRange, time_range)
-
-
-class SimpleAccessPolicy:
-    """
-    Refer to a mapping of user names to lists of entries they can access.
-
-    By Run Start UID
-    >>> SimpleAccessPolicy({"alice": [<uuid>, <uuid>], "bob": [<uuid>]}, key="uid")
-
-    By Data Session
-    >>> SimpleAccessPolicy({"alice": [<data_session>, key="data_session")
-    """
-
-    ALL = ALL_ACCESS
-
-    def __init__(self, access_lists, *, key, provider, scopes=None):
-        self.access_lists = {}
-        self.key = key
-        self.provider = provider
-        self.scopes = scopes if (scopes is not None) else ALL_SCOPES
-        for key, value in access_lists.items():
-            if isinstance(value, str):
-                value = import_object(value)
-            self.access_lists[key] = value
-
-    def _get_id(self, principal):
-        # Services have no identities; just use the uuid.
-        if principal.type == "service":
-            return str(principal.uuid)
-        # Get the id (i.e. username) of this Principal for the
-        # associated authentication provider.
-        for identity in principal.identities:
-            if identity.provider == self.provider:
-                id = identity.id
-                break
-        else:
-            raise ValueError(
-                f"Principcal {principal} has no identity from provider {self.provider}. "
-                f"Its identities are: {principal.identities}"
-            )
-        return id
-
-    async def allowed_scopes(self, node, principal, path_parts):
-        # The simple policy does not provide for different Principals to
-        # have different scopes on different Nodes. If the Principal has access,
-        # they have the same hard-coded access everywhere.
-        return self.scopes
-
-    async def filters(self, node, principal, scopes, path_parts):
-        if not scopes.issubset(self.scopes):
-            return NO_ACCESS
-        id = self._get_id(principal)
-        access_list = self.access_lists.get(id, [])
-        queries = []
-        if not ((principal is SpecialUsers.admin) or (access_list == self.ALL)):
-            try:
-                allowed = set(access_list or [])
-            except TypeError:
-                # Provide rich debugging info because we have encountered a confusing
-                # bug here in a previous implementation.
-                raise TypeError(
-                    f"Unexpected access_list {access_list} of type {type(access_list)}. "
-                    f"Expected iterable or {self.ALL}, instance of {type(self.ALL)}."
-                )
-            queries.append(In(self.key, allowed))
-        return queries
 
 
 def _get_database(uri):
