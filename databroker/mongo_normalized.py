@@ -16,8 +16,6 @@ import cachetools
 import entrypoints
 import event_model
 from dask.array.core import cached_cumsum, normalize_chunks
-from jsonpatch import apply_patch as apply_json_patch
-from json_merge_patch import merge as apply_merge_patch
 import numpy
 import pymongo
 import pymongo.errors
