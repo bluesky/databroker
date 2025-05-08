@@ -247,7 +247,7 @@ class BlueskyRun(MapAdapter):
         self._filler_creation_lock = threading.RLock()
         self.authz_shim = authz_shim
 
-    @property
+    @functools.cached_property
     def access_blob(self):
         return self.authz_shim.access_blob_from_metadata(self.metadata())
 
