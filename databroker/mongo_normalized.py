@@ -502,7 +502,9 @@ class BlueskyEventStream(MapAdapter):
     def key(self):
         return self._metadata["descriptors"][0]["name"]
 
-    async def replace_metadata(self, metadata=None, specs=None):
+    async def replace_metadata(self, metadata=None, specs=None, drop_revision=False):
+        if drop_revision:
+            raise NotImplementedError("Must use drop_revision=False with databroker.mongo_normalized")
         if "descriptors" not in metadata:
             raise NotImplementedError("Update_metadata method requires descriptors.")
         # Update descriptors
