@@ -246,7 +246,7 @@ class BlueskyRun(MapAdapter):
         return self.authz_shim.access_blob_from_metadata(self.metadata())
 
     def __repr__(self):
-        metadata = self.metadata
+        metadata = self.metadata()
         datetime_ = datetime.fromtimestamp(metadata["start"]["time"])
         return (
             f"<{type(self).__name__} "
