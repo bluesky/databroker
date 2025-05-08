@@ -488,6 +488,10 @@ class BlueskyEventStream(MapAdapter):
         self._cutoff_seq_num = cutoff_seq_num
         self._run = run
 
+    @property
+    def access_blob(self):
+        return self._run.access_blob
+
     def __repr__(self):
         return f"<{type(self).__name__} {set(self)!r} stream_name={self.metadata['stream_name']!r}>"
 
@@ -571,13 +575,14 @@ class ArrayFromDocuments:
 
     structure_family = "array"
 
-    def __init__(self, dataset_adapter, field, specs=None):
+    def __init__(self, dataset_adapter, field, specs=None, access_blob=None):
         self._dataset_adapter = dataset_adapter
         self._field = field
         self._metadata = dataset_adapter.array_metadata[field]
         if specs is None:
             specs = []
         self.specs = specs
+        self.access_blob = access_blob
 
     def metadata(self):
         return self._metadata
@@ -670,11 +675,16 @@ class DatasetFromDocuments:
                         self,
                         field,
                         specs=[Spec("xarray_coord")] if field == "time" else [Spec("xarray_data_var")],
+                        access_blob=self._run.access_blob,
                     )
                     for field in self.array_structures
                 }
             )
         )
+
+    @property
+    def access_blob(self):
+        return self._run.access_blob
 
     def search(self, query):
         if isinstance(query, AccessBlobFilter):
