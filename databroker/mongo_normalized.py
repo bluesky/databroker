@@ -249,7 +249,7 @@ class BlueskyRun(MapAdapter):
 
     @functools.cached_property
     def access_blob(self):
-        return self.authz_shim.access_blob_from_metadata(self.metadata())
+        return self.authz_shim.bluesky_run_access_blob_from_metadata(self.metadata())
 
     def search(self, query):
         if isinstance(query, AccessBlobFilter):
@@ -1363,6 +1363,10 @@ class MongoAdapter(collections.abc.Mapping, IndexersMixin):
         self.query_registry = copy.deepcopy(MongoAdapter.query_registry)
         self.query_registry.register(AccessBlobFilter, self.authz_shim.query_impl)
         super().__init__()
+
+    @property
+    def access_blob(self):
+        return self.authz_shim.catalog_access_blob
 
     @property
     def database(self):
