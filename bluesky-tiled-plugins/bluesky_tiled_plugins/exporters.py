@@ -19,7 +19,7 @@ async def json_seq_exporter(adapter, metadata, filter_for_access):
     else:
         raise ValueError("This exporter only works with BlueskyRun v3.x")
 
-    adapter = await filter_for_access(adapter, path_parts=[])
+    adapter = await filter_for_access(adapter)
     yield json.dumps({"name": "start", "doc": metadata.get("start", {})})
     result = []
 

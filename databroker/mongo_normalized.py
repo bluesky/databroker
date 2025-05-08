@@ -16,15 +16,12 @@ import cachetools
 import entrypoints
 import event_model
 from dask.array.core import cached_cumsum, normalize_chunks
-from jsonpatch import apply_patch as apply_json_patch
-from json_merge_patch import merge as apply_merge_patch
 import numpy
 import pymongo
 import pymongo.errors
 import toolz.itertoolz
 import xarray
 from event_model import DocumentNames, schema_validators
-from tiled.access_policies import ALL_ACCESS, ALL_SCOPES, NO_ACCESS, SpecialUsers
 from tiled.adapters.array import ArrayAdapter
 from tiled.adapters.xarray import DatasetAdapter
 from tiled.structures.array import (
@@ -36,7 +33,7 @@ from tiled.structures.array import (
 from tiled.adapters.mapping import MapAdapter
 from tiled.iterviews import KeysView, ItemsView, ValuesView
 from tiled.query_registration import QueryTranslationRegistry
-from tiled.queries import Contains, Comparison, Eq, FullText, In, NotEq, NotIn, Regex
+from tiled.queries import AccessBlobFilter, Contains, Comparison, Eq, FullText, In, NotEq, NotIn, Regex
 from tiled.adapters.utils import (
     tree_repr,
     IndexersMixin,
@@ -199,6 +196,12 @@ class DatasetMapAdapter(MapAdapter):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
+    def search(self, query):
+        if isinstance(query, AccessBlobFilter):
+            # No access control is applied below the granularity of a BlueskyRun.
+            return self
+        return super().search(query)
+
     def inlined_contents_enabled(self, depth):
         # Tell the server to in-line the description of each array
         # (i.e. data_vars and coords) to avoid latency of a second
@@ -221,6 +224,7 @@ class BlueskyRun(MapAdapter):
         datum_collection,
         resource_collection,
         specs=None,
+        authz_shim=None,
         **kwargs,
     ):
         if specs is None:
@@ -238,9 +242,22 @@ class BlueskyRun(MapAdapter):
         self._serializer = serializer
         self._clear_from_cache = clear_from_cache
         self._filler_creation_lock = threading.RLock()
+        self.authz_shim = authz_shim
+
+    @functools.cached_property
+    def access_blob(self):
+        if self.authz_shim:
+            return self.authz_shim.bluesky_run_access_blob_from_metadata(self.metadata())
+        return {}
+
+    def search(self, query):
+        if isinstance(query, AccessBlobFilter):
+            # No access control is applied below the granularity of a BlueskyRun.
+            return self
+        return super().search(query)
 
     def __repr__(self):
-        metadata = self.metadata
+        metadata = self.metadata()
         datetime_ = datetime.fromtimestamp(metadata["start"]["time"])
         return (
             f"<{type(self).__name__} "
@@ -279,7 +296,9 @@ class BlueskyRun(MapAdapter):
         metadata = dict(collections.ChainMap(transformed, self._metadata))
         return metadata
 
-    async def replace_metadata(self, metadata=None, specs=None, drop_revision=False):
+    async def replace_metadata(self, metadata=None, specs=None, access_blob=None, drop_revision=False):
+        if access_blob:
+            raise NotImplementedError("Updating access_blob on MongoDB-backed data is not supported.")
         if drop_revision:
             raise NotImplementedError("Must use drop_revision=False with databroker.mongo_normalized")
         if "start" not in metadata:
@@ -298,18 +317,6 @@ class BlueskyRun(MapAdapter):
         if stop is not None:
             self._serializer.update("stop", metadata["stop"])
         self._clear_from_cache()
-
-    async def patch_metadata(self, patch=None, specs=None):
-        if patch is None:
-            patch = []
-        metadata = apply_json_patch(dict(self.metadata()), patch)
-        await self.replace_metadata(metadata=metadata, specs=specs)
-
-    async def merge_metadata(self, patch=None, specs=None):
-        if patch is None:
-            patch = {}
-        metadata = apply_merge_patch(dict(self.metadata()), patch)
-        await self.replace_metadata(metadata=metadata, specs=specs)
 
     @property
     def filler(self):
@@ -349,6 +356,7 @@ class BlueskyRun(MapAdapter):
             root_map=self.root_map,
             datum_collection=self._datum_collection,
             resource_collection=self._resource_collection,
+            authz_shim=self.authz_shim,
             **kwargs,
         )
 
@@ -469,8 +477,18 @@ class BlueskyEventStream(MapAdapter):
         self._cutoff_seq_num = cutoff_seq_num
         self._run = run
 
+    @property
+    def access_blob(self):
+        return self._run.access_blob
+
     def __repr__(self):
         return f"<{type(self).__name__} {set(self)!r} stream_name={self.metadata['stream_name']!r}>"
+
+    def search(self, query):
+        if isinstance(query, AccessBlobFilter):
+            # No access control is applied below the granularity of a BlueskyRun.
+            return self
+        return super().search(query)
 
     @property
     def must_revalidate(self):
@@ -502,7 +520,11 @@ class BlueskyEventStream(MapAdapter):
     def key(self):
         return self._metadata["descriptors"][0]["name"]
 
-    async def replace_metadata(self, metadata=None, specs=None):
+    async def replace_metadata(self, metadata=None, specs=None, access_blob=None, drop_revision=False):
+        if access_blob:
+            raise NotImplementedError("Updating access_blob on MongoDB-backed data is not supported.")
+        if drop_revision:
+            raise NotImplementedError("Must use drop_revision=False with databroker.mongo_normalized")
         if "descriptors" not in metadata:
             raise NotImplementedError("Update_metadata method requires descriptors.")
         # Update descriptors
@@ -546,13 +568,14 @@ class ArrayFromDocuments:
 
     structure_family = "array"
 
-    def __init__(self, dataset_adapter, field, specs=None):
+    def __init__(self, dataset_adapter, field, specs=None, access_blob=None):
         self._dataset_adapter = dataset_adapter
         self._field = field
         self._metadata = dataset_adapter.array_metadata[field]
         if specs is None:
             specs = []
         self.specs = specs
+        self.access_blob = access_blob
 
     def metadata(self):
         return self._metadata
@@ -645,11 +668,22 @@ class DatasetFromDocuments:
                         self,
                         field,
                         specs=[Spec("xarray_coord")] if field == "time" else [Spec("xarray_data_var")],
+                        access_blob=self._run.access_blob,
                     )
                     for field in self.array_structures
                 }
             )
         )
+
+    @property
+    def access_blob(self):
+        return self._run.access_blob
+
+    def search(self, query):
+        if isinstance(query, AccessBlobFilter):
+            # No access control is applied below the granularity of a BlueskyRun.
+            return self
+        return super().search(query)
 
     def metadata(self):
         return self._metadata
@@ -1016,7 +1050,11 @@ class Config(MapAdapter):
     MongoAdapter of configuration datasets, keyed on 'object' (e.g. device)
     """
 
-    ...
+    def search(self, query):
+        if isinstance(query, AccessBlobFilter):
+            # No access control is applied below the granularity of a BlueskyRun.
+            return self
+        return super().search(query)
 
 
 def build_config_xarray(
@@ -1102,10 +1140,10 @@ class MongoAdapter(collections.abc.Mapping, IndexersMixin):
         root_map=None,
         transforms=None,
         metadata=None,
-        access_policy=None,
         cache_ttl_complete=60,  # seconds
         cache_ttl_partial=2,  # seconds
         validate_shape=None,
+        authz_shim=None,
     ):
         """
         Create a MongoAdapter from MongoDB with the "normalized" (original) layout.
@@ -1179,8 +1217,8 @@ class MongoAdapter(collections.abc.Mapping, IndexersMixin):
             cache_of_complete_bluesky_runs=cache_of_complete_bluesky_runs,
             cache_of_partial_bluesky_runs=cache_of_partial_bluesky_runs,
             metadata=metadata,
-            access_policy=access_policy,
             validate_shape=validate_shape,
+            authz_shim=authz_shim,
         )
 
     @classmethod
@@ -1191,10 +1229,10 @@ class MongoAdapter(collections.abc.Mapping, IndexersMixin):
         root_map=None,
         transforms=None,
         metadata=None,
-        access_policy=None,
         cache_ttl_complete=60,  # seconds
         cache_ttl_partial=2,  # seconds
         validate_shape=None,
+        authz_shim=None,
     ):
         """
         Create a transient MongoAdapter from backed by "mongomock".
@@ -1263,8 +1301,8 @@ class MongoAdapter(collections.abc.Mapping, IndexersMixin):
             cache_of_complete_bluesky_runs=cache_of_complete_bluesky_runs,
             cache_of_partial_bluesky_runs=cache_of_partial_bluesky_runs,
             metadata=metadata,
-            access_policy=access_policy,
             validate_shape=validate_shape,
+            authz_shim=authz_shim,
         )
 
     def __init__(
@@ -1279,8 +1317,8 @@ class MongoAdapter(collections.abc.Mapping, IndexersMixin):
         metadata=None,
         queries=None,
         sorting=None,
-        access_policy=None,
         validate_shape=None,
+        authz_shim=None,
     ):
         "This is not user-facing. Use MongoAdapter.from_uri."
         self._run_start_collection = metadatastore_db.get_collection("run_start")
@@ -1306,14 +1344,28 @@ class MongoAdapter(collections.abc.Mapping, IndexersMixin):
         if sorting is None:
             sorting = [("time", 1)]
         self._sorting = sorting
-        self.access_policy = access_policy
         self._serializer = None
         if validate_shape is None:
             validate_shape = default_validate_shape
         elif isinstance(validate_shape, str):
             validate_shape = import_object(validate_shape)
         self.validate_shape = validate_shape
-        super().__init__()
+
+        # Patch in compat with the Tiled AuthZ rewrite
+        # https://github.com/bluesky/tiled/pull/963
+        # to tide us over through the migration to SQL.
+        self.authz_shim = import_object(authz_shim)
+        if self.authz_shim:
+            # Make a unique query registry per instance.
+            self.query_registry = copy.deepcopy(MongoAdapter.query_registry)
+            self.query_registry.register(AccessBlobFilter, self.authz_shim.query_impl)
+            super().__init__()
+
+    @property
+    def access_blob(self):
+        if self.authz_shim:
+            return self.authz_shim.catalog_access_blob
+        return {}
 
     @property
     def database(self):
@@ -1386,8 +1438,8 @@ class MongoAdapter(collections.abc.Mapping, IndexersMixin):
             cache_of_partial_bluesky_runs=self._cache_of_partial_bluesky_runs,
             queries=queries,
             sorting=sorting,
-            access_policy=self.access_policy,
             validate_shape=self.validate_shape,
+            authz_shim=self.authz_shim,
             **kwargs,
         )
 
@@ -1469,6 +1521,7 @@ class MongoAdapter(collections.abc.Mapping, IndexersMixin):
             root_map=copy.copy(self.root_map),
             datum_collection=self._datum_collection,
             resource_collection=self._resource_collection,
+            authz_shim=self.authz_shim,
         )
 
     def _build_event_stream(self, *, run_start_uid, stream_name, is_complete):
@@ -1800,72 +1853,6 @@ MongoAdapter.register_query(NotEq, not_eq)
 MongoAdapter.register_query(NotIn, not_in)
 MongoAdapter.register_query(Regex, regex)
 MongoAdapter.register_query(TimeRange, time_range)
-
-
-class SimpleAccessPolicy:
-    """
-    Refer to a mapping of user names to lists of entries they can access.
-
-    By Run Start UID
-    >>> SimpleAccessPolicy({"alice": [<uuid>, <uuid>], "bob": [<uuid>]}, key="uid")
-
-    By Data Session
-    >>> SimpleAccessPolicy({"alice": [<data_session>, key="data_session")
-    """
-
-    ALL = ALL_ACCESS
-
-    def __init__(self, access_lists, *, key, provider, scopes=None):
-        self.access_lists = {}
-        self.key = key
-        self.provider = provider
-        self.scopes = scopes if (scopes is not None) else ALL_SCOPES
-        for key, value in access_lists.items():
-            if isinstance(value, str):
-                value = import_object(value)
-            self.access_lists[key] = value
-
-    def _get_id(self, principal):
-        # Services have no identities; just use the uuid.
-        if principal.type == "service":
-            return str(principal.uuid)
-        # Get the id (i.e. username) of this Principal for the
-        # associated authentication provider.
-        for identity in principal.identities:
-            if identity.provider == self.provider:
-                id = identity.id
-                break
-        else:
-            raise ValueError(
-                f"Principcal {principal} has no identity from provider {self.provider}. "
-                f"Its identities are: {principal.identities}"
-            )
-        return id
-
-    async def allowed_scopes(self, node, principal, path_parts):
-        # The simple policy does not provide for different Principals to
-        # have different scopes on different Nodes. If the Principal has access,
-        # they have the same hard-coded access everywhere.
-        return self.scopes
-
-    async def filters(self, node, principal, scopes, path_parts):
-        if not scopes.issubset(self.scopes):
-            return NO_ACCESS
-        id = self._get_id(principal)
-        access_list = self.access_lists.get(id, [])
-        queries = []
-        if not ((principal is SpecialUsers.admin) or (access_list == self.ALL)):
-            try:
-                allowed = set(access_list or [])
-            except TypeError:
-                # Provide rich debugging info because we have encountered a confusing
-                # bug here in a previous implementation.
-                raise TypeError(
-                    f"Unexpected access_list {access_list} of type {type(access_list)}. "
-                    f"Expected iterable or {self.ALL}, instance of {type(self.ALL)}."
-                )
-            queries.append(In(self.key, allowed))
-        return queries
 
 
 def _get_database(uri):

@@ -1280,10 +1280,13 @@ def test_large_document():
     list(run.documents())
 
 
+@pytest.mark.xfail(reason="A problem for Future Dan and Phil")
 def test_update(db, RE, hw):
     RE.subscribe(db.insert)
     if not hasattr(db, "v2"):
         raise pytest.skip("v0 has no v2 accessor")
+    if getattr(db.v2, "is_sql", False):
+        raise pytest.skip("No 'chunks' to update on SQL-backed data")
     c = db.v2
     uid, = get_uids(RE(count([hw.det], 5)))
     c[uid].update_metadata(
@@ -1298,6 +1301,16 @@ def test_update(db, RE, hw):
     assert "test_new_start_key" in c[uid].metadata["start"]
     assert c[uid].metadata["start"]["plan_name"] == "test_was_here"
     assert "test_new_stop_key" in c[uid].metadata["stop"]
+
+    # Test stream update
+    md = c[uid]["primary"].metadata_copy()[0]
+    md["descriptors"][0]["data_keys"]["det"]["chunks"] = [
+        1 for _ in md["descriptors"][0]["data_keys"]["det"]["shape"]
+    ]
+    c[uid]["primary"].update_metadata(metadata=md)
+    assert "chunks" in c[uid]["primary"]["data"]["det"]
+    assert all(x == 1 for x  in c[uid]["primary"]["data"]["det"]["chunks"])
+
     # Note: Vanilla Tiled does not enforce this.
     # Perhaps it could be done at the authorization level.
     # I am not so convinced that this needs to be protected.

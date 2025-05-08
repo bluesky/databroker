@@ -29,6 +29,9 @@ RESERVED_V3_KEYS = {"configs", "streams", "views", "aux"}
 
 
 class BlueskyRun(Container):
+    _ipython_display_ = None
+    _repr_mimebundle_ = None
+
     def __new__(cls, context, *, item, structure_clients, **kwargs):
         # When inheriting from BlueskyRun, return the class itself
         if cls is not BlueskyRun:
