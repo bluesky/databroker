@@ -16,6 +16,9 @@ TIMESTAMPS = Sentinel("TIMESTAMPS")
 
 
 class BlueskyEventStream(Container):
+    _ipython_display_ = None
+    _repr_mimebundle__ = None
+
     def __new__(cls, context, *, item, structure_clients, **kwargs):
         # When inheriting from BlueskyEventStream, return the class itself
         if cls is not BlueskyEventStream:
