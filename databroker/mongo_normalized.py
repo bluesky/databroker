@@ -199,6 +199,12 @@ class DatasetMapAdapter(MapAdapter):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
+    def search(self, query):
+        if isinstance(query, AccessBlobFilter):
+            # No access control is applied below the granularity of a BlueskyRun.
+            return self
+        return super().search(query)
+
     def inlined_contents_enabled(self, depth):
         # Tell the server to in-line the description of each array
         # (i.e. data_vars and coords) to avoid latency of a second
@@ -244,6 +250,12 @@ class BlueskyRun(MapAdapter):
     @property
     def access_blob(self):
         return self.authz_shim.access_blob_from_metadata(self.metadata())
+
+    def search(self, query):
+        if isinstance(query, AccessBlobFilter):
+            # No access control is applied below the granularity of a BlueskyRun.
+            return self
+        return super().search(query)
 
     def __repr__(self):
         metadata = self.metadata()
@@ -479,6 +491,12 @@ class BlueskyEventStream(MapAdapter):
     def __repr__(self):
         return f"<{type(self).__name__} {set(self)!r} stream_name={self.metadata['stream_name']!r}>"
 
+    def search(self, query):
+        if isinstance(query, AccessBlobFilter):
+            # No access control is applied below the granularity of a BlueskyRun.
+            return self
+        return super().search(query)
+
     @property
     def must_revalidate(self):
         # The keys in this node are *always* stable.
@@ -657,6 +675,12 @@ class DatasetFromDocuments:
                 }
             )
         )
+
+    def search(self, query):
+        if isinstance(query, AccessBlobFilter):
+            # No access control is applied below the granularity of a BlueskyRun.
+            return self
+        return super().search(query)
 
     def metadata(self):
         return self._metadata
@@ -1023,7 +1047,12 @@ class Config(MapAdapter):
     MongoAdapter of configuration datasets, keyed on 'object' (e.g. device)
     """
 
-    ...
+    def search(self, query):
+        if isinstance(query, AccessBlobFilter):
+            # No access control is applied below the granularity of a BlueskyRun.
+            return self
+        return super().search(query)
+
 
 
 def build_config_xarray(
