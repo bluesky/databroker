@@ -22,6 +22,7 @@ import pymongo.errors
 import toolz.itertoolz
 import xarray
 from event_model import DocumentNames, schema_validators
+from typing import Optional
 from tiled.adapters.array import ArrayAdapter
 from tiled.adapters.xarray import DatasetAdapter
 from tiled.structures.array import (
@@ -1789,7 +1790,7 @@ class MongoAdapter(collections.abc.Mapping, IndexersMixin):
     def items(self):
         return ItemsView(lambda: len(self), self._items_slice)
 
-    def _keys_slice(self, start, stop, direction):
+    def _keys_slice(self, start, stop, direction, page_size: Optional[int] = None, **kwargs):
         assert direction == 1, "direction=-1 should be handled by the client"
         skip = start or 0
         if stop is not None:
@@ -1805,7 +1806,7 @@ class MongoAdapter(collections.abc.Mapping, IndexersMixin):
             # TODO Fetch just the uid.
             yield run_start_doc["uid"]
 
-    def _items_slice(self, start, stop, direction):
+    def _items_slice(self, start, stop, direction, page_size: Optional[int] = None, **kwargs):
         assert direction == 1, "direction=-1 should be handled by the client"
         skip = start or 0
         if stop is not None:

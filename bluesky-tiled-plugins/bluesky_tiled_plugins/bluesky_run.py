@@ -5,6 +5,7 @@ import json
 import keyword
 import warnings
 from datetime import datetime
+from typing import Optional
 
 from tiled.client.container import Container
 from tiled.client.utils import handle_error
@@ -232,11 +233,11 @@ class _BlueskyRunSQL(BlueskyRun):
 
 
 class BlueskyRunV2SQL(BlueskyRunV2, _BlueskyRunSQL):
-    def _keys_slice(self, start, stop, direction, **kwargs):
+    def _keys_slice(self, start, stop, direction, page_size: Optional[int] = None, **kwargs):
         keys = reversed(self._stream_names) if direction < 0 else self._stream_names
         return (yield from keys[start:stop])
 
-    def _items_slice(self, start, stop, direction, **kwargs):
+    def _items_slice(self, start, stop, direction, page_size: Optional[int] = None, **kwargs):
         _streams_node = super().get("streams", {})
         for key in reversed(self._stream_names) if direction < 0 else self._stream_names:
             yield key, _streams_node.get(key)
