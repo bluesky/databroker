@@ -8,6 +8,7 @@ import xarray
 from tiled.client.composite import Composite
 from tiled.client.container import DEFAULT_STRUCTURE_CLIENT_DISPATCH, Container
 from tiled.utils import DictView, OneShotCachedMap, Sentinel, node_repr
+from typing import Optional
 
 from ._common import IPYTHON_METHODS
 
@@ -234,10 +235,10 @@ class CompositeSubsetClient(Composite):
     def __repr__(self):
         return node_repr(self, self._keys).replace(type(self).__name__, "DatasetClient")
 
-    def _keys_slice(self, start, stop, direction, _ignore_inlined_contents=False):
+    def _keys_slice(self, start, stop, direction, page_size: Optional[int] = None, **kwargs):
         yield from self._keys[start : stop : -1 if direction < 0 else 1]  # noqa: #203
 
-    def _items_slice(self, start, stop, direction, _ignore_inlined_contents=False):
+    def _items_slice(self, start, stop, direction, page_size: Optional[int] = None, **kwargs):
         for key in self._keys[start : stop : -1 if direction < 0 else 1]:  # noqa: #203
             yield key, self[key]
 
