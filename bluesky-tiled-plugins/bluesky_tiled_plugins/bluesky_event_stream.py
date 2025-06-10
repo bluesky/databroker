@@ -2,13 +2,13 @@ import functools
 import keyword
 import warnings
 from collections import defaultdict
+from typing import Optional
 
 import numpy
 import xarray
 from tiled.client.composite import Composite
 from tiled.client.container import DEFAULT_STRUCTURE_CLIENT_DISPATCH, Container
 from tiled.utils import DictView, OneShotCachedMap, Sentinel, node_repr
-from typing import Optional
 
 from ._common import IPYTHON_METHODS
 

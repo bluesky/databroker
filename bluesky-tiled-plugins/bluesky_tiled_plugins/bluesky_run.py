@@ -5,10 +5,10 @@ import json
 import keyword
 import warnings
 from datetime import datetime
+from typing import Optional
 
 from tiled.client.container import Container
 from tiled.client.utils import handle_error
-from typing import Optional
 
 from ._common import IPYTHON_METHODS
 from .bluesky_event_stream import BlueskyEventStreamV2SQL
