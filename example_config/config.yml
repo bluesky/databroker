@@ -6,3 +6,4 @@ trees:
     uri: mongodb://mongo:27017/example_database
     handler_registry:
       NPY_SEQ: "handlers:NumpySeqHandler"
+      SES_file_format: "handlers:SESHandler"

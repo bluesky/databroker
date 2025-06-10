@@ -18,3 +18,12 @@ class NumpySeqHandler:
             "{name}_{index}.npy".format(name=self._name, **kwargs)
             for kwargs in datum_kwarg_gen
         ]
+
+
+class SESHandler:
+    "Given Resource and Datum, return array."
+    def __init__(self, resource_path):
+        self._resource_path = resource_path
+
+    def __call__(self):
+        return np.loadtxt(self._resource_path)
