@@ -4,10 +4,12 @@ from typing import Optional
 from jsonschema import ValidationError
 
 from event_model import DocumentNames, schema_validators
-from fastapi import APIRouter, HTTPException, Request, Security
+from fastapi import APIRouter, Depends, HTTPException, Request, Security
 import pydantic
 from starlette.responses import StreamingResponse
-from tiled.server.dependencies import get_entry
+from tiled.server.authentication import check_scopes, get_current_principal, get_current_scopes, get_session_state
+from tiled.server.dependencies import get_entry, get_root_tree
+from tiled.type_aliases import Scopes
 
 
 class NamedDocument(pydantic.BaseModel):
@@ -20,13 +22,30 @@ router = APIRouter()
 
 @router.get("/documents/{path:path}", response_model=NamedDocument)
 @router.get("/documents", response_model=NamedDocument, include_in_schema=False)
-def get_documents(
+async def get_documents(
     request: Request,
+    path: str,
+    principal=Depends(get_current_principal),
+    root_tree=Depends(get_root_tree),
+    session_state: dict = Depends(get_session_state),
+    authn_scopes: Scopes = Depends(get_current_scopes),
     fill: Optional[bool] = False,
-    run=Security(get_entry(), scopes=["read:data", "read:metadata"])
+    _=Security(check_scopes, scopes=["read:data", "read:metadata"])
 ):
 
     from .mongo_normalized import BlueskyRun
+
+    run = await get_entry(
+        path,
+        ["read:data", "read:metadata"],
+        principal,
+        authn_scopes,
+        root_tree,
+        session_state,
+        request.state.metrics,
+        None,
+        getattr(request.app.state, "access_policy", None),
+    )
 
     if not isinstance(run, BlueskyRun):
         raise HTTPException(status_code=404, detail="This is not a BlueskyRun.")
@@ -62,12 +81,30 @@ def get_documents(
 
 @router.post("/documents/{path:path}")
 @router.post("/documents", include_in_schema=False)
-def post_documents(
+async def post_documents(
     request: Request,
     named_doc: NamedDocument,
-    catalog=Security(get_entry(), scopes=["write:data", "write:metadata"]),
+    path: str,
+    principal=Depends(get_current_principal),
+    root_tree=Depends(get_root_tree),
+    session_state: dict = Depends(get_session_state),
+    authn_scopes: Scopes = Depends(get_current_scopes),
+    fill: Optional[bool] = False,
+    _=Security(check_scopes, scopes=["write:data", "write:metadata"])
 ):
     from .mongo_normalized import MongoAdapter
+
+    catalog = await get_entry(
+        path,
+        ["write:data", "write:metadata"],
+        principal,
+        authn_scopes,
+        root_tree,
+        session_state,
+        request.state.metrics,
+        None,
+        getattr(request.app.state, "access_policy", None),
+    )
 
     # Check that this is a BlueskyRun.
     if not isinstance(catalog, MongoAdapter):
