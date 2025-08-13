@@ -23,11 +23,13 @@ jobs:
       - uses: hynek/build-and-inspect-python-package@v2
         with:
           path: .
+          dist-dir: dist/databroker
           upload-name-suffix: "-databroker"
 
       - uses: hynek/build-and-inspect-python-package@v2
         with:
           path: bluesky-tiled-plugins/
+          dist-dir: dist/bluesky-tiled-plugins
           upload-name-suffix: "-bluesky-tiled-plugins"
 
   publish:
@@ -42,11 +44,11 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           name: Packages-databroker
-          path: dist
+          path: dist/databroker
 
       - uses: actions/download-artifact@v4
         with:
           name: Packages-bluesky-tiled-plugins
-          path: dist
+          path: dist/bluesky-tiled-plugins
 
       - uses: pypa/gh-action-pypi-publish@release/v1
