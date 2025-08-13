@@ -24,7 +24,7 @@ jobs:
           upload-name-suffix: "-databroker"
 
   publish-databroker:
-    needs: [dist]
+    needs: [dist-databroker]
     environment: pypi
     permissions:
       id-token: write
@@ -55,7 +55,7 @@ jobs:
           upload-name-suffix: "-bluesky-tiled-plugins"
 
   publish-plugins:
-    needs: [dist]
+    needs: [dist-plugins]
     environment: pypi
     permissions:
       id-token: write
