@@ -11,27 +11,20 @@ on:
       - published
 
 jobs:
-  dist:
+  dist-databroker:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      # Build two packages: databroker and bluesky-tiled-plugins.
-
       - uses: hynek/build-and-inspect-python-package@v2
         with:
           path: .
           upload-name-suffix: "-databroker"
 
-      - uses: hynek/build-and-inspect-python-package@v2
-        with:
-          path: bluesky-tiled-plugins/
-          upload-name-suffix: "-bluesky-tiled-plugins"
-
-  publish:
-    needs: [dist]
+  publish-databroker:
+    needs: [dist-databroker]
     environment: pypi
     permissions:
       id-token: write
@@ -43,6 +36,33 @@ jobs:
         with:
           name: Packages-databroker
           path: dist
+
+      - uses: pypa/gh-action-pypi-publish@release/v1
+
+      - name: Cleanup dist folder
+        run: rm -rf dist
+
+  dist-plugins:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: hynek/build-and-inspect-python-package@v2
+        with:
+          path: bluesky-tiled-plugins/
+          upload-name-suffix: "-bluesky-tiled-plugins"
+
+  publish-plugins:
+    needs: [dist-plugins]
+    environment: pypi
+    permissions:
+      id-token: write
+    runs-on: ubuntu-latest
+    if: github.event_name == 'release' && github.event.action == 'published'
+
+    steps:
 
       - uses: actions/download-artifact@v4
         with:
