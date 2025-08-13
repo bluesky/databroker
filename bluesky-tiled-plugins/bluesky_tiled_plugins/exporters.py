@@ -3,7 +3,7 @@ import json
 from collections import defaultdict
 
 
-async def json_seq_exporter(adapter, metadata, filter_for_access):
+async def json_seq_exporter(mimetype, adapter, metadata, filter_for_access):
     """
     Export BlueskyRun is newline-delimited sequence of JSON.
 
