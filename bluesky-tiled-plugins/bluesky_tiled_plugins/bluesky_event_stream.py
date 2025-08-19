@@ -6,7 +6,7 @@ from typing import Optional
 
 import numpy
 import xarray
-from tiled.client.composite import Composite
+from tiled.client.composite import CompositeClient
 from tiled.client.container import DEFAULT_STRUCTURE_CLIENT_DISPATCH, Container
 from tiled.utils import DictView, OneShotCachedMap, Sentinel, node_repr
 
@@ -130,11 +130,11 @@ class BlueskyEventStreamV2SQL(OneShotCachedMap):
 
     @classmethod
     def from_stream_client(cls, stream_client, metadata=None):
-        stream_parts = set(stream_client.parts)
+        stream_parts = set(stream_client.base.keys())
         data_keys = [k for k in stream_parts if k != "internal"]
         ts_keys = ["time"]
         if "internal" in stream_parts:
-            internal_cols = stream_client.parts["internal"].columns
+            internal_cols = stream_client.base["internal"].columns
             data_keys += [col for col in internal_cols if col != "seq_num" and not col.startswith("ts_")]
             ts_keys += [col for col in internal_cols if col.startswith("ts_")]
 
@@ -225,7 +225,7 @@ class ConfigDatasetClient(DictView):
         return xarray.Dataset.from_dict(d)
 
 
-class CompositeSubsetClient(Composite):
+class CompositeSubsetClient(CompositeClient):
     """A composite client with only a subset of its keys exposed."""
 
     def __init__(self, client, keys=None):
@@ -318,7 +318,7 @@ class VirtualArrayClient:
         return self._dims
 
 
-class BlueskyEventStreamV3(BlueskyEventStream, Composite):
+class BlueskyEventStreamV3(BlueskyEventStream, CompositeClient):
     def __repr__(self):
         stream_name = self.metadata.get("stream_name") or self.item["id"]
         return f"<BlueskyEventStream {self._var_keys!r} stream_name={stream_name!r}>"
