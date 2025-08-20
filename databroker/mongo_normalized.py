@@ -10,6 +10,7 @@ import logging
 import os
 import sys
 import threading
+from types import SimpleNamespace
 
 from bson.objectid import ObjectId, InvalidId
 import cachetools
@@ -244,6 +245,7 @@ class BlueskyRun(MapAdapter):
         self._clear_from_cache = clear_from_cache
         self._filler_creation_lock = threading.RLock()
         self.authz_shim = authz_shim
+        self.node = SimpleNamespace(key=self.key)
 
     @functools.cached_property
     def access_blob(self):
@@ -477,6 +479,7 @@ class BlueskyEventStream(MapAdapter):
         self._event_collection = event_collection
         self._cutoff_seq_num = cutoff_seq_num
         self._run = run
+        self.node = SimpleNamespace(key=self.key)
 
     @property
     def access_blob(self):
