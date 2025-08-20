@@ -1286,6 +1286,14 @@ def test_update(db, RE, hw):
         raise pytest.skip("v0 has no v2 accessor")
     if getattr(db.v2, "is_sql", False):
         raise pytest.skip("No 'chunks' to update on SQL-backed data")
+
+    class AuthZShim:
+        def bluesky_run_access_blob_from_metadata(self, metadata):
+            return {"tags": ["example"]}
+
+    authz_shim = AuthZShim()
+    db.v2.context.http_client.app.state.root_tree.authz_shim = authz_shim
+
     c = db.v2
     uid, = get_uids(RE(count([hw.det], 5)))
     c[uid].update_metadata(
