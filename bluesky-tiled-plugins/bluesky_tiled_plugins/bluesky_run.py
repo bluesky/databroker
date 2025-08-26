@@ -252,6 +252,9 @@ class BlueskyRunV2SQL(BlueskyRunV2, _BlueskyRunSQL):
             stream_container = super().get("streams", {}).get(key)
             return BlueskyEventStreamV2SQL.from_stream_client(stream_container)
 
+        if isinstance(key, tuple):
+            key = "/".join(key)
+
         if "/" in key:
             key, rest = key.split("/", 1)
             return self[key][rest]
