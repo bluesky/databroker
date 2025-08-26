@@ -219,6 +219,26 @@ class _BlueskyRunSQL(BlueskyRun):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
+    def __getitem__(self, key):
+        if isinstance(key, tuple):
+            key = "/".join(key)
+
+        if "/" in key:
+            key, rest = key.split("/", 1)
+            stream_container = self[key]
+            try:
+                return stream_container[rest]
+            except KeyError as e:
+                try:
+                    # The requested key might be a column in the "internal" table
+                    rest = rest.split("/")
+                    rest.insert(-1, "internal")
+                    return stream_container["/".join(rest)]
+                except KeyError:
+                    raise KeyError(f"Key '{rest[-1]}' not found in the BlueskyRun container") from e
+
+        return super().__getitem__(key)
+
     @functools.cached_property
     def _stream_names(self):
         return sorted(self.get("streams", ()))
@@ -251,13 +271,6 @@ class BlueskyRunV2SQL(BlueskyRunV2, _BlueskyRunSQL):
         if key in self._stream_names:
             stream_container = super().get("streams", {}).get(key)
             return BlueskyEventStreamV2SQL.from_stream_client(stream_container)
-
-        if isinstance(key, tuple):
-            key = "/".join(key)
-
-        if "/" in key:
-            key, rest = key.split("/", 1)
-            return self[key][rest]
 
         return super().__getitem__(key)
 
