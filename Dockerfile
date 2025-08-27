@@ -1,18 +1,7 @@
-FROM ghcr.io/bluesky/tiled:0.1.0-b35 as base
+FROM ghcr.io/bluesky/tiled:0.1.0-b36 as base
 
-FROM base as builder
-
-# We need git at build time in order for versioneer to work. This
-# does not leak out of the API (at this time) but it seems useful
-# to have it correctly reported in the build logs.
-RUN apt-get -y update && apt-get install -y git
-
-WORKDIR /code
-COPY . .
-RUN pip install .[back-compat,server]
-
-FROM base as runner
-
-ENV VIRTUAL_ENV=/opt/venv
-ENV PATH="$VIRTUAL_ENV/bin:$PATH"
-COPY --from=builder $VIRTUAL_ENV $VIRTUAL_ENV
+USER root
+COPY . /databroker-src/
+RUN python -m ensurepip
+RUN python -m pip install "/databroker-src[back-compat,server]"
+USER app
