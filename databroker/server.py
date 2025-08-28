@@ -34,6 +34,7 @@ async def get_documents(
     principal=Depends(get_current_principal),
     root_tree=Depends(get_root_tree),
     session_state: dict = Depends(get_session_state),
+    authn_access_tags: Optional[Set[str]] = Depends(get_current_access_tags),
     authn_scopes: Scopes = Depends(get_current_scopes),
     fill: Optional[bool] = False,
     _=Security(check_scopes, scopes=["read:data", "read:metadata"])
@@ -45,6 +46,7 @@ async def get_documents(
         path,
         ["read:data", "read:metadata"],
         principal,
+        authn_access_tags,
         authn_scopes,
         root_tree,
         session_state,
