@@ -1,13 +1,19 @@
 import json
 import msgpack
-from typing import Optional
+from typing import Optional, Set
 from jsonschema import ValidationError
 
 from event_model import DocumentNames, schema_validators
 from fastapi import APIRouter, Depends, HTTPException, Request, Security
 import pydantic
 from starlette.responses import StreamingResponse
-from tiled.server.authentication import check_scopes, get_current_principal, get_current_scopes, get_session_state
+from tiled.server.authentication import (
+    check_scopes,
+    get_current_access_tags,
+    get_current_principal,
+    get_current_scopes,
+    get_session_state
+)
 from tiled.server.dependencies import get_entry, get_root_tree
 from tiled.type_aliases import Scopes
 
@@ -28,6 +34,7 @@ async def get_documents(
     principal=Depends(get_current_principal),
     root_tree=Depends(get_root_tree),
     session_state: dict = Depends(get_session_state),
+    authn_access_tags: Optional[Set[str]] = Depends(get_current_access_tags),
     authn_scopes: Scopes = Depends(get_current_scopes),
     fill: Optional[bool] = False,
     _=Security(check_scopes, scopes=["read:data", "read:metadata"])
@@ -39,6 +46,7 @@ async def get_documents(
         path,
         ["read:data", "read:metadata"],
         principal,
+        authn_access_tags,
         authn_scopes,
         root_tree,
         session_state,
@@ -88,6 +96,7 @@ async def post_documents(
     principal=Depends(get_current_principal),
     root_tree=Depends(get_root_tree),
     session_state: dict = Depends(get_session_state),
+    authn_access_tags: Optional[Set[str]] = Depends(get_current_access_tags),
     authn_scopes: Scopes = Depends(get_current_scopes),
     fill: Optional[bool] = False,
     _=Security(check_scopes, scopes=["write:data", "write:metadata"])
@@ -98,6 +107,7 @@ async def post_documents(
         path,
         ["write:data", "write:metadata"],
         principal,
+        authn_access_tags,
         authn_scopes,
         root_tree,
         session_state,
