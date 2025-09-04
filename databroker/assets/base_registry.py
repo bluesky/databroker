@@ -52,16 +52,10 @@ def open_resource_file(
         with as_file(files(package) / resource) as path:
             with open(path, 'r', encoding='utf-8') as fin:
                 yield fin
-        return
     else:
         path = resource_filename(package, resource)
         with open(path, 'r', encoding='utf-8') as fin:
             yield fin
-        return
-
-    raise RuntimeError(
-        f"Could not open {resource = } from package {package = }"
-    )
 
 
 class BaseRegistryRO(object):
