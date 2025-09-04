@@ -11,13 +11,57 @@ import boltons.cacheutils
 from . import core
 import warnings
 from ..utils import ensure_path_exists
-from pkg_resources import resource_filename
 import json
 from .utils import _ChainMap
 from .handlers_base import DuplicateHandler
 
 
 logger = logging.getLogger(__name__)
+
+
+@contextmanager
+def open_resource_file(
+    package: str,  # ModuleType
+    resource: str,  # os.PathLike
+):
+    """Context manager to open a resource file.
+
+    Parameters
+    ----------
+    package : str (ModuleType)
+        The package containing the resource.
+    resource : str (os.PathLike)
+        The resource to open.
+
+    Yields
+    ------
+    file : TextIO
+        A text file-like object for the resource.
+    """
+    use_importlib = True
+    try:
+        from importlib.resources import as_file, files
+    except ImportError:  # pragma: no cover
+        try:
+            from importlib_resources import as_file, files
+        except ImportError:  # pragma: no cover
+            from pkg_resources import resource_filename
+            use_importlib = False
+
+    if use_importlib:
+        with as_file(files(package) / resource) as path:
+            with open(path, 'r', encoding='utf-8') as fin:
+                yield fin
+        return
+    else:
+        path = resource_filename(package, resource)
+        with open(path, 'r', encoding='utf-8') as fin:
+            yield fin
+        return
+
+    raise RuntimeError(
+        f"Could not open {resource = } from package {package = }"
+    )
 
 
 class BaseRegistryRO(object):
@@ -75,11 +119,9 @@ class BaseRegistryRO(object):
         base_name = 'schemas/'
         resource_name = '{}{}_resource.json'.format(base_name, spec_name)
         datum_name = '{}{}_datum.json'.format(base_name, spec_name)
-        with open(resource_filename('databroker.assets',
-                                    resource_name), 'r') as fin:
+        with open_resource_file('databroker.assets', resource_name) as fin:
             tmp_dict['resource'] = json.load(fin)
-        with open(resource_filename('databroker.assets',
-                                    datum_name), 'r') as fin:
+        with open_resource_file('databroker.assets', datum_name) as fin:
             tmp_dict['datum'] = json.load(fin)
         KNOWN_SPEC[spec_name] = tmp_dict
 
