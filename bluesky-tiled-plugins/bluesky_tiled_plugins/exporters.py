@@ -24,9 +24,16 @@ async def json_seq_exporter(mimetype, adapter, metadata, filter_for_access):
     result = []
 
     # Generate descriptors
-    stream_names = await (await adapter.lookup_adapter(["streams"])).keys_range(offset=0, limit=None)
+    stream_names = await adapter.keys_range(offset=0, limit=None)
+    if "streams" in stream_names:
+        # Check for backward compatibility with the old layout (with an intermediate "streams" node)
+        streams_adapter = await adapter.lookup_adapter(["streams"])
+        if "BlueskyEventStream" not in {s.name for s in streams_adapter.specs}:
+            adapter = streams_adapter
+            stream_names = await adapter.keys_range(offset=0, limit=None)
+
     for desc_name in stream_names:
-        desc_node = await adapter.lookup_adapter(["streams", desc_name])
+        desc_node = await adapter.lookup_adapter([desc_name])
         desc_meta = desc_node.metadata()
         part_names = set(await desc_node.keys_range(offset=0, limit=None))  # Composite parts
 

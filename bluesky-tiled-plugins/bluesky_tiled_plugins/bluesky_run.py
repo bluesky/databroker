@@ -240,8 +240,21 @@ class _BlueskyRunSQL(BlueskyRun):
         return super().__getitem__(key)
 
     @functools.cached_property
+    def _has_streams_namespace(self):
+        return ("streams" in self) and ("BlueskyEventStream" not in {s.name for s in self["streams"].specs})
+
+    @functools.cached_property
+    def _streams_node(self):
+        # Access to the "streams" namespace (possibly a separate container)
+        if self._has_streams_namespace:
+            return self["streams"]
+        else:
+            # No intermediate "streams" node, use the top-level node
+            return self
+
+    @functools.cached_property
     def _stream_names(self):
-        return sorted(self.get("streams", ()))
+        return sorted(k for k in self._streams_node)
 
     def documents(self, fill=False):
         with io.BytesIO() as buffer:
@@ -254,14 +267,20 @@ class _BlueskyRunSQL(BlueskyRun):
 
 class BlueskyRunV2SQL(BlueskyRunV2, _BlueskyRunSQL):
     def _keys_slice(self, start, stop, direction, page_size: Optional[int] = None, **kwargs):
-        keys = reversed(self._stream_names) if direction < 0 else self._stream_names
-        return (yield from keys[start:stop])
+        if self._has_streams_namespace:
+            keys = reversed(self._stream_names) if direction < 0 else self._stream_names
+            return (yield from keys[start:stop])
+        else:
+            return (yield from super()._keys_slice(start, stop, direction, page_size=page_size, **kwargs))
 
     def _items_slice(self, start, stop, direction, page_size: Optional[int] = None, **kwargs):
-        _streams_node = super().get("streams", {})
-        for key in reversed(self._stream_names) if direction < 0 else self._stream_names:
-            yield key, _streams_node.get(key)
-        return
+        if self._has_streams_namespace:
+            _streams_node = super().get("streams", {})
+            for key in reversed(self._stream_names) if direction < 0 else self._stream_names:
+                yield key, _streams_node.get(key)
+            return
+        else:
+            return (yield from super()._items_slice(start, stop, direction, page_size=page_size, **kwargs))
 
     def __getitem__(self, key):
         # For v3, we need to handle the streams and configs keys
@@ -269,7 +288,9 @@ class BlueskyRunV2SQL(BlueskyRunV2, _BlueskyRunSQL):
             return super().__getitem__(key)
 
         if key in self._stream_names:
-            stream_container = super().get("streams", {}).get(key)
+            stream_container = (
+                super().get("streams", {}).get(key) if self._has_streams_namespace else super().get(key)
+            )
             return BlueskyEventStreamV2SQL.from_stream_client(stream_container)
 
         return super().__getitem__(key)
@@ -293,7 +314,7 @@ class BlueskyRunV3(_BlueskyRunSQL):
     def __getattr__(self, key):
         if key in self._stream_names:
             # A shortcut to the stream data
-            return self["streams"][key]
+            return self["streams"][key] if self._has_streams_namespace else self[key]
 
         return super().__getattr__(key)
 
