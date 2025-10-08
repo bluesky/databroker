@@ -7,6 +7,7 @@ import warnings
 from datetime import datetime
 from typing import Optional
 
+from tiled.client.composite import CompositeClient
 from tiled.client.container import Container
 from tiled.client.utils import handle_error
 
@@ -25,8 +26,6 @@ _document_types = {
     "stream_resource": StreamDatum,
     "stream_datum": StreamResource,
 }
-
-RESERVED_V3_KEYS = {"configs", "streams", "views", "aux"}
 
 
 class BlueskyRun(Container):
@@ -223,38 +222,77 @@ class _BlueskyRunSQL(BlueskyRun):
         if isinstance(key, tuple):
             key = "/".join(key)
 
-        if "/" in key:
-            key, rest = key.split("/", 1)
-            stream_container = self[key]
+        base_class = super()  # The base Container class
+
+        def _base_getitem(key):
+            # Try to get the item directly from the new container layout. Consider nested keys.
             try:
-                return stream_container[rest]
+                return base_class.__getitem__(key)
             except KeyError as e:
                 try:
                     # The requested key might be a column in the "internal" table
-                    rest = rest.split("/")
-                    rest.insert(-1, "internal")
-                    return stream_container["/".join(rest)]
+                    key = key.split("/")
+                    key.insert(-1, "internal")
+                    return base_class.__getitem__("/".join(key))
                 except KeyError:
-                    raise KeyError(f"Key '{rest[-1]}' not found in the BlueskyRun container") from e
+                    raise KeyError(f"Key '{key[-1]}' not found in the BlueskyRun container") from e
 
-        return super().__getitem__(key)
+        # Back-compatibility for old versions of BlueskyRun layout that included 'streams' namespace.
+        # This takes into account the possibility of an actual BlueskyEventStream to be named 'streams'.
+        try:
+            return _base_getitem(key)
+        except KeyError as e:
+            if key == "streams":
+                warnings.warn(
+                    "Looks like you are trying to access the 'streams' namespace, "
+                    "but there is no 'streams' namespace in this BlueskyRun, which follows the new layout. "
+                    "Please use the stream names directly, e.g. run['primary'] instead of run['streams/primary'].",
+                    DeprecationWarning,
+                    stacklevel=2,
+                )
+                return self
+            elif key.split("/")[0] != "streams":
+                try:
+                    result = _base_getitem("streams/" + key)
+                    warnings.warn(
+                        f"Key '{key}' not found directly in the BlueskyRun container. "
+                        "Trying to access it via the 'streams' namespace for backward-compatibility. "
+                        "This behavior is deprecated and will be removed in a future release. "
+                        "Please consider migrating the catalog structure to the new layout.",
+                        DeprecationWarning,
+                        stacklevel=2,
+                    )
+                    return result
+                except KeyError:
+                    raise KeyError from e
+            elif key.split("/")[0] == "streams":
+                try:
+                    result = _base_getitem(key[len("streams/") :])
+                    warnings.warn(
+                        f"Looks like you are trying to access '{key}' via a 'streams' namespace, "
+                        "but there is no 'streams' namespace in this BlueskyRun, which follows the new layout. "
+                        f"Please access the stream directly, e.g. run['{key}'] instead of run['streams/{key}'].",
+                        DeprecationWarning,
+                        stacklevel=2,
+                    )
+                    return result
+                except KeyError:
+                    raise KeyError from e
+            else:
+                raise KeyError from e
 
     @functools.cached_property
     def _has_streams_namespace(self):
         return ("streams" in self) and ("BlueskyEventStream" not in {s.name for s in self["streams"].specs})
 
     @functools.cached_property
-    def _streams_node(self):
+    def _stream_names(self):
         # Access to the "streams" namespace (possibly a separate container)
         if self._has_streams_namespace:
-            return self["streams"]
+            return sorted(k for k in self["streams"])
         else:
             # No intermediate "streams" node, use the top-level node
-            return self
-
-    @functools.cached_property
-    def _stream_names(self):
-        return sorted(k for k in self._streams_node)
+            return sorted(k for k in self)
 
     def documents(self, fill=False):
         with io.BytesIO() as buffer:
@@ -284,16 +322,20 @@ class BlueskyRunV2SQL(BlueskyRunV2, _BlueskyRunSQL):
 
     def __getitem__(self, key):
         # For v3, we need to handle the streams and configs keys
-        if key in RESERVED_V3_KEYS:
-            return super().__getitem__(key)
 
-        if key in self._stream_names:
-            stream_container = (
-                super().get("streams", {}).get(key) if self._has_streams_namespace else super().get(key)
+        if isinstance(key, tuple):
+            key = "/".join(key)
+
+        key, *rest = key.split("/", 1)
+        stream_composite_client = super().__getitem__(key)
+        if not isinstance(stream_composite_client, CompositeClient):
+            raise KeyError(
+                "Looks like you are trying to access the 'streams' namespace, "
+                "but this pathway has never been supported in the .v2 BlueskyRun client. "
+                "Please access the stream directly, e.g. run['primary']."
             )
-            return BlueskyEventStreamV2SQL.from_stream_client(stream_container)
-
-        return super().__getitem__(key)
+        stream_container = BlueskyEventStreamV2SQL.from_stream_client(stream_composite_client)
+        return stream_container[rest] if rest else stream_container
 
     def __iter__(self):
         yield from self._stream_names
