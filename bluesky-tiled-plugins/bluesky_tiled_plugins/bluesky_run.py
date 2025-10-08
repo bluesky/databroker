@@ -267,7 +267,7 @@ class _BlueskyRunSQL(BlueskyRun):
                     raise KeyError from e
             elif key.split("/")[0] == "streams":
                 try:
-                    result = _base_getitem(key[len("streams/") :])
+                    result = _base_getitem(key[len("streams/") :])  # noqa
                     warnings.warn(
                         f"Looks like you are trying to access '{key}' via a 'streams' namespace, "
                         "but there is no 'streams' namespace in this BlueskyRun, which follows the new layout. "
