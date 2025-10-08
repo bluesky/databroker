@@ -321,7 +321,9 @@ class BlueskyRunV2SQL(BlueskyRunV2, _BlueskyRunSQL):
             return (yield from super()._items_slice(start, stop, direction, page_size=page_size, **kwargs))
 
     def __getitem__(self, key):
-        # For v3, we need to handle the streams and configs keys
+        # For v3, we need to handle the streams and configs keys specially
+        if key == "streams":
+            return super().__getitem__("streams")
 
         if isinstance(key, tuple):
             key = "/".join(key)
