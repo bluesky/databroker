@@ -1,7 +1,6 @@
 from math import ceil
 
 import pytest
-
 from bluesky_tiled_plugins.consolidators import HDF5Consolidator, consolidator_factory
 
 

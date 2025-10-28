@@ -1,7 +1,6 @@
 import asyncio
 
 import pytest
-
 from bluesky.run_engine import RunEngine, TransitionError
 
 

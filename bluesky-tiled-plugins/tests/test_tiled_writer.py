@@ -5,20 +5,14 @@ from collections.abc import Iterator
 from pathlib import Path
 from typing import Optional, Union, cast
 
+import bluesky.plan_stubs as bps
+import bluesky.plans as bp
 import h5py
 import jinja2
 import numpy as np
 import ophyd.sim
 import pytest
 import tifffile as tf
-from event_model.documents.event_descriptor import DataKey
-from event_model.documents.stream_datum import StreamDatum
-from event_model.documents.stream_resource import StreamResource
-from tiled.client import record_history
-
-import bluesky.plan_stubs as bps
-import bluesky.plans as bp
-from bluesky_tiled_plugins.tiled_writer import TiledWriter
 from bluesky.protocols import (
     Collectable,
     HasName,
@@ -27,6 +21,11 @@ from bluesky.protocols import (
     StreamAsset,
     WritesStreamAssets,
 )
+from bluesky_tiled_plugins.tiled_writer import TiledWriter
+from event_model.documents.event_descriptor import DataKey
+from event_model.documents.stream_datum import StreamDatum
+from event_model.documents.stream_resource import StreamResource
+from tiled.client import record_history
 
 rng = np.random.default_rng(12345)
 
