@@ -546,7 +546,7 @@ class _RunWriter(CallbackBase):
             )
             self._internal_tables[desc_name] = df_client
 
-        df_client.append_partition(table, 0)
+        df_client.append_partition(0, table)
 
     def _write_external_data(self, doc: StreamDatum):
         """Register the external data provided in StreamDatum in Tiled"""

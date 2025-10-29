@@ -11,10 +11,6 @@ from event_model.documents import EventDescriptor, StreamDatum, StreamResource
 from tiled.mimetypes import DEFAULT_ADAPTERS_BY_MIMETYPE
 from tiled.structures.array import ArrayStructure, BuiltinDtype, StructDtype
 
-# TODO: Move Consolidator classes into external repo (probably area-detector-handlers) and use the existing
-# handler discovery mechanism.
-# GitHub Issue: https://github.com/bluesky/bluesky/issues/1740
-
 
 class StructureFamily(str, enum.Enum):
     array = "array"
