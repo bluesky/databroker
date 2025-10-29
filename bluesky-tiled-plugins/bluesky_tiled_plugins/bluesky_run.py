@@ -235,7 +235,9 @@ class _BlueskyRunSQL(BlueskyRun):
         2. The specs of the "streams" container do not include "BlueskyEventStream",
            indicating that "streams" is not itself a BlueskyEventStream.
         """
-        return ("streams" in self.base) and ("BlueskyEventStream" not in {s.name for s in self["streams"].specs})
+        return ("streams" in self.base) and (
+            "BlueskyEventStream" not in {s.name for s in self.base["streams"].specs}
+        )
 
     @functools.cached_property
     def _stream_names(self) -> list[str]:
@@ -351,7 +353,7 @@ class BlueskyRunV2SQL(BlueskyRunV2, _BlueskyRunSQL):
         stream_composite_client = super().__getitem__(key)
         stream_container = BlueskyEventStreamV2SQL.from_stream_client(stream_composite_client)
 
-        return stream_container[rest] if rest else stream_container
+        return stream_container[rest[0]] if rest else stream_container
 
 
 class BlueskyRunV3(_BlueskyRunSQL):
