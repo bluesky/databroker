@@ -120,13 +120,14 @@ class ConsolidatorBase:
                     self.datum_shape = (multiplier,) + self.datum_shape
                     # TODO: Check consistency with chunk_shape
 
-        # Determine the machine data type
+        # Determine the machine data type; fall back to np.dtype("float64") if not set
         self.data_type: Union[BuiltinDtype, StructDtype]
-        dtype_numpy = np.dtype(data_desc.get("dtype_numpy"))  # Falls back to np.dtype("float64") if not set
-        if dtype_numpy.kind == "V":
-            self.data_type = StructDtype.from_numpy_dtype(dtype_numpy)
+        dtype_descr = data_desc.get("dtype_numpy")
+        if isinstance(dtype_descr, list):
+            # np.dtype requires tuples in struct dtypes, not lists
+            self.data_type = StructDtype.from_numpy_dtype(np.dtype(list(map(tuple, dtype_descr))))
         else:
-            self.data_type = BuiltinDtype.from_numpy_dtype(dtype_numpy)
+            self.data_type = BuiltinDtype.from_numpy_dtype(np.dtype(dtype_descr))
 
         # Set chunk (or partition) shape
         self.chunk_shape = self._sres_parameters.get("chunk_shape", ())
