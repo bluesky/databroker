@@ -389,7 +389,20 @@ class CSVConsolidator(ConsolidatorBase):
         self.assets.append(Asset(data_uri=self.uri, is_directory=False, parameter="data_uris"))
 
     def adapter_parameters(self) -> dict:
-        return {**self._sres_parameters}
+        allowed_keys = {
+            "comment",
+            "delimiter",
+            "dtype",
+            "encoding",
+            "header",
+            "names",
+            "nrows",
+            "sep",
+            "skipfooter",
+            "skiprows",
+            "usecols",
+        }
+        return {k: v for k, v in {"header": None, **self._sres_parameters}.items() if k in allowed_keys}
 
 
 class HDF5Consolidator(ConsolidatorBase):
