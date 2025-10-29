@@ -303,10 +303,6 @@ class ConsolidatorBase:
     def validate(self, adapters_by_mimetype=None, fix_errors=False) -> list[str]:
         """Validate the Consolidator's state against the expected structure"""
 
-        # User-provided adapters take precedence over defaults.
-        all_adapters_by_mimetype = collections.ChainMap((adapters_by_mimetype or {}), DEFAULT_ADAPTERS_BY_MIMETYPE)
-        adapter_class = all_adapters_by_mimetype[self.mimetype]
-
         # Initialize adapter from uris and determine the structure
         adapter_class = ADAPTERS_BY_MIMETYPE[self.mimetype]
         uris = [asset.data_uri for asset in self.assets]
