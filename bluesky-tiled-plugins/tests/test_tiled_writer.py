@@ -151,7 +151,7 @@ class StreamDatumReadableCollectable(Named, Readable, Collectable, WritesStreamA
         with h5py.File(file_path, "a") as f:
             dset = f[hdf5_dataset]
             dset.resize([indx_max * data_shape[0], *data_shape[1:]])
-            dset[indx_min * data_shape[0] : indx_max * data_shape[0], ...] = np.random.randn(
+            dset[indx_min * data_shape[0] : indx_max * data_shape[0], ...] = np.random.randn(  # noqa: E203
                 (indx_max - indx_min) * data_shape[0], *data_shape[1:]
             )
 
