@@ -381,10 +381,6 @@ class CSVConsolidator(ConsolidatorBase):
     join_method: Literal["stack", "concat"] = "concat"
     join_chunks: bool = False
 
-    def __init__(self, stream_resource: StreamResource, descriptor: EventDescriptor):
-        super().__init__(stream_resource, descriptor)
-        self.assets.append(Asset(data_uri=self.uri, is_directory=False, parameter="data_uris"))
-
     def adapter_parameters(self) -> dict:
         allowed_keys = {
             "comment",
