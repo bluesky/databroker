@@ -47,6 +47,12 @@ class DataSource:
     management: Management = Management.writable
 
 
+@dataclasses.dataclass
+class Patch:
+    shape: tuple[int, ...]
+    offset: tuple[int, ...]
+
+
 class ConsolidatorBase:
     """Consolidator of StreamDatums
 
@@ -249,10 +255,15 @@ class ConsolidatorBase:
           - Update the list of assets, including their uris, if necessary
           - Update shape and chunks
         """
+        old_shape = self.shape  # Adding new rows updates self.shape
         self._num_rows += doc["indices"]["stop"] - doc["indices"]["start"]
         new_seqnums = range(doc["seq_nums"]["start"], doc["seq_nums"]["stop"])
         new_indices = range(doc["indices"]["start"], doc["indices"]["stop"])
         self._seqnums_to_indices_map.update(dict(zip(new_seqnums, new_indices)))
+        return Patch(
+            offset=(old_shape[0], *[0 for _ in self.shape[1:]]),
+            shape=(self.shape[0] - old_shape[0], *self.shape[1:]),
+        )
 
     def get_data_source(self) -> DataSource:
         """Return a DataSource object reflecting the current state of the streamed dataset.
@@ -475,7 +486,7 @@ class MultipartRelatedConsolidator(ConsolidatorBase):
             self.assets.append(new_asset)
             self.data_uris.append(new_datum_uri)
 
-        super().consume_stream_datum(doc)
+        return super().consume_stream_datum(doc)
 
 
 class TIFFConsolidator(MultipartRelatedConsolidator):
