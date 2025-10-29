@@ -8,7 +8,7 @@ from typing import Any, Literal, Optional, Union, cast
 
 import numpy as np
 from event_model.documents import EventDescriptor, StreamDatum, StreamResource
-from tiled.mimetypes import DEFAULT_ADAPTERS_BY_MIMETYPE
+from tiled.mimetypes import DEFAULT_ADAPTERS_BY_MIMETYPE as ADAPTERS_BY_MIMETYPE
 from tiled.structures.array import ArrayStructure, BuiltinDtype, StructDtype
 
 
@@ -286,17 +286,12 @@ class ConsolidatorBase:
             management=Management.external,
         )
 
-    def get_adapter(self, adapters_by_mimetype=None):
-        """Return an Adapter suitable for reading the data
+    def get_adapter(self):
+        """Return an Adapter suitable for reading the data"""
 
-        Uses a dictionary mapping of a mimetype to a callable that returns an Adapter instance from_catalog.
-        """
+        adapter_class = ADAPTERS_BY_MIMETYPE[self.mimetype]
 
-        # User-provided adapters take precedence over defaults.
-        all_adapters_by_mimetype = collections.ChainMap((adapters_by_mimetype or {}), DEFAULT_ADAPTERS_BY_MIMETYPE)
-        adapter_class = all_adapters_by_mimetype[self.mimetype]
-
-        # Mimic the necessary aspects of a tiled node with a namedtuple
+        # Mimic the necessary aspects of a Tiled node with a namedtuple
         _Node = collections.namedtuple("Node", ["metadata_", "specs"])
         return adapter_class.from_catalog(self.get_data_source(), _Node({}, []), **self.adapter_parameters())
 
@@ -313,6 +308,7 @@ class ConsolidatorBase:
         adapter_class = all_adapters_by_mimetype[self.mimetype]
 
         # Initialize adapter from uris and determine the structure
+        adapter_class = ADAPTERS_BY_MIMETYPE[self.mimetype]
         uris = [asset.data_uri for asset in self.assets]
         structure = adapter_class.from_uris(*uris, **self.adapter_parameters()).structure()
         notes = []
