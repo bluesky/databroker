@@ -7,7 +7,6 @@ import warnings
 from datetime import datetime
 from typing import Optional
 
-from tiled.client.composite import CompositeClient
 from tiled.client.container import Container
 from tiled.client.utils import handle_error
 
@@ -131,6 +130,18 @@ class BlueskyRun(Container):
             "Reading any entire run is not supported. Access a stream in this run and read that."
         )
 
+    @property
+    def base(self):
+        "Return the base Container client instead of a BlueskyRun client"
+        return Container(
+            self.context,
+            item=self.item,
+            structure_clients=self.structure_clients,
+            queries=self._queries,
+            sorting=self._sorting,
+            include_data_sources=self._include_data_sources,
+        )
+
     to_dask = read
 
 
@@ -215,8 +226,29 @@ class _BlueskyRunSQL(BlueskyRun):
     base class for other classes (v2 and v3) that implement additional methods.
     """
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    @functools.cached_property
+    def _has_streams_namespace(self) -> bool:
+        """Determine whether the BlueskyRun has an intermediate "streams" namespace.
+
+        Maintained for backward compatibility. Returns True if the following conditions are met:
+        1. There is a "streams" key in the base container.
+        2. The specs of the "streams" container do not include "BlueskyEventStream",
+           indicating that "streams" is not itself a BlueskyEventStream.
+        """
+        return ("streams" in self.base) and (
+            "BlueskyEventStream" not in {s.name for s in self.base["streams"].specs}
+        )
+
+    @functools.cached_property
+    def _stream_names(self) -> list[str]:
+        """Get the sorted list of stream names in the BlueskyRun.
+
+        This property accounts for both the new layout (without "streams" namespace)
+        and the old layout (with "streams" namespace), in which case the stream names
+        are derived from the keys under the "streams" namespace.
+        """
+
+        return sorted(k for k in (self.base["streams"] if self._has_streams_namespace else self.base))
 
     def __getitem__(self, key):
         if isinstance(key, tuple):
@@ -281,18 +313,18 @@ class _BlueskyRunSQL(BlueskyRun):
             else:
                 raise KeyError from e
 
-    @functools.cached_property
-    def _has_streams_namespace(self):
-        return ("streams" in self) and ("BlueskyEventStream" not in {s.name for s in self["streams"].specs})
+    def _keys_slice(self, start, stop, direction, page_size: Optional[int] = None, **kwargs):
+        sorted_keys = reversed(self._stream_names) if direction < 0 else self._stream_names
+        return (yield from sorted_keys[start:stop])
 
-    @functools.cached_property
-    def _stream_names(self):
-        # Access to the "streams" namespace (possibly a separate container)
-        if self._has_streams_namespace:
-            return sorted(k for k in self["streams"])
-        else:
-            # No intermediate "streams" node, use the top-level node
-            return sorted(k for k in self)
+    def _items_slice(self, start, stop, direction, page_size: Optional[int] = None, **kwargs):
+        sorted_keys = reversed(self._stream_names) if direction < 0 else self._stream_names
+        for key in sorted_keys[start:stop]:
+            yield key, self[key]
+        return
+
+    def __iter__(self):
+        yield from self._stream_names
 
     def documents(self, fill=False):
         with io.BytesIO() as buffer:
@@ -304,43 +336,24 @@ class _BlueskyRunSQL(BlueskyRun):
 
 
 class BlueskyRunV2SQL(BlueskyRunV2, _BlueskyRunSQL):
-    def _keys_slice(self, start, stop, direction, page_size: Optional[int] = None, **kwargs):
-        if self._has_streams_namespace:
-            keys = reversed(self._stream_names) if direction < 0 else self._stream_names
-            return (yield from keys[start:stop])
-        else:
-            return (yield from super()._keys_slice(start, stop, direction, page_size=page_size, **kwargs))
-
-    def _items_slice(self, start, stop, direction, page_size: Optional[int] = None, **kwargs):
-        if self._has_streams_namespace:
-            _streams_node = super().get("streams", {})
-            for key in reversed(self._stream_names) if direction < 0 else self._stream_names:
-                yield key, _streams_node.get(key)
-            return
-        else:
-            return (yield from super()._items_slice(start, stop, direction, page_size=page_size, **kwargs))
-
     def __getitem__(self, key):
-        # For v3, we need to handle the streams and configs keys specially
-        if key == "streams":
-            return super().__getitem__("streams")
-
+        # For v2, we need to handle the streams and configs keys specially
         if isinstance(key, tuple):
             key = "/".join(key)
 
         key, *rest = key.split("/", 1)
-        stream_composite_client = super().__getitem__(key)
-        if not isinstance(stream_composite_client, CompositeClient):
+
+        if key == "streams":
             raise KeyError(
                 "Looks like you are trying to access the 'streams' namespace, "
                 "but this pathway has never been supported in the .v2 BlueskyRun client. "
                 "Please access the stream directly, e.g. run['primary']."
             )
-        stream_container = BlueskyEventStreamV2SQL.from_stream_client(stream_composite_client)
-        return stream_container[rest] if rest else stream_container
 
-    def __iter__(self):
-        yield from self._stream_names
+        stream_composite_client = super().__getitem__(key)
+        stream_container = BlueskyEventStreamV2SQL.from_stream_client(stream_composite_client)
+
+        return stream_container[rest[0]] if rest else stream_container
 
 
 class BlueskyRunV3(_BlueskyRunSQL):
@@ -356,8 +369,8 @@ class BlueskyRunV3(_BlueskyRunSQL):
             return BlueskyRunV2Mongo(context, item=item, structure_clients=structure_clients, **kwargs)
 
     def __getattr__(self, key):
+        # A shortcut to the stream data
         if key in self._stream_names:
-            # A shortcut to the stream data
             return self["streams"][key] if self._has_streams_namespace else self[key]
 
         return super().__getattr__(key)
