@@ -197,7 +197,7 @@ class ConsolidatorBase:
                     list_summands(self.datum_shape[0], self.chunk_shape[0], repeat=self._num_rows),
                     *[
                         list_summands(ddim, cdim)
-                        for ddim, cdim in zip(self.shape[1 : len(self.chunk_shape)], self.chunk_shape[1:])  # noqa: E203
+                        for ddim, cdim in zip(self.shape[1 : len(self.chunk_shape)], self.chunk_shape[1:])  # noqa
                     ],
                 )
             return result + tuple((d,) for d in self.shape[len(self.chunk_shape) :])  # noqa: E203
