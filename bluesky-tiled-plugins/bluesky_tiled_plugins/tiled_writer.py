@@ -565,7 +565,12 @@ class _RunWriter(CallbackBase):
             node.context.http_client.put(
                 node.uri.replace("/metadata/", "/data_source/", 1),
                 content=safe_json_dump({"data_source": data_source}),
-                params={"patch_shape": patch.shape, "patch_offset": patch.offset} if patch else None,
+                params={
+                    "patch_shape": ",".join(map(str, patch.shape)),
+                    "patch_offset": ",".join(map(str, patch.offset)),
+                }
+                if patch
+                else None,
             )
         ).json()
 

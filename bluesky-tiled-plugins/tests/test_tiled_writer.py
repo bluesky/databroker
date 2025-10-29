@@ -4,6 +4,7 @@ import uuid
 from collections.abc import Iterator
 from pathlib import Path
 from typing import Optional, Union, cast
+from urllib.parse import parse_qs, urlparse
 
 import bluesky.plan_stubs as bps
 import bluesky.plans as bp
@@ -379,6 +380,56 @@ def test_with_correct_sample_runs(client, batch_size, external_assets_folder, fn
 
     for stream in run.values():
         assert stream.read() is not None
+
+
+@pytest.mark.parametrize(
+    "batch_size, expected_patch_shapes, expected_patch_offsets",
+    [(1, (1, 1, 1), (0, 1, 2)), (2, (2, 1), (0, 2)), (5, (3,), (0,))],
+)
+def test_data_source_patching(
+    client, batch_size, expected_patch_shapes, expected_patch_offsets, external_assets_folder
+):
+    tw = TiledWriter(client, batch_size=batch_size)
+
+    with record_history() as history:
+        for item in render_templated_documents("external_assets.json", external_assets_folder):
+            tw(**item)
+
+    def parse_data_source_uri(uri: str):
+        """Given a full data_source URL, extract:
+            - data_key (e.g. "det-key1")
+            - decoded query parameters as tuples of ints
+
+        Returns:
+            (data_key, params_dict)
+        """
+
+        # data_key is the last component of the path
+        data_key = urlparse(uri).path.rstrip("/").split("/")[-1]
+
+        # parse query parameters and convert comma-separated values to tuples of ints
+        params = {}
+        for k, v in parse_qs(urlparse(uri).query).items():
+            params[k] = tuple(map(int, v[0].split(",")))  # parse_qs gives lists
+
+        return data_key, params
+
+    put_uri_params = [
+        parse_data_source_uri(str(req.url))
+        for req in history.requests
+        if req.method == "PUT" and "/data_source" in req.url.path
+    ]
+
+    # Check that each data key received the expected number of updates
+    assert len(put_uri_params) == 3 * len(expected_patch_shapes)  # 3 data keys in the example
+    for data_key in {"det-key1", "det-key2", "det-key3"}:
+        assert len([uri for dk, uri in put_uri_params if dk == data_key]) == len(expected_patch_shapes)
+
+        # Check that the patch sizes and offsets (leftmost dimensions) match expectations
+        actual_patch_sizes = tuple(params["patch_shape"][0] for dk, params in put_uri_params if dk == data_key)
+        actual_patch_offsets = tuple(params["patch_offset"][0] for dk, params in put_uri_params if dk == data_key)
+        assert actual_patch_sizes == expected_patch_shapes
+        assert actual_patch_offsets == expected_patch_offsets
 
 
 @pytest.mark.parametrize("error_type", ["shape", "chunks", "dtype"])
