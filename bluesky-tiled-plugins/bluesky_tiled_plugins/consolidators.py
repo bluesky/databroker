@@ -100,7 +100,7 @@ class ConsolidatorBase:
 
         self.data_key = stream_resource["data_key"]
         self.uri = stream_resource["uri"]
-        self.assets: list[Asset] = []
+        self.assets: list[Asset] = [Asset(data_uri=self.uri, is_directory=False, parameter="data_uris", num=0)]
         self._sres_parameters = stream_resource["parameters"]
 
         # Find datum shape and machine dtype
@@ -146,7 +146,7 @@ class ConsolidatorBase:
 
     @classmethod
     def get_supported_mimetype(cls, sres):
-        if sres["mimetype"] not in cls.supported_mimetypes:
+        if (cls is not ConsolidatorBase) and (sres["mimetype"] not in cls.supported_mimetypes):
             raise ValueError(f"A data source of {sres['mimetype']} type can not be handled by {cls.__name__}.")
         return sres["mimetype"]
 
@@ -409,11 +409,6 @@ class CSVConsolidator(ConsolidatorBase):
 class HDF5Consolidator(ConsolidatorBase):
     supported_mimetypes = {"application/x-hdf5"}
 
-    def __init__(self, stream_resource: StreamResource, descriptor: EventDescriptor):
-        super().__init__(stream_resource, descriptor)
-        self.assets.append(Asset(data_uri=self.uri, is_directory=False, parameter="data_uris", num=0))
-        self.swmr = self._sres_parameters.get("swmr", True)
-
     def adapter_parameters(self) -> dict:
         """Parameters to be passed to the HDF5 adapter, a dictionary with the keys:
 
@@ -450,6 +445,7 @@ class MultipartRelatedConsolidator(ConsolidatorBase):
     ):
         super().__init__(stream_resource, descriptor)
         self.permitted_extensions: set[str] = permitted_extensions
+        self.assets.clear()  # Assets will be populated based on datum indices
         self.data_uris: list[str] = []
         self.chunk_shape = self.chunk_shape or (1,)  # I.e. number of frames per file (tiff, jpeg, etc.)
         if self.join_method == "concat":
