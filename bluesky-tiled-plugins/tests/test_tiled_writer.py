@@ -382,6 +382,20 @@ def test_with_correct_sample_runs(client, batch_size, external_assets_folder, fn
         assert stream.read() is not None
 
 
+def test_dims_names(client, external_assets_folder):
+    tw = TiledWriter(client)
+
+    for item in render_templated_documents("external_assets.json", external_assets_folder):
+        if item["name"] == "start":
+            uid = item["doc"]["uid"]
+        tw(**item)
+
+    run = client[uid]
+
+    assert run["primary"]["det-key1"].structure().dims is None
+    assert run["primary"]["det-key2"].structure().dims == ("time", "dim_x", "dim_y")
+
+
 @pytest.mark.parametrize(
     "batch_size, expected_patch_shapes, expected_patch_offsets",
     [(1, (1, 1, 1), (0, 1, 2)), (2, (2, 1), (0, 2)), (5, (3,), (0,))],

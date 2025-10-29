@@ -43,6 +43,11 @@
                         13,
                         17
                     ],
+                    "dims": [
+                        "time",
+                        "dim_x",
+                        "dim_y"
+                    ],
                     "external": "STREAM:",
                     "object_name": "det-obj1"
                 }

@@ -198,6 +198,7 @@ class RunNormalizer(CallbackBase):
         self._emitted: set[str] = set()  # UIDs of the StreamResource documents that have been emitted
         self._int_keys: set[str] = set()  # Names of internal data_keys
         self._ext_keys: set[str] = set()
+        self.notes: list[str] = []  # Human-readable notes about any modifications made to the documents
 
     def _convert_resource_to_stream_resource(self, doc: Union[Resource, StreamResource]) -> StreamResource:
         """Make changes to and return a shallow copy of StreamRsource dictionary adhering to the new structure.
@@ -338,6 +339,8 @@ class RunNormalizer(CallbackBase):
                     f"Cannot emit StreamDatum for {data_key} because the corresponding Datum document is missing."
                 )
 
+        doc["_run_normalizer_notes"] = self.notes or []  # Add notes about modifications to the stop document
+
         self.emit(DocumentNames.stop, doc)
 
     def descriptor(self, doc: EventDescriptor):
@@ -351,14 +354,14 @@ class RunNormalizer(CallbackBase):
                 if f"_{name}" in doc["data_keys"].keys():
                     raise ValueError(f"Cannot rename {name} to _{name} because it already exists")
                 doc["data_keys"][f"_{name}"] = doc["data_keys"].pop(name)
-                for obj_data_keys_list in doc["object_keys"].values():
+                for obj_data_keys_list in doc.get("object_keys", {}).values():
                     if name in obj_data_keys_list:
                         obj_data_keys_list.remove(name)
                         obj_data_keys_list.append(f"_{name}")
 
         # Rename some fields (in-place) to match the current schema for the descriptor
         # Loop over all dictionaries that specify data_keys (both event data_keys or configuration data_keys)
-        conf_data_keys = (obj["data_keys"].values() for obj in doc["configuration"].values())
+        conf_data_keys = (obj["data_keys"].values() for obj in doc.get("configuration", {}).values())
         for data_keys_spec in itertools.chain(doc["data_keys"].values(), *conf_data_keys):
             # Determine numpy data type. From highest precedent to lowest:
             # 1. Try 'dtype_descr', optional, if present -- this is a structural dtype
@@ -376,8 +379,9 @@ class RunNormalizer(CallbackBase):
             ):
                 data_keys_spec["dtype_numpy"] = dtype_numpy
 
-        # Ensure that all event data_keys have object_name assigned (for consistency)
-        for obj_name, data_keys_list in doc["object_keys"].items():
+        # Ensure that all event data_keys have object_name assigned, if known (for consistency)
+        # If "object_keys" are not present, do not reconstruct them -- they are optional
+        for obj_name, data_keys_list in doc.get("object_keys", {}).items():
             for key in data_keys_list:
                 doc["data_keys"][key]["object_name"] = obj_name
 
@@ -466,6 +470,7 @@ class RunNormalizer(CallbackBase):
         if patch := self.patches.get("datum"):
             doc = patch(doc)
 
+        # Keep the Datum document in memory until it is referenced by an Event document
         self._datum_cache[doc["datum_id"]] = doc
 
     def datum_page(self, doc: DatumPage):
@@ -613,9 +618,6 @@ class _RunWriter(CallbackBase):
         self.root_node.update_metadata(metadata={"stop": doc, **dict(self.root_node.metadata)}, drop_revision=True)
 
     def descriptor(self, doc: EventDescriptor):
-        if self.root_node is None:
-            raise RuntimeError("RunWriter is not properly initialized: no Start document has been recorded.")
-
         desc_name = doc["name"]  # Name of the descriptor/stream
         self.data_keys.update(doc.get("data_keys", {}))
 
@@ -684,6 +686,7 @@ class _RunWriter(CallbackBase):
             if not desc_uid:
                 raise RuntimeError("Descriptor uid must be specified to initialise a Stream Resource node")
 
+            # Define `full_data_key` as desc_name + _ + data_key to ensure uniqueness across streams
             sres_doc = self._stream_resource_cache[sres_uid]
             desc_node = self._desc_nodes[desc_uid]
             full_data_key = f"{desc_node.item['id']}_{sres_doc['data_key']}"  # desc_name + data_key
