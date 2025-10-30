@@ -16,6 +16,7 @@ requires-python = ">=3.9"
 
 dependencies = [
   "dask",
+  "event-model",
   "mongoquery",
   "pytz",
   "tiled[client] >=0.1.0b23",
