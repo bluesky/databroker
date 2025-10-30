@@ -140,6 +140,9 @@ class ConsolidatorBase:
         self._num_rows: int = 0  # Number of rows in the Data Source (all rows, includung skips)
         self._seqnums_to_indices_map: dict[int, int] = {}
 
+        # Set the dimension names if provided
+        self.dims: tuple[str, ...] = tuple(data_desc.get("dims", ()))
+
     @classmethod
     def get_supported_mimetype(cls, sres):
         if sres["mimetype"] not in cls.supported_mimetypes:
@@ -241,6 +244,7 @@ class ConsolidatorBase:
             data_type=self.data_type,
             shape=self.shape,
             chunks=self.chunks,
+            dims=self.dims if self.dims else None,
         )
 
     def consume_stream_datum(self, doc: StreamDatum):
@@ -300,7 +304,7 @@ class ConsolidatorBase:
 
         raise NotImplementedError("This method is not implemented in the base Consolidator class.")
 
-    def validate(self, adapters_by_mimetype=None, fix_errors=False):
+    def validate(self, adapters_by_mimetype=None, fix_errors=False) -> list[str]:
         """Validate the Consolidator's state against the expected structure"""
 
         # User-provided adapters take precedence over defaults.
@@ -308,14 +312,16 @@ class ConsolidatorBase:
         adapter_class = all_adapters_by_mimetype[self.mimetype]
 
         # Initialize adapter from uris and determine the structure
-        uris = [asset.data_uri for asset in self.assets if asset.parameter == "data_uris"]
+        uris = [asset.data_uri for asset in self.assets]
         structure = adapter_class.from_uris(*uris, **self.adapter_parameters()).structure()
+        notes = []
 
         if self.shape != structure.shape:
             if not fix_errors:
                 raise ValueError(f"Shape mismatch: {self.shape} != {structure.shape}")
             else:
-                warnings.warn(f"Fixing shape mismatch: {self.shape} -> {structure.shape}", stacklevel=2)
+                msg = f"Fixed shape mismatch: {self.shape} -> {structure.shape}"
+                warnings.warn(msg, stacklevel=2)
                 if self.join_method == "stack":
                     self._num_rows = structure.shape[0]
                     self.datum_shape = structure.shape[1:]
@@ -324,26 +330,53 @@ class ConsolidatorBase:
                     multiplier = 1 if structure.shape[0] % structure.chunks[0][0] else structure.chunks[0][0]
                     self._num_rows = structure.shape[0] // multiplier
                     self.datum_shape = (multiplier,) + structure.shape[1:]
+                notes.append(msg)
 
         if self.chunks != structure.chunks:
             if not fix_errors:
                 raise ValueError(f"Chunk shape mismatch: {self.chunks} != {structure.chunks}")
             else:
                 _chunk_shape = tuple(c[0] for c in structure.chunks)
-                warnings.warn(f"Fixing chunk shape mismatch: {self.chunk_shape} -> {_chunk_shape}", stacklevel=2)
+                msg = f"Fixed chunk shape mismatch: {self.chunk_shape} -> {_chunk_shape}"
+                warnings.warn(msg, stacklevel=2)
                 self.chunk_shape = _chunk_shape
+                notes.append(msg)
 
         if self.data_type != structure.data_type:
             if not fix_errors:
                 raise ValueError(f"dtype mismatch: {self.data_type} != {structure.data_type}")
             else:
-                warnings.warn(
-                    f"Fixing dtype mismatch: {self.data_type.to_numpy_dtype()} -> {structure.data_type.to_numpy_dtype()}",  # noqa
-                    stacklevel=2,
+                msg = (
+                    f"Fixed dtype mismatch: {self.data_type.to_numpy_dtype()} "
+                    f"-> {structure.data_type.to_numpy_dtype()}"
                 )
+                warnings.warn(msg, stacklevel=2)
                 self.data_type = structure.data_type
+                notes.append(msg)
 
-        assert self.get_adapter() is not None, "Adapter can not not initialized"
+        if self.dims and (len(self.dims) != len(structure.shape)):
+            if not fix_errors:
+                raise ValueError(
+                    f"Number of dimension names mismatch for a "
+                    f"{len(structure.shape)}-dimensional array: {self.dims}"
+                )
+            else:
+                old_dims = self.dims
+                if len(old_dims) < len(structure.shape):
+                    self.dims = (
+                        ("time",)
+                        + old_dims
+                        + tuple(f"dim{i}" for i in range(len(old_dims) + 1, len(structure.shape)))
+                    )
+                else:
+                    self.dims = old_dims[: len(structure.shape)]
+                msg = f"Fixed dimension names: {old_dims} -> {self.dims}"
+                warnings.warn(msg, stacklevel=2)
+                notes.append(msg)
+
+        assert self.get_adapter() is not None, "Adapter can not be initialized"
+
+        return notes
 
 
 class CSVConsolidator(ConsolidatorBase):
