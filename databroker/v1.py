@@ -793,7 +793,7 @@ class Broker:
 
     @functools.cached_property
     def _tiled_writer(self):
-        from bluesky_tiled_plugins.tiled_writer import TiledWriter
+        from bluesky_tiled_plugins import TiledWriter
 
         return TiledWriter(self.v2)
 
