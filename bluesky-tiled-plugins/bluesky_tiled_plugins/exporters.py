@@ -12,7 +12,7 @@ async def json_seq_exporter(mimetype, adapter, metadata, filter_for_access):
     The resulting stream yields strings, each of which is a JSON document
     representing one of the standard Bluesky documents: start, descriptor,
     event, stream_resource, stream_datum, and stop, in the appropriate order.
-    
+
     For example:
 
     ```
