@@ -4,14 +4,26 @@ from collections import defaultdict
 
 
 async def json_seq_exporter(mimetype, adapter, metadata, filter_for_access):
-    """
-    Export BlueskyRun is newline-delimited sequence of JSON.
+    """Export BlueskyRun as newline-delimited sequence of JSON documents.
 
-    Format is like:
+    This callback is to be configured on the server-side to enable exporting
+    BlueskyRun objects in JSON-Seq format.
 
+    The resulting stream yields strings, each of which is a JSON document
+    representing one of the standard Bluesky documents: start, descriptor,
+    event, stream_resource, stream_datum, and stop, in the appropriate order.
+    
+    For example:
+
+    ```
     {"name": "start", "doc": {...}}
     {"name": "descriptor", "doc": {...}}
+    {"name": "event", "doc": {...}}
+    {"name": "stream_resource", "doc": {...}}
+    {"name": "stream_datum", "doc": {...}}
     ...
+    {"name": "stop", "doc": {...}}
+    ```
     """
     for spec in adapter.specs:
         if spec.name == "BlueskyRun" and spec.version.startswith("3."):
