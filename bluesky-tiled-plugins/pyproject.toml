@@ -19,7 +19,7 @@ dependencies = [
   "event-model",
   "mongoquery",
   "pytz",
-  "tiled[client] >=0.1.0b23",
+  "tiled[client] >=0.2.0",
   "tzlocal",
 ]
 
