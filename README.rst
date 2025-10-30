@@ -4,23 +4,9 @@ Databroker
 
 |build_status| |coverage| |pypi_version| |license|
 
-Databroker is a data **access** tool built around the `Bluesky Data Model`_.
-The data it manages may be from ingested files, captured results of a
-Python-based data analysis, or experimental data acquired using the Bluesky Run
-Engine.
-
-* Provide a consistent programmatic interface to data, **regardless of storage
-  details** like file format or storage medium.
-* Provide **metadata and data** in a coherent bundle, using standard widely-used
-  Python and SciPy data structures.
-* Support fast, flexible **search** over metadata.
-* Enable software tools to operate seamlessly on a
-  mixture of **live-streaming** data from the Bluesky Run Engine and **saved**
-  data from Databroker.
-
-Databroker is developed in concert with `Suitcase`_. Suitcase does data
-*writing*, and databroker does the reading. Databroker builds on `Intake`_, a
-generic data access tool (outside of the Bluesky Project).
+**The Databroker project is now in maintenance mode, and it is not recommended
+for new users. It will be maintained until for years to come to support
+existing user code. New users should use Bluesky Tiled Plugins.**
 
 ============== ==============================================================
 PyPI           ``pip install databroker``
