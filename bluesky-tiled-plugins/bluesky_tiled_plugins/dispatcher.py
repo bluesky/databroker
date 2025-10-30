@@ -10,6 +10,10 @@ where it could be shared by bluesky and bluesky-tiled-plugins.
 That code has been extremely stable for about ten years, so divergence
 is not a pressing concern.
 """
+from itertools import count
+from weakref import WeakKeyDictionary, ref
+
+from event_model import DocumentNames
 
 
 class Dispatcher:
