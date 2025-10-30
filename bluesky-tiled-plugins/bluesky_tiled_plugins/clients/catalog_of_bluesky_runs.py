@@ -10,8 +10,8 @@ from tiled.client.utils import handle_error
 from tiled.queries import Comparison, Eq, Like
 from tiled.utils import safe_json_dump
 
+from ..queries import RawMongo, ScanIDRange, TimeRange, _PartialUID, _ScanID
 from .bluesky_run import BlueskyRunV2, BlueskyRunV3
-from .queries import RawMongo, ScanIDRange, TimeRange, _PartialUID, _ScanID
 
 
 class CatalogOfBlueskyRuns(Container):

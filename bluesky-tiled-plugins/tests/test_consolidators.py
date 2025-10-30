@@ -1,7 +1,7 @@
 from math import ceil
 
 import pytest
-from bluesky_tiled_plugins.consolidators import HDF5Consolidator, Patch, consolidator_factory
+from bluesky_tiled_plugins.writing.consolidators import HDF5Consolidator, Patch, consolidator_factory
 
 
 @pytest.fixture

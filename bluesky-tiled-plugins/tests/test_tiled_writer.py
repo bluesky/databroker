@@ -22,7 +22,7 @@ from bluesky.protocols import (
     StreamAsset,
     WritesStreamAssets,
 )
-from bluesky_tiled_plugins.tiled_writer import TiledWriter
+from bluesky_tiled_plugins import TiledWriter
 from event_model.documents.event_descriptor import DataKey
 from event_model.documents.stream_datum import StreamDatum
 from event_model.documents.stream_resource import StreamResource
@@ -604,7 +604,7 @@ def test_json_backup(client, tmpdir, monkeypatch):
     def patched_event(name, doc):
         raise RuntimeError("This is a test error to check the backup functionality")
 
-    monkeypatch.setattr("bluesky_tiled_plugins.tiled_writer._RunWriter.event", patched_event)
+    monkeypatch.setattr("bluesky_tiled_plugins.writing.tiled_writer._RunWriter.event", patched_event)
 
     tw = TiledWriter(client, backup_directory=str(tmpdir))
 

@@ -40,10 +40,10 @@ from tiled.client.utils import handle_error
 from tiled.structures.core import Spec
 from tiled.utils import safe_json_dump
 
+from ..utils import truncate_json_overflow
+from ._dispatcher import Dispatcher
+from ._json_writer import JSONLinesWriter
 from .consolidators import ConsolidatorBase, DataSource, Patch, StructureFamily, consolidator_factory
-from .dispatcher import Dispatcher
-from .json_writer import JSONLinesWriter
-from .utils import truncate_json_overflow
 
 # Aggregate the Event table rows and StreamDatums in batches before writing to Tiled
 BATCH_SIZE = 10000
