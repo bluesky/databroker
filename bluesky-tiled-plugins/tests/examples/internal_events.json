@@ -85,13 +85,20 @@
                     "dtype": "array",
                     "shape": [],
                     "object_name": "det"
+                },
+                "long": {
+                    "source": "SIM:det",
+                    "dtype": "array",
+                    "shape": [8],
+                    "object_name": "det"
                 }
             },
             "name": "primary",
             "object_keys": {
                 "det": [
                     "det",
-                    "empty"
+                    "empty",
+                    "long"
                 ]
             },
             "run_start": "{{ uuid }}-dc0518f354ee",
@@ -101,7 +108,8 @@
                 "det": {
                     "fields": [
                         "det",
-                        "empty"
+                        "empty",
+                        "long"
                     ]
                 }
             }
@@ -114,11 +122,13 @@
             "time": 1745338531.215753,
             "data": {
                 "det": 1.0,
-                "empty": []
+                "empty": [],
+                "long": [0, 1, 2, 3, 4, 5, 6, 7]
             },
             "timestamps": {
                 "det": 1745338531.001646,
-                "empty": 1745338531.001647
+                "empty": 1745338531.001647,
+                "long": 1745338531.001648
             },
             "seq_num": 1,
             "filled": {},
@@ -132,11 +142,13 @@
             "time": 1745338531.218661,
             "data": {
                 "det": 1.0,
-                "empty": []
+                "empty": [],
+                "long": [10, 11, 12, 13, 14, 15, 16, 17]
             },
             "timestamps": {
                 "det": 1745338531.217144,
-                "empty": 1745338531.217145
+                "empty": 1745338531.217145,
+                "long": 1745338531.217146
             },
             "seq_num": 2,
             "filled": {},
@@ -214,13 +226,20 @@
                     "dtype": "array",
                     "shape": [],
                     "object_name": "det"
+                },
+                "long": {
+                    "source": "SIM:det",
+                    "dtype": "array",
+                    "shape": [8],
+                    "object_name": "det"
                 }
             },
             "name": "primary",
             "object_keys": {
                 "det": [
                     "det",
-                    "empty"
+                    "empty",
+                    "long"
                 ]
             },
             "run_start": "{{ uuid }}-dc0518f354ee",
@@ -230,7 +249,8 @@
                 "det": {
                     "fields": [
                         "det",
-                        "empty"
+                        "empty",
+                        "long"
                     ]
                 }
             }
@@ -243,11 +263,13 @@
             "time": 1745338533.2213702,
             "data": {
                 "det": 1.0,
-                "empty": []
+                "empty": [],
+                "long": [20, 21, 22, 23, 24, 25, 26, 27]
             },
             "timestamps": {
                 "det": 1745338533.219767,
-                "empty": 1745338533.219768
+                "empty": 1745338533.219768,
+                "long": 1745338533.219769
             },
             "seq_num": 3,
             "filled": {},

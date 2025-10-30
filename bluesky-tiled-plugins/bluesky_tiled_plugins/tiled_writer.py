@@ -639,13 +639,15 @@ class _RunWriter(CallbackBase):
                 self._write_internal_data(data_cache, desc_node=self._desc_nodes[desc_name])
                 data_cache.clear()
 
-        # Write the cached StreamDatums data; only update the data_source _once_ per each StreamResource node
-        updated_node_and_cons = set()  # type: set[tuple[BaseClient, ConsolidatorBase]]
+        # Write the cached StreamDatums data.
+        # Only update the data_source _once_ per each StreamResource node, even if consuming multiple StreamDatums.
+        updated_node_and_cons: dict[tuple[BaseClient, ConsolidatorBase], list[Patch]] = defaultdict(list)
         for stream_datum_doc in self._external_data_cache.values():
-            sres_node, consolidator, _ = self._update_consolidator(stream_datum_doc)
-            updated_node_and_cons.add((sres_node, consolidator))
-        for sres_node, consolidator in updated_node_and_cons:
-            self._update_data_source_for_node(sres_node, consolidator.get_data_source())
+            sres_node, consolidator, patch = self._update_consolidator(stream_datum_doc)
+            updated_node_and_cons[(sres_node, consolidator)].append(patch)
+        for (sres_node, consolidator), patches in updated_node_and_cons.items():
+            final_patch = Patch.combine_patches(patches)
+            self._update_data_source_for_node(sres_node, consolidator.get_data_source(), patch=final_patch)
 
         # Validate structure for some StreamResource nodes, select unique pairs of (sres_node, consolidator)
         notes = []
@@ -748,7 +750,7 @@ class _RunWriter(CallbackBase):
 
         elif sres_uid in self._stream_resource_cache.keys():
             if not desc_uid:
-                raise RuntimeError("Descriptor uid must be specified to initialise a Stream Resource node")
+                raise RuntimeError("Descriptor uid must be specified to initialize a Stream Resource node")
 
             # Define `full_data_key` as desc_name + _ + data_key to ensure uniqueness across streams
             sres_doc = self._stream_resource_cache[sres_uid]

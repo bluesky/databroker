@@ -1,7 +1,7 @@
 from math import ceil
 
 import pytest
-from bluesky_tiled_plugins.consolidators import HDF5Consolidator, consolidator_factory
+from bluesky_tiled_plugins.consolidators import HDF5Consolidator, Patch, consolidator_factory
 
 
 @pytest.fixture
@@ -465,3 +465,54 @@ def test_name_templating(
     cons = consolidator_factory(stream_resource, descriptor)
     assert cons.template == f"{expected_template}.{image_format}"
     assert cons.template.format(42) == f"{formatted}.{image_format}"
+
+
+@pytest.mark.parametrize(
+    "patches, expected_shape, expected_offset",
+    [
+        # Single patch
+        ([Patch(shape=(5, 10), offset=(0, 0))], (5, 10), (0, 0)),
+        # Two patches, non-overlapping
+        (
+            [Patch(shape=(5, 10), offset=(0, 0)), Patch(shape=(3, 7), offset=(5, 10))],
+            (8, 17),
+            (0, 0),
+        ),
+        # Two patches, overlapping
+        (
+            [Patch(shape=(5, 10), offset=(0, 0)), Patch(shape=(3, 7), offset=(2, 5))],
+            (5, 12),
+            (0, 0),
+        ),
+        # Multiple patches, scattered
+        (
+            [
+                Patch(shape=(2, 2), offset=(1, 1)),
+                Patch(shape=(3, 1), offset=(0, 3)),
+                Patch(shape=(1, 4), offset=(2, 0)),
+            ],
+            (3, 4),
+            (0, 0),
+        ),
+        # Multiple patches, disjoint
+        (
+            [
+                Patch(shape=(2, 2), offset=(0, 0)),
+                Patch(shape=(3, 1), offset=(5, 5)),
+                Patch(shape=(1, 4), offset=(10, 10)),
+            ],
+            (11, 14),
+            (0, 0),
+        ),
+        # 1D patches
+        (
+            [Patch(shape=(3,), offset=(2,)), Patch(shape=(2,), offset=(0,)), Patch(shape=(1,), offset=(5,))],
+            (6,),
+            (0,),
+        ),
+    ],
+)
+def test_combine_patches(patches, expected_shape, expected_offset):
+    combined = Patch.combine_patches(patches)
+    assert combined.shape == expected_shape
+    assert combined.offset == expected_offset

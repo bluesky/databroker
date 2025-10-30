@@ -18,6 +18,37 @@ class Patch:
     shape: tuple[int, ...]
     offset: tuple[int, ...]
 
+    @classmethod
+    def combine_patches(cls, patches: list["Patch"]) -> "Patch":
+        """Combine multiple patches into a single patch
+
+        The combined patch covers the union (smallest bounding box) of all provided patches.
+
+        Parameters
+        ----------
+        patches : list[Patch]
+            A list of Patch objects to combine.
+
+        Returns
+        -------
+        Patch
+            A new Patch object that covers the union of all input patches.
+        """
+
+        # Determine the overall shape and offset
+        min_offset = list(patches[0].offset)
+        max_extent = [offset + size for offset, size in zip(patches[0].offset, patches[0].shape)]
+
+        for patch in patches[1:]:
+            for i in range(len(min_offset)):
+                min_offset[i] = min(min_offset[i], patch.offset[i])
+                max_extent[i] = max(max_extent[i], patch.offset[i] + patch.shape[i])
+
+        combined_shape = tuple(max_e - min_o for min_o, max_e in zip(min_offset, max_extent))
+        combined_offset = tuple(min_offset)
+
+        return cls(shape=combined_shape, offset=combined_offset)
+
 
 class ConsolidatorBase:
     """Consolidator of StreamDatums
