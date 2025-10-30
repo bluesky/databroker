@@ -36,12 +36,8 @@ from tiled.adapters.mapping import MapAdapter
 from tiled.iterviews import KeysView, ItemsView, ValuesView
 from tiled.query_registration import QueryTranslationRegistry
 from tiled.queries import AccessBlobFilter, Contains, Comparison, Eq, FullText, In, NotEq, NotIn, Regex
-from tiled.adapters.utils import (
-    tree_repr,
-    IndexersMixin,
-)
 from tiled.structures.core import Spec, StructureFamily
-from tiled.utils import import_object, OneShotCachedMap, UNCHANGED
+from tiled.utils import UNCHANGED, IndexersMixin, OneShotCachedMap, import_object, tree_repr
 
 from .query_impl import (
     BlueskyMapAdapter,
