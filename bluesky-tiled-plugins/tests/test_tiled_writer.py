@@ -612,8 +612,6 @@ def test_json_backup(client, tmpdir, monkeypatch):
         name, doc = item["name"], item["doc"]
         if name == "start":
             uid = doc["uid"]
-        print(name)
-
         tw(**item)
 
     run = client[uid]
@@ -633,3 +631,35 @@ def test_json_backup(client, tmpdir, monkeypatch):
     assert lines[1]["name"] == "descriptor"
     assert lines[2]["name"].startswith("event")
     assert lines[6]["name"] == "stop"
+
+
+@pytest.mark.parametrize(
+    "max_array_size, expected_scheme", [(0, "file"), (4, "file"), (16, "duckdb"), (-1, "duckdb")]
+)
+def test_internal_arrays_written_as_zarr(client, max_array_size, expected_scheme):
+    tw = TiledWriter(client, max_array_size=max_array_size)
+
+    for item in render_templated_documents("internal_events.json", ""):
+        name, doc = item["name"], item["doc"]
+        if name == "start":
+            uid = doc["uid"]
+        tw(**item)
+
+    run = client[uid]
+
+    assert run["primary"]["long"].shape == (3, 8)
+    assert run["primary"]["long"].read() is not None
+
+    # There's a table and it is stored in the SQL database
+    internal_table = run["primary"].base["internal"]
+    assert internal_table.read() is not None
+    assert urlparse(internal_table.data_sources()[0].assets[0].data_uri).scheme == "duckdb"
+
+    if expected_scheme == "file":
+        assert "long" in run["primary"].base  # There's a separate node for the array data
+        assert "long" not in internal_table.columns  # The internal table does not have a column for it
+        assert urlparse(run["primary"]["long"].data_sources()[0].assets[0].data_uri).scheme == "file"
+    else:
+        assert "long" not in run["primary"].base
+        assert "long" in internal_table.columns
+        assert run["primary"]["long"].data_sources() is None
