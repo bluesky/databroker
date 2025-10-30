@@ -37,7 +37,7 @@ from tiled.iterviews import KeysView, ItemsView, ValuesView
 from tiled.query_registration import QueryTranslationRegistry
 from tiled.queries import AccessBlobFilter, Contains, Comparison, Eq, FullText, In, NotEq, NotIn, Regex
 from tiled.structures.core import Spec, StructureFamily
-from tiled.utils import UNCHANGED, IndexersMixin, OneShotCachedMap, import_object, tree_repr
+from tiled.utils import UNCHANGED, IndexersMixin, OneShotCachedMap, import_object, node_repr
 
 from .query_impl import (
     BlueskyMapAdapter,
@@ -1466,7 +1466,7 @@ class MongoAdapter(collections.abc.Mapping, IndexersMixin):
         # Display up to the first N keys to avoid making a giant service
         # request. Use _keys_slicer because it is unauthenticated.
         N = 10
-        return tree_repr(self, self._keys_slice(0, N, direction=1))
+        return node_repr(self, self._keys_slice(0, N, direction=1))
 
     def _get_run(self, run_start_doc):
         "Get a BlueskyRun, either from a cache or by making one if needed."

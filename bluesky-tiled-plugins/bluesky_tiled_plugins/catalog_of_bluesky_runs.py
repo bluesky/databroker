@@ -33,7 +33,7 @@ class CatalogOfBlueskyRuns(Container):
 
     def __repr__(self):
         # This is a copy/paste of the general-purpose implementation
-        # tiled.adapters.utils.tree_repr
+        # tiled.utils.node_repr
         # with some modifications to extract scan_id from the metadata.
         sample = self.items()[:10]
         # Use scan_id (int) if defined; otherwise fall back to uid.
