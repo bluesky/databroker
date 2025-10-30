@@ -9,7 +9,6 @@ from warnings import warn
 import pyarrow
 from event_model import DocumentRouter
 from bluesky.callbacks.json_writer import JSONLinesWriter
-from bluesky.run_engine import Dispatcher
 from bluesky.utils import truncate_json_overflow
 from event_model import (
     DocumentNames,
@@ -42,6 +41,7 @@ from tiled.structures.core import Spec
 from tiled.utils import safe_json_dump
 
 from .consolidators import ConsolidatorBase, DataSource, Patch, StructureFamily, consolidator_factory
+from .dispatcher import Dispatcher
 
 # Aggregate the Event table rows and StreamDatums in batches before writing to Tiled
 BATCH_SIZE = 10000
