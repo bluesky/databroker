@@ -1,50 +1,16 @@
 import collections
 import dataclasses
-import enum
 import os
 import re
 import warnings
-from typing import Any, Literal, Optional, Union, cast
+from typing import Literal, Union, cast
 
 import numpy as np
 from event_model.documents import EventDescriptor, StreamDatum, StreamResource
 from tiled.mimetypes import DEFAULT_ADAPTERS_BY_MIMETYPE
 from tiled.structures.array import ArrayStructure, BuiltinDtype, StructDtype
-
-
-class StructureFamily(str, enum.Enum):
-    array = "array"
-    awkward = "awkward"
-    container = "container"
-    sparse = "sparse"
-    table = "table"
-
-
-class Management(str, enum.Enum):
-    external = "external"
-    immutable = "immutable"
-    locked = "locked"
-    writable = "writable"
-
-
-@dataclasses.dataclass
-class Asset:
-    data_uri: str
-    is_directory: bool
-    parameter: Optional[str]
-    num: Optional[int] = None
-    id: Optional[int] = None
-
-
-@dataclasses.dataclass
-class DataSource:
-    structure_family: StructureFamily
-    structure: Any
-    id: Optional[int] = None
-    mimetype: Optional[str] = None
-    parameters: dict = dataclasses.field(default_factory=dict)
-    assets: list[Asset] = dataclasses.field(default_factory=list)
-    management: Management = Management.writable
+from tiled.structures.core import StructureFamily
+from tiled.structures.data_source import Asset, DataSource, Management
 
 
 @dataclasses.dataclass
