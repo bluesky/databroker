@@ -1,50 +1,16 @@
 import collections
 import dataclasses
-import enum
 import os
 import re
 import warnings
-from typing import Any, Literal, Optional, Union, cast
+from typing import Literal, Union, cast
 
 import numpy as np
 from event_model.documents import EventDescriptor, StreamDatum, StreamResource
 from tiled.mimetypes import DEFAULT_ADAPTERS_BY_MIMETYPE
 from tiled.structures.array import ArrayStructure, BuiltinDtype, StructDtype
-
-
-class StructureFamily(str, enum.Enum):
-    array = "array"
-    awkward = "awkward"
-    container = "container"
-    sparse = "sparse"
-    table = "table"
-
-
-class Management(str, enum.Enum):
-    external = "external"
-    immutable = "immutable"
-    locked = "locked"
-    writable = "writable"
-
-
-@dataclasses.dataclass
-class Asset:
-    data_uri: str
-    is_directory: bool
-    parameter: Optional[str]
-    num: Optional[int] = None
-    id: Optional[int] = None
-
-
-@dataclasses.dataclass
-class DataSource:
-    structure_family: StructureFamily
-    structure: Any
-    id: Optional[int] = None
-    mimetype: Optional[str] = None
-    parameters: dict = dataclasses.field(default_factory=dict)
-    assets: list[Asset] = dataclasses.field(default_factory=list)
-    management: Management = Management.writable
+from tiled.structures.core import StructureFamily
+from tiled.structures.data_source import Asset, DataSource, Management
 
 
 @dataclasses.dataclass
@@ -100,7 +66,7 @@ class ConsolidatorBase:
 
         self.data_key = stream_resource["data_key"]
         self.uri = stream_resource["uri"]
-        self.assets: list[Asset] = []
+        self.assets: list[Asset] = [Asset(data_uri=self.uri, is_directory=False, parameter="data_uris", num=0)]
         self._sres_parameters = stream_resource["parameters"]
 
         # Find datum shape and machine dtype
@@ -120,13 +86,14 @@ class ConsolidatorBase:
                     self.datum_shape = (multiplier,) + self.datum_shape
                     # TODO: Check consistency with chunk_shape
 
-        # Determine the machine data type
+        # Determine the machine data type; fall back to np.dtype("float64") if not set
         self.data_type: Union[BuiltinDtype, StructDtype]
-        dtype_numpy = np.dtype(data_desc.get("dtype_numpy"))  # Falls back to np.dtype("float64") if not set
-        if dtype_numpy.kind == "V":
-            self.data_type = StructDtype.from_numpy_dtype(dtype_numpy)
+        dtype_descr = data_desc.get("dtype_numpy")
+        if isinstance(dtype_descr, list):
+            # np.dtype requires tuples in struct dtypes, not lists
+            self.data_type = StructDtype.from_numpy_dtype(np.dtype(list(map(tuple, dtype_descr))))
         else:
-            self.data_type = BuiltinDtype.from_numpy_dtype(dtype_numpy)
+            self.data_type = BuiltinDtype.from_numpy_dtype(np.dtype(dtype_descr))
 
         # Set chunk (or partition) shape
         self.chunk_shape = self._sres_parameters.get("chunk_shape", ())
@@ -145,7 +112,7 @@ class ConsolidatorBase:
 
     @classmethod
     def get_supported_mimetype(cls, sres):
-        if sres["mimetype"] not in cls.supported_mimetypes:
+        if (cls is not ConsolidatorBase) and (sres["mimetype"] not in cls.supported_mimetypes):
             raise ValueError(f"A data source of {sres['mimetype']} type can not be handled by {cls.__name__}.")
         return sres["mimetype"]
 
@@ -285,17 +252,21 @@ class ConsolidatorBase:
             management=Management.external,
         )
 
-    def get_adapter(self, adapters_by_mimetype=None):
-        """Return an Adapter suitable for reading the data
+    def init_adapter(self, adapter_class=None):
+        """Initialize a Tiled Adapter for reading the consolidated data
 
-        Uses a dictionary mapping of a mimetype to a callable that returns an Adapter instance from_catalog.
+        Parameters
+        ----------
+        adapter_class : Optional[Type[Adapter]]
+            An optional Adapter class to use for initialization; if not provided, the default adapter for the
+            Consolidator's mimetype will be used.
         """
 
-        # User-provided adapters take precedence over defaults.
-        all_adapters_by_mimetype = collections.ChainMap((adapters_by_mimetype or {}), DEFAULT_ADAPTERS_BY_MIMETYPE)
-        adapter_class = all_adapters_by_mimetype[self.mimetype]
+        adapter_class = adapter_class or DEFAULT_ADAPTERS_BY_MIMETYPE.get(self.mimetype)
+        if not adapter_class:
+            raise ValueError(f"No adapter found for mimetype {self.mimetype}")
 
-        # Mimic the necessary aspects of a tiled node with a namedtuple
+        # Mimic the necessary aspects of a Tiled node with a namedtuple
         _Node = collections.namedtuple("Node", ["metadata_", "specs"])
         return adapter_class.from_catalog(self.get_data_source(), _Node({}, []), **self.adapter_parameters())
 
@@ -304,14 +275,11 @@ class ConsolidatorBase:
 
         raise NotImplementedError("This method is not implemented in the base Consolidator class.")
 
-    def validate(self, adapters_by_mimetype=None, fix_errors=False) -> list[str]:
+    def validate(self, fix_errors=False) -> list[str]:
         """Validate the Consolidator's state against the expected structure"""
 
-        # User-provided adapters take precedence over defaults.
-        all_adapters_by_mimetype = collections.ChainMap((adapters_by_mimetype or {}), DEFAULT_ADAPTERS_BY_MIMETYPE)
-        adapter_class = all_adapters_by_mimetype[self.mimetype]
-
         # Initialize adapter from uris and determine the structure
+        adapter_class = DEFAULT_ADAPTERS_BY_MIMETYPE[self.mimetype]
         uris = [asset.data_uri for asset in self.assets]
         structure = adapter_class.from_uris(*uris, **self.adapter_parameters()).structure()
         notes = []
@@ -374,9 +342,19 @@ class ConsolidatorBase:
                 warnings.warn(msg, stacklevel=2)
                 notes.append(msg)
 
-        assert self.get_adapter() is not None, "Adapter can not be initialized"
+        assert self.init_adapter() is not None, "Adapter can not be initialized"
 
         return notes
+
+    def get_adapter(self, adapters_by_mimetype=None):
+        warnings.warn(
+            f"{self.__class__.__name__}.get_adapter is deprecated and will be removed in a future release; "
+            f"please, use {self.__class__.__name__}.init_adapter instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        adapter_class = (adapters_by_mimetype or {}).get(self.mimetype)
+        return self.init_adapter(adapter_class=adapter_class)
 
 
 class CSVConsolidator(ConsolidatorBase):
@@ -384,21 +362,25 @@ class CSVConsolidator(ConsolidatorBase):
     join_method: Literal["stack", "concat"] = "concat"
     join_chunks: bool = False
 
-    def __init__(self, stream_resource: StreamResource, descriptor: EventDescriptor):
-        super().__init__(stream_resource, descriptor)
-        self.assets.append(Asset(data_uri=self.uri, is_directory=False, parameter="data_uris"))
-
     def adapter_parameters(self) -> dict:
-        return {**self._sres_parameters}
+        allowed_keys = {
+            "comment",
+            "delimiter",
+            "dtype",
+            "encoding",
+            "header",
+            "names",
+            "nrows",
+            "sep",
+            "skipfooter",
+            "skiprows",
+            "usecols",
+        }
+        return {k: v for k, v in {"header": None, **self._sres_parameters}.items() if k in allowed_keys}
 
 
 class HDF5Consolidator(ConsolidatorBase):
     supported_mimetypes = {"application/x-hdf5"}
-
-    def __init__(self, stream_resource: StreamResource, descriptor: EventDescriptor):
-        super().__init__(stream_resource, descriptor)
-        self.assets.append(Asset(data_uri=self.uri, is_directory=False, parameter="data_uris", num=0))
-        self.swmr = self._sres_parameters.get("swmr", True)
 
     def adapter_parameters(self) -> dict:
         """Parameters to be passed to the HDF5 adapter, a dictionary with the keys:
@@ -406,11 +388,14 @@ class HDF5Consolidator(ConsolidatorBase):
         dataset: list[str] - a path to the dataset within the hdf5 file represented as list split at `/`
         swmr: bool -- True to enable the single writer / multiple readers regime
         """
-        params = {"dataset": self._sres_parameters["dataset"], "swmr": self.swmr}
+        params = {"dataset": self._sres_parameters["dataset"]}
         if slice := self._sres_parameters.get("slice", False):
             params["slice"] = slice
         if squeeze := self._sres_parameters.get("squeeze", False):
             params["squeeze"] = squeeze
+
+        params["swmr"] = self._sres_parameters.get("swmr", True)
+        params["locking"] = self._sres_parameters.get("locking", None)
 
         return params
 
@@ -433,6 +418,7 @@ class MultipartRelatedConsolidator(ConsolidatorBase):
     ):
         super().__init__(stream_resource, descriptor)
         self.permitted_extensions: set[str] = permitted_extensions
+        self.assets.clear()  # Assets will be populated based on datum indices
         self.data_uris: list[str] = []
         self.chunk_shape = self.chunk_shape or (1,)  # I.e. number of frames per file (tiff, jpeg, etc.)
         if self.join_method == "concat":
@@ -488,9 +474,16 @@ class MultipartRelatedConsolidator(ConsolidatorBase):
         This relies on the `template` parameter passed in the StreamResource, which is a string in the "new"
         Python formatting style that can be evaluated to a file name using the `.format(indx)` method given an
         integer index, e.g. "{:05d}.ext".
+
+        If template is not set, we assume that the uri is provided directly in the StreamResource document (i.e.
+        a single file case), and return it as is.
         """
-        assert os.path.splitext(self.template)[1] in self.permitted_extensions
-        return self.uri + self.template.format(indx)
+
+        if self.template:
+            assert os.path.splitext(self.template)[1] in self.permitted_extensions
+            return self.uri + self.template.format(indx)
+        else:
+            return self.uri
 
     def consume_stream_datum(self, doc: StreamDatum):
         """Determine the number and names of files from indices of datums and the number of files per datum.
