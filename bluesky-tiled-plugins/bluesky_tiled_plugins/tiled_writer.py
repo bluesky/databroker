@@ -7,7 +7,7 @@ from typing import Any, Callable, Optional, Union, cast
 from warnings import warn
 
 import pyarrow
-from bluesky.callbacks.core import CallbackBase
+from event_model import CallbackBase
 from bluesky.callbacks.json_writer import JSONLinesWriter
 from bluesky.run_engine import Dispatcher
 from bluesky.utils import truncate_json_overflow
