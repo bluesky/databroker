@@ -2,7 +2,7 @@ import json
 import os
 
 import pytest
-from bluesky_tiled_plugins.json_writer import JSONLinesWriter, JSONWriter
+from bluesky_tiled_plugins.writing._json_writer import JSONLinesWriter, JSONWriter
 
 
 def read_json_file(path):
