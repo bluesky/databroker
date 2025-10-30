@@ -3,8 +3,8 @@ import copy
 import functools
 import numbers
 import operator
+from typing import Any
 
-from tiled.adapters.utils import IndexCallable
 from tiled.client.container import Container
 from tiled.client.utils import handle_error
 from tiled.queries import Comparison, Eq, Like
@@ -33,7 +33,7 @@ class CatalogOfBlueskyRuns(Container):
 
     def __repr__(self):
         # This is a copy/paste of the general-purpose implementation
-        # tiled.adapters.utils.tree_repr
+        # tiled.utils.node_repr
         # with some modifications to extract scan_id from the metadata.
         sample = self.items()[:10]
         # Use scan_id (int) if defined; otherwise fall back to uid.
@@ -209,3 +209,28 @@ class CatalogOfBlueskyRuns(Container):
         link = self.item["links"]["self"].replace("/metadata", "/documents", 1)
         response = self.context.http_client.post(link, content=safe_json_dump({"name": name, "doc": doc}))
         handle_error(response)
+
+
+class IndexCallable:
+    """
+    DEPRECATED and no longer used internally
+
+    Provide getitem syntax for functions
+
+    >>> def inc(x):
+    ...     return x + 1
+
+    >>> I = IndexCallable(inc)
+    >>> I[3]
+    4
+
+    Vendored from dask
+    """
+
+    __slots__ = ("fn",)
+
+    def __init__(self, fn: Any) -> None:
+        self.fn = fn
+
+    def __getitem__(self, key: str) -> Any:
+        return self.fn(key)
