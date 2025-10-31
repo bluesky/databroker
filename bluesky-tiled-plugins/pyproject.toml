@@ -14,15 +14,6 @@ maintainers = [
 ]
 requires-python = ">=3.9"
 
-dependencies = [
-  "dask",
-  "event-model",
-  "mongoquery",
-  "pytz",
-  "tiled[client] >=0.2.0",
-  "tzlocal",
-]
-
 classifiers = [
   "Development Status :: 4 - Beta",
   "License :: OSI Approved :: BSD License",
@@ -36,7 +27,30 @@ classifiers = [
   "Topic :: Scientific/Engineering :: Physics",
 ]
 
+dependencies = [
+  "dask",
+  "event-model",
+  "mongoquery",
+  "pytz",
+  "tiled[client] >=0.2.0",
+  "tzlocal",
+]
+
 dynamic = ["version"]
+
+[dependency-groups]
+dev = [
+    "numpydoc",
+    "pre-commit",
+    "pydata-sphinx-theme>=0.15",
+    "pytest",
+    "ruff",
+    "sphinx-autobuild",
+    "sphinx-autodoc2",
+    "sphinxcontrib-mermaid",
+    "sphinx-copybutton",
+    "sphinx-design",
+]
 
 [project.entry-points."tiled.special_client"]
 CatalogOfBlueskyRuns = "bluesky_tiled_plugins.clients.catalog_of_bluesky_runs:CatalogOfBlueskyRuns"
