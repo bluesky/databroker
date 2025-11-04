@@ -20,15 +20,19 @@ An example of the Tiled catalog structure for a Bluesky run might look like this
 BlueskyRun <Container ("BlueskyRun_v3")>
 │
 ├─ baseline <Container ("composite")>
-│       ├─ internal <Table>   -- written by Tiled
-│       ├─ image_1 <Array>    -- external data from files
+│       ├─ internal <Table>   <-- data from Event documents
+│       ├─ image_1 <Array>    <-- external (registered) data
+│       │
 │       │      ...
 │       └─ image_n <Array>
+│
 ├─ primary <Container ("composite")>
-│       ├─ internal <Table>   -- written by Tiled
-│       ├─ image_1 <Array>    -- external data from files
+│       ├─ internal <Table>
+│       ├─ image_1 <Array>
+│       │
 │       │      ...
 │       └─ image_n <Array>
+│
 └─ third_stream <Container ("composite")>
 ```
 
