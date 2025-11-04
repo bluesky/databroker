@@ -529,7 +529,13 @@ class _RunWriter(DocumentRouter):
             The Tiled client to use for writing the data.
     """
 
-    def __init__(self, client: BaseClient, batch_size: int = BATCH_SIZE, max_array_size: int = MAX_ARRAY_SIZE):
+    def __init__(
+        self,
+        client: BaseClient,
+        batch_size: int = BATCH_SIZE,
+        max_array_size: int = MAX_ARRAY_SIZE,
+        validate: bool = False,
+    ):
         self.client = client
         self.root_node: Union[None, Container] = None
         self._desc_nodes: dict[str, Container] = {}  # references to the descriptor nodes by their uid's and names
@@ -543,6 +549,7 @@ class _RunWriter(DocumentRouter):
         self._int_array_keys: dict[str, set[str]] = defaultdict(set)  # data_keys with array data by desc_name
         self._batch_size: int = batch_size
         self._max_array_size: int = max_array_size  # Max size of arrays to write to tabular storage
+        self._validate: bool = validate
         self.data_keys: dict[str, DataKey] = {}
         self.access_tags: Optional[list[str]] = None
 
@@ -654,8 +661,8 @@ class _RunWriter(DocumentRouter):
         node_and_cons = {
             (sres_node, self._consolidators[sres_uid]) for sres_uid, sres_node in self._sres_nodes.items()
         }
-        for sres_node, consolidator in node_and_cons:
-            if consolidator._sres_parameters.get("_validate", False):
+        if self._validate:
+            for sres_node, consolidator in node_and_cons:
                 title = f"Validation of data key '{sres_node.item['id']}'"
                 try:
                     _notes = consolidator.validate(fix_errors=True)
@@ -842,6 +849,9 @@ class TiledWriter:
             writing large amounts of data (e.g. database migration). For streaming applications,
             it is recommended to set this parameter to <= 1, so that each Event or StreamDatum is written
             to Tiled immediately after they are received.
+        validate : bool
+            If True, validate all data sources before writing to Tiled. This requires the access to the
+            files on the client.
     """
 
     def __init__(
@@ -854,6 +864,7 @@ class TiledWriter:
         backup_directory: Optional[str] = None,
         batch_size: int = BATCH_SIZE,
         max_array_size: int = MAX_ARRAY_SIZE,
+        validate: bool = False,
     ):
         self.client = client.include_data_sources()
         self.patches = patches or {}
@@ -863,10 +874,13 @@ class TiledWriter:
         self._run_router = RunRouter([self._factory])
         self._batch_size = batch_size
         self._max_array_size = max_array_size
+        self._validate = validate
 
     def _factory(self, name, doc):
         """Factory method to create a callback for writing a single run into Tiled."""
-        cb = run_writer = _RunWriter(self.client, batch_size=self._batch_size, max_array_size=self._max_array_size)
+        cb = run_writer = _RunWriter(
+            self.client, batch_size=self._batch_size, max_array_size=self._max_array_size, validate=self._validate
+        )
 
         if self._normalizer:
             # If normalize is True, create a RunNormalizer callback to update documents to the latest schema
