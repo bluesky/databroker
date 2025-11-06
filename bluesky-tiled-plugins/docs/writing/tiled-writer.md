@@ -121,7 +121,7 @@ A minimal simulated example of using `TiledWriter` in a Bluesky plan is shown be
 ```python
 from bluesky import RunEngine
 import bluesky.plans as bp
-from bluesky.callbacks.tiled_writer import TiledWriter
+from bluesky_tiled_plugins import TiledWriter
 from tiled.server import SimpleTiledServer
 from tiled.client import from_uri
 from ophyd.sim import det
