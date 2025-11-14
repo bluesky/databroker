@@ -1,0 +1,65 @@
+name: Build and Publish Bluesky-Tiled-Plugins Documentation
+
+defaults:
+  run:
+    working-directory: ./bluesky-tiled-plugins
+
+on:
+  push:
+    branches:
+    - main
+  pull_request:
+    branches:
+    - main
+  schedule:
+    - cron: '0 5 * * 1'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.12"]
+      fail-fast: false
+
+    steps:
+
+    - uses: actions/checkout@v3
+      with:
+        fetch-depth: 1000  # should be enough to reach the most recent tag
+
+    - name: Install uv and set the python version
+      uses: astral-sh/setup-uv@v6
+      with:
+        python-version: ${{ matrix.python-version }}
+
+    - name: Install project
+      run: uv sync --all-extras
+
+    - name: Build Docs
+      shell: bash -l {0}
+      run: uv run make -C docs/ html
+
+    - name: Upload HTML as GitHub Pages artifact
+      uses: actions/upload-pages-artifact@v3
+      with:
+        path: build/html
+
+  deploy-gh-pages:
+    name: Deploy GitHub Pages artifact to GitHub Pages
+    if: github.repository_owner == 'bluesky' && github.ref == 'refs/heads/main'
+    # Sets permissions of the GITHUB_TOKEN to allow deployment to GitHub Pages
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    needs: build
+
+    steps:
+      - name: Deploy HTML to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
