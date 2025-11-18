@@ -89,6 +89,9 @@ MIMETYPE_LOOKUP = defaultdict(
 
 logger = logging.getLogger(__name__)
 
+class ValidationError(Exception):
+    """Custom exception for validation errors in Tiled RunWriter."""
+    pass
 
 def concatenate_stream_datums(*docs: StreamDatum):
     """Concatenate consecutive StreamDatum documents into a single StreamDatum document"""
@@ -663,8 +666,7 @@ class _RunWriter(DocumentRouter):
                 except Exception as e:
                     msg = f"{type(e).__name__}: " + str(e).replace("\n", " ").replace("\r", "").strip()
                     msg = title + f" failed with error: {msg}"
-                    warn(msg, stacklevel=2)
-                    notes.append(msg)
+                    raise ValidationError(msg) from e
                 self._update_data_source_for_node(sres_node, consolidator.get_data_source())
 
         # Write the stop document to the metadata
