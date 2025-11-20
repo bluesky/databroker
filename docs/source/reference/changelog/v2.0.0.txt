@@ -21,4 +21,6 @@ support the transition from MongoDB-based document storage to PostgreSQL-based
 storage. The Python user interface may be maintained longer still, depending on
 the need.
 
+.. _Bluesky Tiled Plugins: https://blueskyproject.io/bluesky-tiled-plugins/
+
 .. _Tiled: https://blueskyproject.io/tiled/
