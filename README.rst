@@ -4,9 +4,24 @@ Databroker
 
 |build_status| |coverage| |pypi_version| |license|
 
-**The Databroker project is now in maintenance mode, and it is not recommended
-for new users. It will be maintained until for years to come to support
-existing user code. New users should use Bluesky Tiled Plugins.**
+Deprecation Notice
+==================
+
+Databroker is no longer recommended for new users or facilities adopting
+Bluesky. Instead, `Tiled`_ with `Bluesky Tiled Plugins`_ is recommended as the
+canonical way to persist and access data and metadata from Bluesky.
+
+Databroker now serves two purposes that remain relevant for some users and some
+faciilities. First, it contains code adapting the legacy MongoDB-based Bluesky
+document storage to Tiled---effectively a server-side plugin for Tiled. Second,
+it wraps the Tiled Python client to provide an API backward-compatible with
+legacy Databroker user code. _If you do not have MongoDB-based Bluesky storage
+and you do not have legacy Databroker user code, you do not need Databroker._
+
+Databroker will be maintained by NSLS-II through **April 2027** at minimum to
+support the transition from MongoDB-based document storage to PostgreSQL-based
+storage. The Python user interface may be maintained longer still, depending on
+the need.
 
 ============== ==============================================================
 PyPI           ``pip install databroker``
@@ -93,3 +108,7 @@ See the tutorials for more.
 .. _Suitcase: https://blueskyproject.io/suitcase/
 
 .. _Intake: https://intake.readthedocs.io/en/latest/
+
+.. _Bluesky Tiled Plugins: https://blueskyproject.io/bluesky-tiled-plugins/
+
+.. _Tiled: https://blueskyproject.io/tiled/

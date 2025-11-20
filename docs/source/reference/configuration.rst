@@ -55,8 +55,7 @@ All Databroker "drivers" accept the following arguments:
 
 * ``handler_registry`` ---
   If ommitted or ``None``, the result of
-  :func:`~databroker.core.discover_handlers` is used. See
-  :doc:`event-model:external` for background on the role of "handlers".
+  :func:`~databroker.core.discover_handlers` is used.
 * ``root_map`` ---
   This is passed to :func:`event_model.Filler` to account for temporarily
   moved/copied/remounted files. Any resources which have a ``root`` matching a
@@ -212,8 +211,7 @@ Legacy (v0-style) configuration
 
 For backward-compatibility, configuration files specifying MongoDB storage are
 discovered and included in ``databroker.catalog``. Other legacy formats
-(SQLite, HDF5) are only accessible via v0. See
-:ref:`v2-transition`.
+(SQLite, HDF5) are only accessible via v0.
 
 Search path
 ^^^^^^^^^^^

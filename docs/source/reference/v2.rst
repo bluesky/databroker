@@ -33,25 +33,3 @@ Utils
 .. autofunction:: databroker.v2.temp
 
 .. autofunction:: databroker.v1.temp
-
-Backend-Specific Catalogs
--------------------------
-
-.. note::
-
-   These drivers are currently being developed in databroker itself, but
-   will eventually be split out into separate repositories to isolate
-   dependencies and release cycles. This will be done once the internal
-   interfaces are stable.
-
-.. autoclass:: databroker._drivers.jsonl.BlueskyJSONLCatalog
-   :members:
-
-.. autoclass:: databroker._drivers.mongo_embedded.BlueskyMongoCatalog
-   :members:
-
-.. autoclass:: databroker._drivers.mongo_normalized.BlueskyMongoCatalog
-   :members:
-
-.. autoclass:: databroker._drivers.msgpack.BlueskyMsgpackCatalog
-   :members:
