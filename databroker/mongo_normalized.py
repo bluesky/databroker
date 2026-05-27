@@ -38,6 +38,7 @@ from tiled.query_registration import QueryTranslationRegistry
 from tiled.queries import AccessBlobFilter, Contains, Comparison, Eq, FullText, In, NotEq, NotIn, Regex
 from tiled.structures.core import Spec, StructureFamily
 from tiled.utils import UNCHANGED, IndexersMixin, OneShotCachedMap, import_object, node_repr
+from tiled.ndslice import block_for_slice, build_nested_grid
 
 from .query_impl import (
     BlueskyMapAdapter,
@@ -584,8 +585,17 @@ class ArrayFromDocuments:
         return self._dataset_adapter.read_block(self._field, block, slice=slice)
 
     def read(self, slice=None):
-        array_adapter = self._dataset_adapter.read(fields=[self._field])[self._field]
-        return array_adapter.read(slice)
+        structure = self._dataset_adapter.array_structures[self._field]
+        block, slice_in_block = block_for_slice(structure.chunks, slice)
+        chunk_indices = block.chunk_indices(structure.chunks)
+
+        array = numpy.block(
+            build_nested_grid(
+                chunk_indices, lambda idx: self.read_block(block=idx, slice=None)
+            )
+        )
+
+        return array[slice_in_block]
 
     def structure(self):
         return self._dataset_adapter.array_structures[self._field]
