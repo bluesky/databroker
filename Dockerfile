@@ -1,4 +1,4 @@
-FROM ghcr.io/bluesky/tiled:0.1.0-b36 as base
+FROM ghcr.io/bluesky/tiled:0.2.11 as base
 
 USER root
 COPY . /databroker-src/
