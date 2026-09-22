@@ -35,8 +35,9 @@ from tiled.structures.array import (
 from tiled.adapters.mapping import MapAdapter
 from tiled.iterviews import KeysView, ItemsView, ValuesView
 from tiled.query_registration import QueryTranslationRegistry
-from tiled.queries import AccessBlobFilter, Contains, Comparison, Eq, FullText, In, NotEq, NotIn, Regex
+from tiled.queries import AccessTagsFilter, Contains, Comparison, Eq, FullText, In, NotEq, NotIn, Regex
 from tiled.structures.core import Spec, StructureFamily
+from tiled.type_aliases import AccessTags
 from tiled.utils import UNCHANGED, IndexersMixin, OneShotCachedMap, import_object, node_repr
 from tiled.ndslice import block_for_slice, build_nested_grid
 
@@ -196,7 +197,7 @@ class DatasetMapAdapter(MapAdapter):
         super().__init__(*args, **kwargs)
 
     def search(self, query):
-        if isinstance(query, AccessBlobFilter):
+        if isinstance(query, AccessTagsFilter):
             # No access control is applied below the granularity of a BlueskyRun.
             return self
         return super().search(query)
@@ -245,13 +246,13 @@ class BlueskyRun(MapAdapter):
         self.node = SimpleNamespace(key=self.key)
 
     @functools.cached_property
-    def access_blob(self):
+    def access_tags(self) -> AccessTags:
         if self.authz_shim:
-            return self.authz_shim.bluesky_run_access_blob_from_metadata(self.metadata())
-        return {}
+            return self.authz_shim.bluesky_run_access_tags_from_metadata(self.metadata())
+        return frozenset()
 
     def search(self, query):
-        if isinstance(query, AccessBlobFilter):
+        if isinstance(query, AccessTagsFilter):
             # No access control is applied below the granularity of a BlueskyRun.
             return self
         return super().search(query)
@@ -296,9 +297,11 @@ class BlueskyRun(MapAdapter):
         metadata = dict(collections.ChainMap(transformed, self._metadata))
         return metadata
 
-    async def replace_metadata(self, metadata=None, specs=None, access_blob=None, drop_revision=False):
-        if access_blob and (access_blob != self.access_blob):
-            raise NotImplementedError("Updating access_blob on MongoDB-backed data is not supported.")
+    async def replace_metadata(
+        self, metadata=None, specs=None, access_tags: Optional[AccessTags] = None, drop_revision=False
+    ):
+        if access_tags is not None and access_tags != self.access_tags:
+            raise NotImplementedError("Updating access_tags on MongoDB-backed data is not supported.")
         if drop_revision:
             raise NotImplementedError("Must use drop_revision=False with databroker.mongo_normalized")
         if "start" not in metadata:
@@ -479,14 +482,14 @@ class BlueskyEventStream(MapAdapter):
         self.node = SimpleNamespace(key=self.key)
 
     @property
-    def access_blob(self):
-        return self._run.access_blob
+    def access_tags(self) -> AccessTags:
+        return self._run.access_tags
 
     def __repr__(self):
         return f"<{type(self).__name__} {set(self)!r} stream_name={self.metadata['stream_name']!r}>"
 
     def search(self, query):
-        if isinstance(query, AccessBlobFilter):
+        if isinstance(query, AccessTagsFilter):
             # No access control is applied below the granularity of a BlueskyRun.
             return self
         return super().search(query)
@@ -521,9 +524,11 @@ class BlueskyEventStream(MapAdapter):
     def key(self):
         return self._metadata["descriptors"][0]["name"]
 
-    async def replace_metadata(self, metadata=None, specs=None, access_blob=None, drop_revision=False):
-        if access_blob and (access_blob != self.access_blob):
-            raise NotImplementedError("Updating access_blob on MongoDB-backed data is not supported.")
+    async def replace_metadata(
+        self, metadata=None, specs=None, access_tags: Optional[AccessTags] = None, drop_revision=False
+    ):
+        if access_tags is not None and access_tags != self.access_tags:
+            raise NotImplementedError("Updating access_tags on MongoDB-backed data is not supported.")
         if drop_revision:
             raise NotImplementedError("Must use drop_revision=False with databroker.mongo_normalized")
         if "descriptors" not in metadata:
@@ -569,14 +574,14 @@ class ArrayFromDocuments:
 
     structure_family = "array"
 
-    def __init__(self, dataset_adapter, field, specs=None, access_blob=None):
+    def __init__(self, dataset_adapter, field, specs=None, access_tags: AccessTags = frozenset()):
         self._dataset_adapter = dataset_adapter
         self._field = field
         self._metadata = dataset_adapter.array_metadata[field]
         if specs is None:
             specs = []
         self.specs = specs
-        self.access_blob = access_blob
+        self.access_tags = access_tags
 
     def metadata(self):
         return self._metadata
@@ -678,7 +683,7 @@ class DatasetFromDocuments:
                         self,
                         field,
                         specs=[Spec("xarray_coord")] if field == "time" else [Spec("xarray_data_var")],
-                        access_blob=self._run.access_blob,
+                        access_tags=self._run.access_tags,
                     )
                     for field in self.array_structures
                 }
@@ -686,11 +691,11 @@ class DatasetFromDocuments:
         )
 
     @property
-    def access_blob(self):
-        return self._run.access_blob
+    def access_tags(self) -> AccessTags:
+        return self._run.access_tags
 
     def search(self, query):
-        if isinstance(query, AccessBlobFilter):
+        if isinstance(query, AccessTagsFilter):
             # No access control is applied below the granularity of a BlueskyRun.
             return self
         return super().search(query)
@@ -1061,7 +1066,7 @@ class Config(MapAdapter):
     """
 
     def search(self, query):
-        if isinstance(query, AccessBlobFilter):
+        if isinstance(query, AccessTagsFilter):
             # No access control is applied below the granularity of a BlueskyRun.
             return self
         return super().search(query)
@@ -1368,14 +1373,14 @@ class MongoAdapter(collections.abc.Mapping, IndexersMixin):
         if self.authz_shim:
             # Make a unique query registry per instance.
             self.query_registry = copy.deepcopy(MongoAdapter.query_registry)
-            self.query_registry.register(AccessBlobFilter, self.authz_shim.query_impl)
+            self.query_registry.register(AccessTagsFilter, self.authz_shim.query_impl)
             super().__init__()
 
     @property
-    def access_blob(self):
+    def access_tags(self) -> AccessTags:
         if self.authz_shim:
-            return self.authz_shim.catalog_access_blob
-        return {}
+            return self.authz_shim.catalog_access_tags
+        return frozenset()
 
     @property
     def database(self):
