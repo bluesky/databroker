@@ -24,6 +24,7 @@ import toolz.itertoolz
 import xarray
 from event_model import DocumentNames, schema_validators
 from typing import Optional
+from starlette.concurrency import run_in_threadpool
 from tiled.adapters.array import ArrayAdapter
 from tiled.adapters.xarray import DatasetAdapter
 from tiled.structures.array import (
@@ -316,9 +317,15 @@ class BlueskyRun(MapAdapter):
         schema_validators[DocumentNames.start].validate(start)
         if stop is not None:
             schema_validators[DocumentNames.stop].validate(stop)
-        self._serializer.update("start", metadata["start"])
-        if stop is not None:
-            self._serializer.update("stop", metadata["stop"])
+
+        def update():
+            self._serializer.update("start", start)
+            if stop is not None:
+                self._serializer.update("stop", stop)
+
+        # This blocks while it reads from and writes to MongoDB. Run it in a
+        # worker thread so that it does not stall the event loop.
+        await run_in_threadpool(update)
         self._clear_from_cache()
 
     @property
@@ -533,10 +540,16 @@ class BlueskyEventStream(MapAdapter):
             raise NotImplementedError("Must use drop_revision=False with databroker.mongo_normalized")
         if "descriptors" not in metadata:
             raise NotImplementedError("Update_metadata method requires descriptors.")
-        # Update descriptors
-        for descriptor in metadata["descriptors"]:
-            schema_validators[DocumentNames.descriptor].validate(descriptor)
-            self._serializer.update("descriptor", descriptor)
+
+        def update():
+            # Update descriptors
+            for descriptor in metadata["descriptors"]:
+                schema_validators[DocumentNames.descriptor].validate(descriptor)
+                self._serializer.update("descriptor", descriptor)
+
+        # This blocks while it reads from and writes to MongoDB. Run it in a
+        # worker thread so that it does not stall the event loop.
+        await run_in_threadpool(update)
         self._clear_from_cache()
 
     def new_variation(self, **kwargs):
