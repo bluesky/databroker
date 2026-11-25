@@ -24,6 +24,7 @@ import toolz.itertoolz
 import xarray
 from event_model import DocumentNames, schema_validators
 from typing import Optional
+from starlette.concurrency import run_in_threadpool
 from tiled.adapters.array import ArrayAdapter
 from tiled.adapters.xarray import DatasetAdapter
 from tiled.structures.array import (
@@ -316,9 +317,15 @@ class BlueskyRun(MapAdapter):
         schema_validators[DocumentNames.start].validate(start)
         if stop is not None:
             schema_validators[DocumentNames.stop].validate(stop)
-        self._serializer.update("start", metadata["start"])
-        if stop is not None:
-            self._serializer.update("stop", metadata["stop"])
+
+        def update():
+            self._serializer.update("start", start)
+            if stop is not None:
+                self._serializer.update("stop", stop)
+
+        # This blocks while it reads from and writes to MongoDB. Run it in a
+        # worker thread so that it does not stall the event loop.
+        await run_in_threadpool(update)
         self._clear_from_cache()
 
     @property
@@ -533,10 +540,16 @@ class BlueskyEventStream(MapAdapter):
             raise NotImplementedError("Must use drop_revision=False with databroker.mongo_normalized")
         if "descriptors" not in metadata:
             raise NotImplementedError("Update_metadata method requires descriptors.")
-        # Update descriptors
-        for descriptor in metadata["descriptors"]:
-            schema_validators[DocumentNames.descriptor].validate(descriptor)
-            self._serializer.update("descriptor", descriptor)
+
+        def update():
+            # Update descriptors
+            for descriptor in metadata["descriptors"]:
+                schema_validators[DocumentNames.descriptor].validate(descriptor)
+                self._serializer.update("descriptor", descriptor)
+
+        # This blocks while it reads from and writes to MongoDB. Run it in a
+        # worker thread so that it does not stall the event loop.
+        await run_in_threadpool(update)
         self._clear_from_cache()
 
     def new_variation(self, **kwargs):
@@ -1334,6 +1347,7 @@ class MongoAdapter(collections.abc.Mapping, IndexersMixin):
         sorting=None,
         validate_shape=None,
         authz_shim=None,
+        cache_lock=None,
     ):
         "This is not user-facing. Use MongoAdapter.from_uri."
         self._run_start_collection = metadatastore_db.get_collection("run_start")
@@ -1354,6 +1368,13 @@ class MongoAdapter(collections.abc.Mapping, IndexersMixin):
         self._cache_of_bluesky_runs = collections.ChainMap(
             cache_of_complete_bluesky_runs, cache_of_partial_bluesky_runs
         )
+        # The caches are not safe to use from more than one thread at once.
+        # (Even reading one changes it.) The server calls this adapter from
+        # worker threads, so every use of the caches holds this lock. It is
+        # shared, with the caches, by every variation of this adapter.
+        if cache_lock is None:
+            cache_lock = threading.Lock()
+        self._cache_lock = cache_lock
         self._metadata = metadata or {}
         self.queries = list(queries or [])
         if sorting is None:
@@ -1451,6 +1472,7 @@ class MongoAdapter(collections.abc.Mapping, IndexersMixin):
             transforms=self.transforms,
             cache_of_complete_bluesky_runs=self._cache_of_complete_bluesky_runs,
             cache_of_partial_bluesky_runs=self._cache_of_partial_bluesky_runs,
+            cache_lock=self._cache_lock,
             queries=queries,
             sorting=sorting,
             validate_shape=self.validate_shape,
@@ -1486,22 +1508,34 @@ class MongoAdapter(collections.abc.Mapping, IndexersMixin):
     def _get_run(self, run_start_doc):
         "Get a BlueskyRun, either from a cache or by making one if needed."
         uid = run_start_doc["uid"]
-        try:
-            return self._cache_of_bluesky_runs[uid]
-        except KeyError:
-            run = self._build_run(run_start_doc)
-            # Choose a cache depending on whethter the run is complete (in
-            # which case updates are rare) or incomplete/partial (in which case
-            # more data is likely incoming soon).
-            if run.metadata().get("stop") is None:
-                self._cache_of_partial_bluesky_runs[uid] = run
-            else:
-                self._cache_of_complete_bluesky_runs[uid] = run
-            return run
+        with self._cache_lock:
+            try:
+                return self._cache_of_bluesky_runs[uid]
+            except KeyError:
+                pass
+        # Build the run without holding the lock. This queries the database,
+        # and other threads should not have to wait for that.
+        run = self._build_run(run_start_doc)
+        # Choose a cache depending on whethter the run is complete (in
+        # which case updates are rare) or incomplete/partial (in which case
+        # more data is likely incoming soon).
+        if run.metadata().get("stop") is None:
+            cache = self._cache_of_partial_bluesky_runs
+        else:
+            cache = self._cache_of_complete_bluesky_runs
+        with self._cache_lock:
+            try:
+                # If another thread built and cached this run in the
+                # meantime, use that one, so that callers share one BlueskyRun.
+                return self._cache_of_bluesky_runs[uid]
+            except KeyError:
+                cache[uid] = run
+                return run
 
     def _clear_from_cache(self, uid):
-        self._cache_of_partial_bluesky_runs.pop(uid, None)
-        self._cache_of_complete_bluesky_runs.pop(uid, None)
+        with self._cache_lock:
+            self._cache_of_partial_bluesky_runs.pop(uid, None)
+            self._cache_of_complete_bluesky_runs.pop(uid, None)
 
     def _build_run(self, run_start_doc):
         "This should not be called directly, even internally. Use _get_run."

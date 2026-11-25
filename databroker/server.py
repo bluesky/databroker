@@ -6,6 +6,7 @@ from jsonschema import ValidationError
 from event_model import DocumentNames, schema_validators
 from fastapi import APIRouter, Depends, HTTPException, Request, Security
 import pydantic
+from starlette.concurrency import run_in_threadpool
 from starlette.responses import StreamingResponse
 from tiled.server.authentication import (
     check_scopes,
@@ -124,4 +125,7 @@ async def post_documents(
         schema_validators[named_doc.name].validate(named_doc.doc)
     except ValidationError as err:
         raise HTTPException(status_code=400, detail=err.message)
-    serializer(named_doc.name.value, named_doc.doc)
+    # This blocks while it writes to MongoDB. Run it in a worker thread so
+    # that it does not stall the event loop, and with it every other request
+    # handled by this process.
+    await run_in_threadpool(serializer, named_doc.name.value, named_doc.doc)
